@@ -5,7 +5,6 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
-  pages: write
 concurrency: update-benefits
 jobs:
   update:
@@ -20,8 +19,6 @@ jobs:
         env:
           DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
       - name: 바뀐 내용 올리기
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           if [ -z "$(git status --porcelain regions)" ]; then echo "바뀐 내용 없음"; exit 0; fi
           git config user.name "github-actions[bot]"
@@ -29,4 +26,3 @@ jobs:
           git add regions
           git commit -m "혜택 자료 갱신"
           git push
-          gh api -X POST "repos/${{ github.repository }}/pages/builds"
