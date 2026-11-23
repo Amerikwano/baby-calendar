@@ -4,8 +4,15 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { SIDO, fromAgency } = require('../regions.js');
 
-const WANT = /출산|출생|임신|임산부|임부|산모|산후|신생아|영아|영유아|분만|첫돌|다자녀|다둥이|육아|아기|모유|기저귀|조리원|입양/;
-const SKIP = /난임|불임|정관|난관|시험관|인공수정|난자|정자/; // 태어날 아기와 관계없는 사업
+// 사업 이름으로 고른다. 대상·내용에는 "다자녀 감면"처럼 스쳐 가는 말이 많아 기준으로 쓰지 않는다.
+const BABY = /출산|출생|임신|임산부|임부|산모|산후|산전|신생아|영아|영유아|분만|백일|첫돌|아기|모유|모자보건|조리원|육아|아이돌봄|아이\s?돌봄|예비\s?(맘|엄마|부모)|엽산|첫만남|부모급여|아동수당|양육수당|기저귀|분유|태교|시간제\s?보육|아픈\s?아이|아이사랑|어린이집.*입학/;
+const MULTI = /(다자녀|다둥[이e]|세\s?자녀|둘째|셋째).*(양육|축하|장려|지원금|카드|돌봄|진료)/;
+const SKIP = /난임|불임|정관|난관|시험관|인공수정|난자|정자|피임|동물|반려|노인|어르신|장수|치매|중풍|고등학|중학|초등|대학|교복|입학|등록금|학자금|장학|결혼장려|주차|상수도|하수도|수도요금|체육|미술관|박물관|휴양림|관람|보훈|탈북|북한이탈|졸업/;
+const ADOPT = /입양/;
+const wanted = (name, field) => {
+  if (SKIP.test(/어린이집/.test(name) ? name.replace(/입학/g, '') : name) || (ADOPT.test(name) && !/출산|출생/.test(name))) return false;
+  return BABY.test(name) || MULTI.test(name) || /임신|출산/.test(field || '');
+};
 const clean = s => String(s || '').replace(/\r/g, '').replace(/[ \t]+/g, ' ').replace(/\n{2,}/g, '\n').trim();
 const cut = (s, n) => (s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s);
 const safeUrl = u => (/^https:\/\/([a-z0-9-]+\.)?gov\.kr\//.test(u || '') ? u : '');
@@ -15,13 +22,13 @@ function fromApi(r) {
   const at = fromAgency(r['소관기관명']);
   if (!at) return null;
   const name = clean(r['서비스명']);
-  if (SKIP.test(name) || !WANT.test([name, r['서비스목적요약'], r['지원대상']].join(' '))) return null;
+  if (!wanted(name, r['서비스분야'])) return null;
   return row(at, { id: r['서비스ID'], name, agency: r['소관기관명'], type: r['지원유형'], deadline: r['신청기한'], target: r['지원대상'], support: r['지원내용'], how: r['신청방법'], url: r['상세조회URL'] });
 }
 // 정리된 공개 자료(goodboxkr/korea-birth-support-2026) 한 줄 → 앱 한 줄
 function fromSeed(x) {
   const at = fromAgency(x.agency) || fromAgency(x.sido);
-  if (!at || SKIP.test(x.service_name)) return null;
+  if (!at || !wanted(clean(x.service_name), '임신·출산')) return null;
   return row({ sido: at.sido, sigungu: x.sigungu || at.sigungu }, { id: x.service_id, name: clean(x.service_name), agency: x.agency, type: x.support_type, deadline: x.deadline, target: x.target, support: x.support, how: x.how_to_apply, url: x.gov24_url });
 }
 function row(at, v) {
@@ -56,4 +63,4 @@ function write(dir, rows, meta) {
   put('index.json', JSON.stringify({ asOf: meta.asOf, source: meta.source, total }) + '\n');
   return { total, changed };
 }
-module.exports = { fromApi, fromSeed, group, write, WANT, SKIP };
+module.exports = { fromApi, fromSeed, group, write, wanted };

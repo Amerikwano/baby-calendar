@@ -36,6 +36,13 @@ test('API 자료 거르기', () => {
   assert.equal(fromApi(row(1, { '서비스명': '농기계 임대', '지원대상': '농업인' })), null);
   assert.equal(fromApi(row(1, { '상세조회URL': 'javascript:alert(1)' })).u, '');
 });
+test('관계없는 사업은 빼고 아기 사업은 남긴다', () => {
+  const { wanted } = require('./scripts/benefit-data.js');
+  for (const n of ['장수노인수당 지원', '유실·유기동물 입양비 지원', '하수도요금 감면', '귀향청년 주택 수리비 지원', '다자녀가정 대학등록금 지원', '치매환자 조호물품 지원(기저귀, 위생매트 등)', '공영주차장 이용요금 감면', '보훈명예수당', '청년 월세 지원', '장애인 도우미 지원']) assert.equal(wanted(n, '생활안정'), false, n);
+  for (const n of ['수원시 출생·입양 지원금 지급', '산모·신생아 건강관리 지원', '서울형 아이돌봄비 지원', '아빠 육아휴직장려금 지원', '다자녀가정 양육비 지원', '기저귀·조제분유 지원', '임신부 운동교실 지원 서비스', '쑥쑥크는 우리아기 오감발달교실', '어린이집 입학축하금 지원', '아픈아이 병원진료 동행서비스', '맘편한 태교 패키지 지원']) assert.equal(wanted(n, '생활안정'), true, n);
+  assert.equal(wanted('풍진검사 지원', '임신·출산'), true);
+  assert.equal(wanted('난임부부 시술비', '임신·출산'), false);
+});
 test('자료가 갑자기 줄면 덮어쓰지 않는다', () => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'reg-')), many = Array.from({ length: 640 }, (_, i) => fromApi(row(i)));
   assert.equal(write(d, many, { asOf: '2026-11-23', source: 's' }).total, 640);
