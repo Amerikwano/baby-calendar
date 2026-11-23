@@ -4,7 +4,11 @@
   "main": "schedule.js",
   "scripts": {
     "test": "node --test",
-    "start": "node server.js"
+    "start": "node server.js",
+    "ai:login": "wrangler login",
+    "ai:deploy": "wrangler deploy -c worker/wrangler.jsonc",
+    "ai:key": "wrangler secret put ANTHROPIC_API_KEY -c worker/wrangler.jsonc",
+    "ai:code": "wrangler secret put ACCESS_CODE -c worker/wrangler.jsonc"
   },
   "keywords": [],
   "author": "",
@@ -14,5 +18,8 @@
   "type": "commonjs",
   "dependencies": {
     "@anthropic-ai/sdk": "^1.11.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.166.0"
   }
 }

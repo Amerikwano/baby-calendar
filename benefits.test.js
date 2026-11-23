@@ -1,7 +1,7 @@
 process.env.BABY_DATA_DIR = require('node:fs').mkdtempSync(require('node:path').join(require('node:os').tmpdir(), 'baby-'));
 const test = require('node:test');
 const assert = require('node:assert');
-const { findBenefits, clean, isOfficial } = require('./benefits.js');
+const { findBenefits, clean, isOfficial } = require('./worker/src/benefits.js');
 const { validate, server } = require('./server.js');
 
 const Q = { sido: '경기도', sigungu: '수원시', birthMonth: '2026-12', order: 1, today: '2026-11-23' };
@@ -50,7 +50,7 @@ test('서버: 화면 제공, 파일 노출 차단, 외부 요청 차단, 키 없
 });
 
 test('AI 육아 제안: 개월 수만 보내고 출처를 거른다', async () => {
-  const { findTips } = require('./tips.js');
+  const { findTips } = require('./worker/src/tips.js');
   const c = fake([{ stop_reason: 'tool_use', content: [search, { type: 'tool_use', name: 'submit_tips', input: { summary: 's', tips: [{ topic: '먹기', title: 't', body: 'b', timing: '', source_url: 'https://made.up/x' }], doctor: ['열'] } }] }]);
   const r = await findTips(c, { ageMonths: 6, today: '2027-06-03' });
   assert.equal(r.tips[0].url, ''); assert.equal(r.doctor.length, 1);

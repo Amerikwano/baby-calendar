@@ -8,14 +8,12 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="아기 수첩">
-<meta name="theme-color" content="#f1f5f8" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#121a28" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fff8d9">
 <style>
 /* 배치: 위쪽 디데이와 키재기 자, 아래쪽 다섯 칸 메뉴. 완료는 접종 도장으로 표시한다. */
-:root{--bg:#f1f5f8;--card:#fff;--ink:#1c2a42;--sub:#5b6a82;--line:#d6dfe8;--soft:#e6edf3;--stamp:#c93a34;--stamp-soft:#fbe6e4;--on:#fff;
---vaccine:#1f7a68;--check:#a86a05;--oral:#7450a8;--screen:#2c6cb8;--mine:#ad3a72;
+:root{--bg:#fff8d9;--card:#fffefa;--ink:#33291a;--sub:#6f6147;--line:#ecdfae;--soft:#fdeeb0;--stamp:#b52d27;--stamp-soft:#ffe3da;
+--vaccine:#1c7765;--check:#a45f00;--oral:#7450a8;--screen:#2463b0;--mine:#ad3a72;color-scheme:light;
 --font:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif}
-@media (prefers-color-scheme:dark){:root{--bg:#121a28;--card:#1b2536;--ink:#e8eef6;--sub:#9dabc0;--line:#2e3b50;--soft:#243044;--stamp:#ff8079;--stamp-soft:#42262a;--on:#131a26;--vaccine:#5cc4ad;--check:#e6b04f;--oral:#b99ae8;--screen:#7fb3f2;--mine:#ee8fbb;color-scheme:dark}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--font);word-break:keep-all;overflow-wrap:anywhere}
@@ -101,7 +99,7 @@ fieldset{border:0;padding:0;margin:0;display:grid;gap:6px}legend{font-weight:600
 <script src="local.js"></script>
 <script>
 'use strict';
-const APP_VERSION = '0.1.0';
+const APP_VERSION = '0.2.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -113,13 +111,33 @@ const isDate = d => /^\d{4}-\d\d-\d\d$/.test(d || '');
 const TYPE = { vaccine: '예방접종', check: '건강검진', oral: '구강검진', screen: '신생아 검사', mine: '내 일정', diary: '일기' };
 const SIDO = ['서울특별시','부산광역시','대구광역시','인천광역시','광주광역시','대전광역시','울산광역시','세종특별자치시','경기도','강원특별자치도','충청북도','충청남도','전북특별자치도','전라남도','경상북도','경상남도','제주특별자치도'];
 
-const fresh = () => ({ v: 1, name: '아기', birth: S.addDays(today(), 10), born: false, order: 1, sido: '', sigungu: '', options: Object.assign({}, S.DEFAULT_OPTIONS), leads: [7, 1], hour: 9, records: {}, events: [], diary: [], photos: [], exports: 0 });
-let db = fresh(), rev = 0, ready = false, ai = false, tab = 'home', rec = 'diary', month = today().slice(0, 7), sel = today();
+const fresh = () => ({ v: 1, name: '아기', birth: today(), born: false, order: 1, sido: '', sigungu: '', options: Object.assign({}, S.DEFAULT_OPTIONS), leads: [7, 1], hour: 9, records: {}, events: [], diary: [], photos: [], exports: 0 });
+let db = fresh(), rev = 0, ready = false, started = false, ai = false, tab = 'home', rec = 'diary', month = today().slice(0, 7), sel = today();
 const aiData = { tips: null, benefits: null, busy: {}, err: {} };
 
 /* ── 저장 ── */
+const AI_URL = ''; // 배포한 AI 서버 주소
+let conf = { url: '', code: '' };
+try { conf = Object.assign(conf, JSON.parse(localStorage.getItem('baby-ai') || '{}')); } catch { }
+const aiBase = () => conf.url || AI_URL;
+function saveAI(url, code) {
+  if (url && !/^https:\/\/[^/\s]+$/.test(url)) { toast('AI 서버 주소는 https://로 시작해야 해요'); return; }
+  conf = { url, code }; ai = Boolean(aiBase() && conf.code); aiData.err = {};
+  try { localStorage.setItem('baby-ai', JSON.stringify(conf)); } catch { }
+}
+// 웹 서버는 기다리는 동안 빈 줄을 보내고 마지막 줄에 결과를 준다.
+async function remoteAI(url, opt) {
+  let r, text;
+  try { r = await fetch(aiBase() + url, Object.assign({}, opt, { headers: { authorization: 'Bearer ' + encodeURIComponent(conf.code) } })); text = await r.text(); }
+  catch { throw new Error('AI 서버에 연결하지 못했어요. 잠시 뒤 다시 누르면 찾던 결과를 이어서 받아요.'); }
+  let j; try { j = JSON.parse(text.trim().split('\n').pop()); } catch { throw new Error('AI 서버 응답이 끊겼어요. 잠시 뒤 다시 눌러 주세요.'); }
+  const status = r.ok && j.status ? j.status : r.status, body = r.ok && j.status ? j.body : j;
+  if (status !== 200) throw Object.assign(new Error(body.error || 'AI 서버에서 오류가 났어요.'), { status });
+  return body;
+}
 let local = false; // 서버 없이 열었으면 이 기기에 저장
 async function api(url, opt) {
+  if (local && (url === '/api/tips' || url === '/api/benefits')) return remoteAI(url, opt);
   if (local) return Local.api(url, opt);
   let r; try { r = await fetch(url, opt); } catch { throw Object.assign(new Error('서버에 연결하지 못했어요. 터미널에서 앱이 켜져 있는지 확인하세요.'), {}); }
   const j = await r.json().catch(() => ({}));
@@ -167,6 +185,33 @@ const chipOf = it => {
 const itemRow = it => `<button class="item t-${it.type}" data-act="item" data-id="${it.id}"><span class="dot"></span><span><b>${esc(it.title)}</b><span class="when">${it.done ? kd(it.done) + ' 완료' : it.start === it.end ? kd(it.start) : `${kd(it.start)} ~ ${kd(it.end)}`}</span></span>${chipOf(it)}</button>`;
 const evRow = e => `<button class="item t-mine" data-act="event" data-id="${e.id}"><span class="dot"></span><span><b>${esc(e.title)}</b><span class="when">${kd(e.date)}${e.time ? ' ' + esc(e.time) : ''}</span></span><span class="chip">내 일정</span></button>`;
 
+/* ── 첫 화면: 출산일 정하기 ── */
+function startPage() {
+  return `<form class="hero" data-form="start" style="gap:18px"><h2 style="font-size:24px">아기는 언제 만나나요?</h2>
+  <div class="row"><label class="ck"><input type="radio" name="born" id="sDue" value="" checked>출산 예정이에요</label><label class="ck"><input type="radio" name="born" id="sBorn" value="1">이미 태어났어요</label></div>
+  <label class="f"><span id="sLabel">출산 예정일</span><input type="date" name="birth" id="sBirth" required></label>
+  <div id="sPreview" class="stack" aria-live="polite"><p class="sub">날짜를 고르면 디데이를 계산해요.</p></div>
+  <label class="f">이름이나 태명 (선택)<input name="name" id="sName" maxlength="20" placeholder="아기"></label>
+  <button class="btn main" style="min-height:50px">시작하기</button></form>
+  ${local ? '<p class="sub">입력한 내용은 이 기기에만 저장돼요. 백업이 있으면 시작한 뒤 설정에서 되돌릴 수 있어요.</p>' : ''}`;
+}
+// 날짜가 말이 되는지 보고, 안 되면 이유를 돌려준다.
+function dateProblem(d, born) {
+  if (!isDate(d)) return '날짜를 골라 주세요.';
+  const n = S.diffDays(today(), d);
+  if (born) return n > 0 ? '생일이 오늘보다 뒤예요.' : n < -4745 ? '만 13세 미만 아이의 생일을 넣어 주세요.' : '';
+  return n > 300 ? '예정일이 너무 멀어요. 날짜를 확인해 주세요.' : n < -30 ? '예정일이 많이 지났어요. 태어났다면 "이미 태어났어요"를 골라 주세요.' : '';
+}
+function startPreview() {
+  const f = $('#main form[data-form=start]'); if (!f) return;
+  const born = f.elements.born.value === '1', d = f.elements.birth.value;
+  $('#sLabel').textContent = born ? '태어난 날' : '출산 예정일';
+  if (!d) return;
+  const bad = dateProblem(d, born), n = S.diffDays(today(), d), g = 280 - n;
+  $('#sPreview').innerHTML = bad ? `<p style="color:var(--stamp);font-weight:600">${esc(bad)}</p>` : `<div class="dday">${born ? 1 - n + '일' : n > 0 ? 'D-' + n : n === 0 ? 'D-DAY' : 'D+' + -n}</div><p>${kd(d, true)} ${born ? '출생' : `예정, 임신 ${Math.floor(g / 7)}주 ${g % 7}일`}</p>`;
+}
+document.addEventListener('input', ev => { if (ev.target.form && ev.target.form.dataset.form === 'start') startPreview(); });
+
 /* ── 오늘 ── */
 function ruler(pos, marks, labels) {
   return `<div class="ruler" aria-hidden="true"><div class="ticks">${marks.map(m => `<i class="${m.l ? 'l' : ''}" style="left:${m.x}%"></i>`).join('')}<b style="left:${Math.max(0, Math.min(100, pos))}%"></b></div><div class="rl">${labels.map(l => `<span>${l}</span>`).join('')}</div></div>`;
@@ -178,7 +223,7 @@ function hero() {
     return `<section class="hero"><div><h3>${esc(db.name)} 만나는 날</h3><div class="dday">${n > 0 ? 'D-' + n : n === 0 ? 'D-DAY' : 'D+' + -n}</div></div>
       <p>${kd(db.birth, true)} 예정${g >= 0 && g <= 301 ? `, 예정일 기준 임신 ${w}주 ${g % 7}일` : ''}</p>
       ${ruler(g / 280 * 100, Array.from({ length: 41 }, (_, i) => ({ x: i / 40 * 100, l: i % 10 === 0 })), ['0주', '10주', '20주', '30주', '40주'])}
-      <div class="row"><button class="btn main" data-act="born">태어났어요</button><span class="sub">생일을 넣으면 모든 일정을 다시 계산해요.</span></div></section>`;
+      <div class="row"><button class="btn main" data-act="born">태어났어요</button><button class="btn" data-act="due">예정일 바꾸기</button></div></section>`;
   }
   const d = -n + 1, next = [[100, '백일'], [200, '200일']].map(([k, l]) => [S.addDays(db.birth, k - 1), l]);
   for (let y = 1; y <= 12; y++) next.push([S.addMonths(db.birth, 12 * y), y === 1 ? '첫돌' : y + '번째 생일']);
@@ -258,7 +303,7 @@ const src = (url, label) => /^https?:\/\//.test(url) ? `<a href="${esc(url)}" ta
 const tipCard = t => `<article class="paper"><div class="row"><span class="chip">${esc(t.topic)}</span>${t.timing ? `<span class="sub">${esc(t.timing)}</span>` : ''}</div><h2>${esc(t.title)}</h2><p>${esc(t.body)}</p><p class="sub">${t.source ? src(t.url, t.source) : src(t.url, t.trust === 'official' ? '공식 출처 보기' : '출처 보기')}</p></article>`;
 const keyHelp = `<div class="notice"><b>AI 기능을 켜려면 API 키가 필요해요</b><p class="sub">Anthropic 콘솔에서 만든 키를 터미널에서 ANTHROPIC_API_KEY로 넣고 앱을 다시 켜세요. 키가 없어도 아래 기본 자료는 볼 수 있어요.</p></div>`;
 function aiBox(kind, title, desc, label) {
-  if (local) return `<div class="notice"><b>${title}: 아직 꺼져 있어요</b><p class="sub">이 웹 주소에서는 AI를 쓸 수 없어요. 아래 기본 자료는 볼 수 있어요.</p></div>`;
+  if (local && !ai) return `<div class="notice"><b>${title}: 아직 꺼져 있어요</b><p class="sub">설정에 AI 서버 주소와 접근 코드를 넣으면 켜져요. 아래 기본 자료는 지금도 볼 수 있어요.</p><div class="row"><button class="btn" data-act="settings">설정 열기</button></div></div>`;
   const b = aiData.busy[kind], e = aiData.err[kind], d = aiData[kind];
   if (!ai && !d) return keyHelp;
   return `<div class="notice"><b>${title}</b><p class="sub">${desc}${d ? ` 마지막 확인 ${kd(new Date(d.checkedAt).toLocaleDateString('sv-SE'))}.` : ''}</p>${e ? `<p>${esc(e)}</p>` : ''}<div class="row"><button class="btn main" data-act="ai" data-k="${kind}" ${b || !ai ? 'disabled' : ''}>${b ? '찾는 중이에요. 1~3분 걸려요' : d ? '다시 찾기' : label}</button></div></div>`;
@@ -288,7 +333,7 @@ function money() {
 const aiBody = k => k === 'tips' ? { ageMonths: db.born ? Math.min(71, S.ageMonths(db.birth, today())) : -1 } : { sido: db.sido, sigungu: db.sigungu, birthMonth: db.birth.slice(0, 7), order: db.order };
 const aiKeys = {};
 async function runAI(kind, refresh) {
-  if (local || aiData.busy[kind] || (kind === 'benefits' && !db.sido)) return;
+  if (!ai || aiData.busy[kind] || (kind === 'benefits' && !db.sido)) return;
   const body = aiBody(kind), key = JSON.stringify(body);
   aiData.busy[kind] = true; delete aiData.err[kind]; render();
   try { const r = await api('/api/' + kind, { method: 'POST', body: JSON.stringify(Object.assign({ refresh }, body)) }); if (key === JSON.stringify(aiBody(kind))) { aiData[kind] = r; aiKeys[kind] = key; } }
@@ -304,6 +349,8 @@ function syncAI() {
 /* ── 화면 ── */
 function render() {
   if (!ready) return;
+  $('nav').hidden = !started; $('header [data-act=settings]').hidden = !started;
+  if (!started) { $('#brand').textContent = '우리 아기 수첩'; $('#main').innerHTML = startPage(); return; }
   $('#brand').textContent = db.name + ' 수첩';
   document.querySelectorAll('nav [data-tab]').forEach(b => b.dataset.tab === tab ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
   const open = $('#main details') && $('#main details').open;
@@ -339,7 +386,7 @@ function settingsDlg() {
   openDlg(`<form data-form="settings"><h2>설정</h2><div class="two"><label class="f">이름이나 태명<input name="name" required maxlength="20" value="${esc(db.name)}"></label><label class="f">${db.born ? '생일' : '출산 예정일'}<input type="date" name="birth" required value="${db.birth}"></label></div><label class="ck"><input type="checkbox" name="born" ${db.born ? 'checked' : ''}>태어났어요 (위 날짜가 생일)</label>
   <div class="two"><label class="f">부모가 사는 시·도<select name="sido"><option value="">고르기</option>${SIDO.map(s => `<option ${db.sido === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label class="f">시·군·구<input name="sigungu" maxlength="20" pattern="[가-힣0-9 ]*" title="한글로 적어 주세요" value="${esc(db.sigungu)}" placeholder="예: 수원시"></label><label class="f">몇째<select name="order">${[1, 2, 3].map(n => `<option value="${n}" ${db.order === n ? 'selected' : ''}>${['첫째', '둘째', '셋째 이상'][n - 1]}</option>`).join('')}</select></label></div>
   <fieldset><legend>혼합백신 (2·4·6개월)</legend>${r('combo', '5', '4가·5가, 1개월에 B형간염 2차 따로')}${r('combo', '6', '6가, B형간염 포함')}</fieldset><fieldset><legend>로타바이러스</legend>${r('rota', 'RV1', '2회 (RV1)')}${r('rota', 'RV5', '3회 (RV5)')}</fieldset><fieldset><legend>일본뇌염</legend>${r('je', 'dead', '불활성화 백신 5회')}${r('je', 'live', '생백신 2회')}</fieldset><p class="sub">백신 종류는 병원에서 정한 뒤 바꾸면 돼요.</p>
-  <fieldset><legend>캘린더 알림 (당일 알림은 항상 포함)</legend><div class="row">${[14, 7, 3, 1].map(n => `<label class="ck"><input type="checkbox" name="lead" value="${n}" ${db.leads.includes(n) ? 'checked' : ''}>${n}일 전</label>`).join('')}</div><label class="f">알림 시각<select name="hour">${[7, 8, 9, 10, 12, 18, 20].map(h => `<option value="${h}" ${db.hour === h ? 'selected' : ''}>${h}시</option>`).join('')}</select></label></fieldset>${local ? `<fieldset><legend>백업</legend><p class="sub">일기와 사진은 이 기기에만 저장돼요. 휴대폰을 바꾸거나 브라우저 기록을 지우기 전에 꼭 백업하세요.</p><div class="row"><button type="button" class="btn" data-act="backup">백업 파일 만들기</button><button type="button" class="btn" data-act="restore">백업 되돌리기</button></div></fieldset>` : ''}${acts()}<p class="sub">버전 ${APP_VERSION}</p></form>`);
+  <fieldset><legend>캘린더 알림 (당일 알림은 항상 포함)</legend><div class="row">${[14, 7, 3, 1].map(n => `<label class="ck"><input type="checkbox" name="lead" value="${n}" ${db.leads.includes(n) ? 'checked' : ''}>${n}일 전</label>`).join('')}</div><label class="f">알림 시각<select name="hour">${[7, 8, 9, 10, 12, 18, 20].map(h => `<option value="${h}" ${db.hour === h ? 'selected' : ''}>${h}시</option>`).join('')}</select></label></fieldset>${local ? `<fieldset><legend>AI 연결</legend><label class="f">AI 서버 주소<input name="aiUrl" id="aiUrl" inputmode="url" autocomplete="off" value="${esc(conf.url)}" placeholder="https://...workers.dev"></label><label class="f">접근 코드<input name="aiCode" id="aiCode" type="password" autocomplete="off" maxlength="100" value="${esc(conf.code)}"></label><p class="sub">이 기기에만 저장되고 백업 파일에는 들어가지 않아요.</p></fieldset><fieldset><legend>백업</legend><p class="sub">일기와 사진은 이 기기에만 저장돼요. 휴대폰을 바꾸거나 브라우저 기록을 지우기 전에 꼭 백업하세요.</p><div class="row"><button type="button" class="btn" data-act="backup">백업 파일 만들기</button><button type="button" class="btn" data-act="restore">백업 되돌리기</button></div></fieldset>` : ''}${acts()}<p class="sub">버전 ${APP_VERSION}</p></form>`);
 }
 function bornDlg() { openDlg(`<form data-form="born"><h2>축하해요! 생일을 넣어 주세요</h2><label class="f">태어난 날<input type="date" name="birth" required max="${today()}" value="${today()}"></label><label class="f">이름이나 태명<input name="name" required maxlength="20" value="${esc(db.name)}"></label>${acts()}</form>`); }
 
@@ -391,6 +438,7 @@ document.addEventListener('click', async ev => {
   if (act === 'close') dlg.close();
   else if (act === 'settings') settingsDlg();
   else if (act === 'born') bornDlg();
+  else if (act === 'due') openDlg(`<form data-form="due"><h2>출산 예정일 바꾸기</h2><label class="f">출산 예정일<input type="date" name="birth" required value="${db.birth}"></label>${acts()}</form>`);
   else if (act === 'item') itemDlg(id);
   else if (act === 'event') eventDlg(id);
   else if (act === 'write') writeDlg(id);
@@ -438,9 +486,17 @@ document.addEventListener('submit', async ev => {
     ok = await save(d => { const n = { date: v.date, body: v.body.trim(), photos: [...draft] }, e = d.diary.find(x => x.id === id); if (e) Object.assign(e, n); else d.diary.push(Object.assign({ id: uid() }, n)); d.photos.forEach(p => { if (draft.includes(p.id)) p.date = v.date; }); });
   }
   if (kind === 'photo') ok = await save(d => Object.assign(d.photos.find(x => x.id === id), { date: v.date, caption: v.caption.trim() }));
+  if (kind === 'start' || kind === 'due') {
+    const born = v.born === '1', bad = dateProblem(v.birth, born);
+    if (bad) return toast(bad);
+    if (kind === 'start') started = true;
+    ok = await save(d => Object.assign(d, { birth: v.birth }, kind === 'start' ? { born, name: (v.name || '').trim() || '아기' } : {}));
+    if (kind === 'start' && !ok) { started = false; render(); return; }
+  }
   if (kind === 'born') ok = await save(d => Object.assign(d, { birth: v.birth, born: true, name: v.name.trim() || d.name }));
   if (kind === 'settings') {
-    if (v.born && v.birth > today()) return toast('생일이 오늘보다 뒤예요. 날짜를 확인해 주세요.');
+    const bad = dateProblem(v.birth, Boolean(v.born)); if (bad) return toast(bad);
+    if (local) saveAI(v.aiUrl.trim().replace(/\/+$/, ''), v.aiCode);
     ok = await save(d => Object.assign(d, { name: v.name.trim() || d.name, birth: v.birth, born: Boolean(v.born), sido: v.sido, sigungu: v.sigungu.trim(), order: Number(v.order), options: { combo: v.combo, rota: v.rota, je: v.je }, leads: new FormData(f).getAll('lead').map(Number), hour: Number(v.hour) }));
   }
   if (ok) { dlg.close(); toast('저장했어요'); syncAI(); render(); }
@@ -452,16 +508,15 @@ async function download() {
   toast(`일정 ${count}개를 담았어요`);
 }
 function saveFile(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000); }
-async function load() { const s = await api('/api/state'); rev = s.rev; db = Object.assign(fresh(), s.data || {}); ready = true; render(); return Boolean(s.data); }
+async function load() { const s = await api('/api/state'); rev = s.rev; db = Object.assign(fresh(), s.data || {}); ready = true; started = Boolean(s.data); render(); }
 (async () => {
   try {
     // 내 컴퓨터에서 npm start로 켰을 때만 서버가 있다.
     local = !(['localhost', '127.0.0.1'].includes(location.hostname) && await fetch('/api/status').then(r => r.ok && (r.headers.get('content-type') || '').includes('json')).catch(() => false));
-    ai = (await api('/api/status')).ai;
-    const had = await load();
+    ai = local ? Boolean(aiBase() && conf.code) : (await api('/api/status')).ai;
+    await load();
     if (local && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
     if (local && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
-    if (!had) settingsDlg();
   } catch (e) { $('#main').innerHTML = `<div class="notice hot"><b>수첩을 열지 못했어요</b><p>${esc(e.message)}</p></div>`; }
 })();
 </script>
