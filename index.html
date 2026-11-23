@@ -99,7 +99,7 @@ fieldset{border:0;padding:0;margin:0;display:grid;gap:6px}legend{font-weight:600
 <script src="local.js"></script>
 <script>
 'use strict';
-const APP_VERSION = '0.2.0';
+const APP_VERSION = '0.2.1';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -187,11 +187,11 @@ const evRow = e => `<button class="item t-mine" data-act="event" data-id="${e.id
 
 /* ── 첫 화면: 출산일 정하기 ── */
 function startPage() {
-  return `<form class="hero" data-form="start" style="gap:18px"><h2 style="font-size:24px">아기는 언제 만나나요?</h2>
+  return `<form class="hero" data-form="start" style="gap:18px"><h2 style="font-size:24px">아기를 소개해 주세요</h2>
+  <label class="f">태명이나 이름<input name="name" id="sName" maxlength="20" placeholder="예: 콩이" autocomplete="off"></label><p class="sub" style="margin-top:-10px">아직 없으면 비워 두세요. 나중에 언제든 바꿀 수 있어요.</p>
   <div class="row"><label class="ck"><input type="radio" name="born" id="sDue" value="" checked>출산 예정이에요</label><label class="ck"><input type="radio" name="born" id="sBorn" value="1">이미 태어났어요</label></div>
   <label class="f"><span id="sLabel">출산 예정일</span><input type="date" name="birth" id="sBirth" required></label>
   <div id="sPreview" class="stack" aria-live="polite"><p class="sub">날짜를 고르면 디데이를 계산해요.</p></div>
-  <label class="f">이름이나 태명 (선택)<input name="name" id="sName" maxlength="20" placeholder="아기"></label>
   <button class="btn main" style="min-height:50px">시작하기</button></form>
   ${local ? '<p class="sub">입력한 내용은 이 기기에만 저장돼요. 백업이 있으면 시작한 뒤 설정에서 되돌릴 수 있어요.</p>' : ''}`;
 }
@@ -216,11 +216,12 @@ document.addEventListener('input', ev => { if (ev.target.form && ev.target.form.
 function ruler(pos, marks, labels) {
   return `<div class="ruler" aria-hidden="true"><div class="ticks">${marks.map(m => `<i class="${m.l ? 'l' : ''}" style="left:${m.x}%"></i>`).join('')}<b style="left:${Math.max(0, Math.min(100, pos))}%"></b></div><div class="rl">${labels.map(l => `<span>${l}</span>`).join('')}</div></div>`;
 }
+const renameBtn = '<button class="btn" data-act="rename">이름 바꾸기</button>';
 function hero() {
   const t = today(), n = S.diffDays(t, db.birth);
   if (!db.born) {
     const g = 280 - n, w = Math.floor(g / 7);
-    return `<section class="hero"><div><h3>${esc(db.name)} 만나는 날</h3><div class="dday">${n > 0 ? 'D-' + n : n === 0 ? 'D-DAY' : 'D+' + -n}</div></div>
+    return `<section class="hero"><div><div class="row between"><h3>${esc(db.name)} 만나는 날</h3>${renameBtn}</div><div class="dday">${n > 0 ? 'D-' + n : n === 0 ? 'D-DAY' : 'D+' + -n}</div></div>
       <p>${kd(db.birth, true)} 예정${g >= 0 && g <= 301 ? `, 예정일 기준 임신 ${w}주 ${g % 7}일` : ''}</p>
       ${ruler(g / 280 * 100, Array.from({ length: 41 }, (_, i) => ({ x: i / 40 * 100, l: i % 10 === 0 })), ['0주', '10주', '20주', '30주', '40주'])}
       <div class="row"><button class="btn main" data-act="born">태어났어요</button><button class="btn" data-act="due">예정일 바꾸기</button></div></section>`;
@@ -230,7 +231,7 @@ function hero() {
   const up = next.find(x => x[0] >= t);
   const yr = S.ageMonths(db.birth, t) < 12, a = S.diffDays(db.birth, t), start = yr ? db.birth : S.addMonths(db.birth, Math.floor(S.ageMonths(db.birth, t) / 12) * 12);
   const p = S.diffDays(start, t) / Math.max(1, S.diffDays(start, S.addMonths(start, 12))) * 100, base = Math.floor(S.ageMonths(db.birth, t) / 12) * 12;
-  return `<section class="hero"><div><h3>${esc(db.name)}, 태어난 지</h3><div class="dday">${d > 0 ? d + '일' : '곧'}</div></div>
+  return `<section class="hero"><div><div class="row between"><h3>${esc(db.name)}, 태어난 지</h3>${renameBtn}</div><div class="dday">${d > 0 ? d + '일' : '곧'}</div></div>
     <p>${ageText(t)}${up ? `, ${up[1]}까지 ${S.diffDays(t, up[0]) === 0 ? '오늘이에요!' : S.diffDays(t, up[0]) + '일'}` : ''}</p>
     ${a >= 0 ? ruler(p, Array.from({ length: 49 }, (_, i) => ({ x: i / 48 * 100, l: i % 12 === 0 })), [0, 3, 6, 9, 12].map(k => base + k + '개월')) : ''}</section>`;
 }
@@ -388,7 +389,7 @@ function settingsDlg() {
   <fieldset><legend>혼합백신 (2·4·6개월)</legend>${r('combo', '5', '4가·5가, 1개월에 B형간염 2차 따로')}${r('combo', '6', '6가, B형간염 포함')}</fieldset><fieldset><legend>로타바이러스</legend>${r('rota', 'RV1', '2회 (RV1)')}${r('rota', 'RV5', '3회 (RV5)')}</fieldset><fieldset><legend>일본뇌염</legend>${r('je', 'dead', '불활성화 백신 5회')}${r('je', 'live', '생백신 2회')}</fieldset><p class="sub">백신 종류는 병원에서 정한 뒤 바꾸면 돼요.</p>
   <fieldset><legend>캘린더 알림 (당일 알림은 항상 포함)</legend><div class="row">${[14, 7, 3, 1].map(n => `<label class="ck"><input type="checkbox" name="lead" value="${n}" ${db.leads.includes(n) ? 'checked' : ''}>${n}일 전</label>`).join('')}</div><label class="f">알림 시각<select name="hour">${[7, 8, 9, 10, 12, 18, 20].map(h => `<option value="${h}" ${db.hour === h ? 'selected' : ''}>${h}시</option>`).join('')}</select></label></fieldset>${local ? `<fieldset><legend>AI 연결</legend><label class="f">AI 서버 주소<input name="aiUrl" id="aiUrl" inputmode="url" autocomplete="off" value="${esc(conf.url)}" placeholder="https://...workers.dev"></label><label class="f">접근 코드<input name="aiCode" id="aiCode" type="password" autocomplete="off" maxlength="100" value="${esc(conf.code)}"></label><p class="sub">이 기기에만 저장되고 백업 파일에는 들어가지 않아요.</p></fieldset><fieldset><legend>백업</legend><p class="sub">일기와 사진은 이 기기에만 저장돼요. 휴대폰을 바꾸거나 브라우저 기록을 지우기 전에 꼭 백업하세요.</p><div class="row"><button type="button" class="btn" data-act="backup">백업 파일 만들기</button><button type="button" class="btn" data-act="restore">백업 되돌리기</button></div></fieldset>` : ''}${acts()}<p class="sub">버전 ${APP_VERSION}</p></form>`);
 }
-function bornDlg() { openDlg(`<form data-form="born"><h2>축하해요! 생일을 넣어 주세요</h2><label class="f">태어난 날<input type="date" name="birth" required max="${today()}" value="${today()}"></label><label class="f">이름이나 태명<input name="name" required maxlength="20" value="${esc(db.name)}"></label>${acts()}</form>`); }
+function bornDlg() { openDlg(`<form data-form="born"><h2>축하해요! 생일을 넣어 주세요</h2><label class="f">태어난 날<input type="date" name="birth" required max="${today()}" value="${today()}"></label><label class="f">이름 (정해졌다면 바꿔 주세요)<input name="name" required maxlength="20" value="${esc(db.name)}"></label>${acts()}</form>`); }
 
 /* ── 사진 ── */
 // JPEG에 적힌 촬영일을 읽는다.
@@ -438,6 +439,7 @@ document.addEventListener('click', async ev => {
   if (act === 'close') dlg.close();
   else if (act === 'settings') settingsDlg();
   else if (act === 'born') bornDlg();
+  else if (act === 'rename') openDlg(`<form data-form="rename"><h2>이름 바꾸기</h2><label class="f">태명이나 이름<input name="name" id="rName" required maxlength="20" autocomplete="off" value="${esc(db.name)}"></label>${acts()}</form>`);
   else if (act === 'due') openDlg(`<form data-form="due"><h2>출산 예정일 바꾸기</h2><label class="f">출산 예정일<input type="date" name="birth" required value="${db.birth}"></label>${acts()}</form>`);
   else if (act === 'item') itemDlg(id);
   else if (act === 'event') eventDlg(id);
@@ -493,6 +495,7 @@ document.addEventListener('submit', async ev => {
     ok = await save(d => Object.assign(d, { birth: v.birth }, kind === 'start' ? { born, name: (v.name || '').trim() || '아기' } : {}));
     if (kind === 'start' && !ok) { started = false; render(); return; }
   }
+  if (kind === 'rename') { if (!v.name.trim()) return toast('이름을 적어 주세요'); ok = await save(d => { d.name = v.name.trim(); }); }
   if (kind === 'born') ok = await save(d => Object.assign(d, { birth: v.birth, born: true, name: v.name.trim() || d.name }));
   if (kind === 'settings') {
     const bad = dateProblem(v.birth, Boolean(v.born)); if (bad) return toast(bad);
