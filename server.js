@@ -8,7 +8,7 @@ const store = require('./store.js');
 
 const PORT = Number(process.env.PORT) || 4173;
 const CACHE = path.join(store.DIR, 'ai-cache.json');
-const FILES = { '/': ['index.html', 'text/html'], '/index.html': ['index.html', 'text/html'], '/schedule.js': ['schedule.js', 'text/javascript'], '/local.js': ['local.js', 'text/javascript'], '/manifest.webmanifest': ['manifest.webmanifest', 'application/manifest+json'], '/icon-192.png': ['icon-192.png', 'image/png'], '/apple-touch-icon.png': ['apple-touch-icon.png', 'image/png'], '/base-tips.js': ['base-tips.js', 'text/javascript'], '/base-benefits.js': ['base-benefits.js', 'text/javascript'] };
+const FILES = { '/': ['index.html', 'text/html'], '/index.html': ['index.html', 'text/html'], '/schedule.js': ['schedule.js', 'text/javascript'], '/regions.js': ['regions.js', 'text/javascript'], '/local.js': ['local.js', 'text/javascript'], '/manifest.webmanifest': ['manifest.webmanifest', 'application/manifest+json'], '/icon-192.png': ['icon-192.png', 'image/png'], '/apple-touch-icon.png': ['apple-touch-icon.png', 'image/png'], '/base-tips.js': ['base-tips.js', 'text/javascript'], '/base-benefits.js': ['base-benefits.js', 'text/javascript'] };
 const HAS_KEY = () => Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
 const running = new Map();
 
@@ -87,7 +87,8 @@ const server = http.createServer((req, res) => {
     return handleStore(req, res, url).catch(e => { console.error('[store]', e.message); if (!res.headersSent) send(res, 500, { error: '저장 폴더를 읽거나 쓰지 못했어요.' }); });
   }
   if (req.method === 'GET' && url === '/api/status') return send(res, 200, { ai: HAS_KEY() });
-  const f = req.method === 'GET' && FILES[url];
+  const reg = url.match(/^\/regions\/([a-z-]+)\.json$/);
+  const f = req.method === 'GET' && (FILES[url] || (reg && fs.existsSync(path.join(__dirname, 'regions', reg[1] + '.json')) && ['regions/' + reg[1] + '.json', 'application/json']));
   if (!f) return send(res, 404, { error: '없는 주소예요.' });
   res.writeHead(200, { 'content-type': f[1] + '; charset=utf-8', 'cache-control': 'no-store' });
   fs.createReadStream(path.join(__dirname, f[0])).pipe(res);

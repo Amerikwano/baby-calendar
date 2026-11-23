@@ -9,6 +9,10 @@
 - 알림은 캘린더 파일(.ics)을 휴대폰 캘린더에 넣으면 울립니다.
 - 웹 주소에서는 AI를 쓰지 않으며 무료입니다. 육아 팁은 조사해 둔 자료에서 개월 수에 맞춰 골라 보여줍니다.
 
+## 지역 혜택 자료
+
+`regions/`는 행정안전부 「대한민국 공공서비스(혜택) 정보」(보조금24)에서 출산·육아 사업만 고른 것입니다. 처음 자료는 [goodboxkr/korea-birth-support-2026](https://github.com/goodboxkr/korea-birth-support-2026)(CC BY 4.0)을 정리했습니다. 저장소 Secret에 `DATA_GO_KR_KEY`(공공데이터포털 인증키)를 넣으면 매일 새벽 자동으로 갱신됩니다. 위치를 지역 이름으로 바꿀 때 OpenStreetMap Nominatim을 씁니다(© OpenStreetMap 기여자).
+
 ## 선택: AI 서버 (Cloudflare Workers, API 요금 발생)
 
 배포한 주소를 `index.html`의 `AI_URL`에 넣어야 켜집니다.
