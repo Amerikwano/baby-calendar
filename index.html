@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>우리 아기 수첩</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
@@ -14,7 +14,8 @@
 :root{--bg:#fff8d9;--card:#fffefa;--ink:#33291a;--sub:#6f6147;--line:#ecdfae;--soft:#fdeeb0;--stamp:#b52d27;--stamp-soft:#ffe3da;
 --vaccine:#1c7765;--check:#a45f00;--oral:#7450a8;--screen:#2463b0;--mine:#ad3a72;color-scheme:light;
 --font:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif}
-*{box-sizing:border-box}
+*{box-sizing:border-box;touch-action:pan-x pan-y}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--font);word-break:keep-all;overflow-wrap:anywhere}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -74,7 +75,7 @@ dialog::backdrop{background:rgb(10 16 28/.55)}
 dialog form{padding:20px;display:grid;gap:16px}
 dialog.wide{width:min(900px,calc(100vw - 24px))}dialog.wide img{max-width:100%;max-height:60vh;margin:auto;display:block;border-radius:8px}
 label.f{display:grid;gap:5px;font-weight:600;font-size:13.5px}
-input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea{width:100%;min-height:44px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea{width:100%;min-height:44px;font-size:16px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
 textarea{min-height:150px;resize:vertical;line-height:1.6}
 fieldset{border:0;padding:0;margin:0;display:grid;gap:6px}legend{font-weight:600;font-size:13.5px;padding:0 0 6px}
 .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.two>*{min-width:0}
@@ -100,7 +101,7 @@ fieldset{border:0;padding:0;margin:0;display:grid;gap:6px}legend{font-weight:600
 <script src="regions.js"></script>
 <script>
 'use strict';
-const APP_VERSION = '0.4.0';
+const APP_VERSION = '0.4.1';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -115,6 +116,11 @@ const SIDO = Regions.SIDO.map(s => s.name);
 const fresh = () => ({ v: 1, name: '아기', birth: today(), born: false, order: 1, sido: '', sigungu: '', options: Object.assign({}, S.DEFAULT_OPTIONS), leads: [7, 1], hour: 9, records: {}, events: [], diary: [], photos: [], exports: 0 });
 let db = fresh(), rev = 0, ready = false, started = false, ai = false, tab = 'home', rec = 'diary', month = today().slice(0, 7), sel = today();
 const aiData = { tips: null, benefits: null, busy: {}, err: {} };
+
+// 두 손가락·두 번 눌러 확대 막기(아이폰은 viewport 설정만으로는 막히지 않는다)
+['gesturestart', 'gesturechange', 'gestureend'].forEach(n => document.addEventListener(n, e => e.preventDefault(), { passive: false }));
+document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+document.addEventListener('dblclick', e => e.preventDefault());
 
 /* ── 저장 ── */
 const AI_URL = ''; // 비워 두면 웹에서는 AI를 쓰지 않는다(무료). 주소를 넣으면 설정에 접근 코드 칸이 나온다. // 배포한 AI 서버 주소
