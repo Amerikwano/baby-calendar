@@ -90,7 +90,9 @@ test('직접 넣은 일정도 ics에 들어간다', () => {
 });
 test('기본 팁: 모든 개월에 있고, 안전 기준을 지킨다', () => {
   const T = require('./base-tips.js');
-  for (let m = 0; m < 24; m++) assert.ok(T.forMonth(m).length >= 3, 'm' + m);
+  for (let m = -1; m < 72; m++) { const x = T.forMonth(m); assert.ok(x.length >= 4, 'm' + m); if (m > 0) assert.equal(x.filter(y => y.topic === '발달').length, 1, '발달 m' + m); }
+  assert.ok(!T.forMonth(-1).some(x => x.to > 0)); assert.ok(T.forMonth(2).some(x => x.id === 'fever3')); assert.ok(!T.forMonth(3).some(x => x.id === 'fever3'));
+  assert.ok(T.list.every(x => x.from < x.to));
   assert.equal(new Set(T.list.map(x => x.id)).size, T.list.length);
   assert.ok(T.list.every(x => /^https:/.test(x.url)));
   assert.ok(!T.forMonth(5).some(x => x.id === 'milk12')); assert.ok(T.forMonth(11).some(x => x.id === 'honey'));

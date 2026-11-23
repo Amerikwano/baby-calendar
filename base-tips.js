@@ -1,5 +1,5 @@
 /* 개월 수별 기본 육아 팁. 질병관리청·지자체 보건소·미국 CDC/소아과학회 안내를 짧게 정리(2026-11-23 확인).
-   from 이상 to 미만 개월에 보인다. */
+   from 이상 to 미만 개월에 보인다. -1은 태어나기 전. */
 (function (root) {
   const S = {
     sleepKR: ['질병관리청 국가건강정보포털', 'https://health.kdca.go.kr/healthinfo/biz/health/gnrlzHealthInfo/gnrlzHealthInfo/gnrlzHealthInfoView.do?cntnts_sn=5467'],
@@ -8,10 +8,33 @@
     solidUS: ['미국 CDC', 'https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/when-what-and-how-to-introduce-solid-foods.html'],
     avoid: ['미국 CDC', 'https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/foods-and-drinks-to-avoid-or-limit.html'],
     vitd: ['미국 CDC', 'https://www.cdc.gov/infant-toddler-nutrition/vitamins-minerals/vitamin-d.html'],
+    bath: ['미국소아과학회', 'https://www.healthychildren.org/English/ages-stages/baby/bathing-skin-care/Pages/Bathing-Your-Newborn.aspx'],
+    fever: ['미국소아과학회', 'https://www.healthychildren.org/English/health-issues/conditions/fever/Pages/When-to-Call-the-Pediatrician.aspx'],
+    teeth: ['미국 CDC', 'https://www.cdc.gov/oral-health/prevention/oral-health-tips-for-children.html'],
+    car: ['미국소아과학회', 'https://www.healthychildren.org/English/safety-prevention/on-the-go/Pages/Rear-Facing-Car-Seats-for-Infants-Toddlers.aspx'],
+    carKR: ['현대자동차그룹', 'https://www.hyundaimotorgroup.com/ko/story/CONT0000000000001959'],
+    feed: ['미국 CDC', 'https://www.cdc.gov/infant-toddler-nutrition/breastfeeding/how-much-and-how-often.html'],
+    choke: ['미국 CDC', 'https://www.cdc.gov/infant-toddler-nutrition/foods-and-drinks/choking-hazards.html'],
     m: p => ['미국 CDC', 'https://www.cdc.gov/act-early/milestones/' + p + '.html'],
   };
   const t = (id, topic, from, to, title, body, src) => ({ id, topic, from, to, title, body, source: src[0], url: src[1] });
   const list = [
+    t('pSleep', '수면', -1, 0, '아기 잠자리 미리 준비', '단단하고 평평한 아기 침대나 요를 부모 방에 따로 마련해요. 베개, 폭신한 이불, 인형은 필요 없고 수면조끼나 슬립색을 권해요.', S.sleepKR),
+    t('pCar', '안전', -1, 0, '카시트는 퇴원 전에 달아 두기', '병원에서 집에 오는 첫날부터 뒤보기 카시트에 태워요. 차에 단단히 고정되는지 미리 확인하세요.', S.car),
+    t('pFeed', '먹기', -1, 0, '첫날부터 자주 먹여요', '모유를 먹는 신생아는 처음에 1~3시간마다 먹고 싶어 할 수 있어요. 밤에도 먹이니 쉬는 순서를 미리 나눠 두세요.', S.feed),
+    t('pFever', '병원', -1, 0, '체온계와 소아과 연락처 준비', '생후 3개월 전에는 38도 이상이면 바로 소아과에 연락해야 해요. 야간에 갈 병원도 알아 두세요.', S.fever),
+    t('fever3', '병원', 0, 3, '38도 이상이면 바로 소아과에', '생후 3개월(12주)이 안 된 아기의 열은 기다리지 않아요. 바로 연락하세요.', S.fever),
+    t('feverUp', '병원', 3, 24, '열이 하루 넘게 가면 소아과에', '두 돌 전에 열이 24시간 넘게 가거나, 열이 내려도 아파 보이거나, 40도를 거듭 넘으면 연락하세요.', S.fever),
+    t('feverBig', '병원', 24, 72, '열이 날 때 살필 것', '40도를 거듭 넘거나, 열이 내려도 계속 아파 보이면 소아과에 연락하세요.', S.fever),
+    t('feed0', '먹기', 0, 2, '모유는 하루 8~12번', '처음 며칠은 1~3시간, 이후에는 보통 2~4시간마다 먹어요. 신생아는 깨워서 먹여야 할 때도 있어요. 분유는 소아과와 양을 정하세요.', S.feed),
+    t('cord', '생활', 0, 1, '배꼽이 떨어지기 전에는 닦아 주기만', '보통 1~2주에 떨어져요. 그때까지는 통목욕 대신 닦아 주고, 2주가 지나도 남아 있으면 소아과에 물어보세요.', S.bath),
+    t('bath', '생활', 1, 12, '목욕은 일주일에 세 번이면 충분', '매일 하지 않아도 괜찮아요. 너무 자주 씻기면 피부가 건조해져요.', S.bath),
+    t('gum', '생활', 0, 6, '이가 나기 전에는 잇몸 닦기', '아침 첫 수유 뒤와 자기 전, 하루 두 번 부드럽고 깨끗한 천으로 닦아요.', S.teeth),
+    t('tooth1', '생활', 6, 24, '이가 나면 하루 두 번 양치', '작고 부드러운 칫솔로 닦고, 첫 치과 검진은 돌 전에 받아요. 두 돌 전 불소 치약은 자료마다 권고가 달라 치과에 물어보고 쓰세요.', S.teeth),
+    t('tooth2', '생활', 24, 72, '불소 치약으로 하루 두 번', '완두콩만큼 짜서 어른이 지켜보며 닦아요.', S.teeth),
+    t('choke', '안전', 6, 48, '목에 걸리기 쉬운 음식 피하기', '자르지 않은 포도와 방울토마토, 견과류, 팝콘, 소시지, 단단한 생당근, 젤리와 사탕을 조심해요. 앉혀서 먹이고 차나 유모차에서는 먹이지 않아요.', S.choke),
+    t('car', '안전', 0, 24, '카시트는 뒤보기로', '제품이 허용하는 키와 몸무게까지 되도록 오래 뒤를 보게 태워요.', S.car),
+    t('carLaw', '안전', 24, 72, '만 6세 전에는 카시트가 의무', '키와 몸무게에 맞는 제품인지 자라는 동안 다시 확인하세요.', S.carKR),
     t('sleep0', '수면', 0, 12, '등을 대고 똑바로, 따로 된 잠자리에', '돌 전에는 옆이나 엎드려 재우지 않아요. 단단하고 평평한 잠자리에 베개, 이불, 인형을 두지 않고, 어른 침대에서 함께 재우지 않아요.', S.sleepKR),
     t('room0', '수면', 0, 6, '분리수면: 침대는 따로, 방은 같이', '처음부터 아기 침대나 요는 따로 써요. 방은 적어도 6개월, 가능하면 돌까지 같은 방이 좋아요.', S.sleepKR),
     t('room6', '수면', 6, 12, '분리수면: 방을 나눌지는 천천히', '6개월이 지나면 방을 나누는 것을 생각해 볼 수 있지만, 가능하면 돌까지 같은 방을 권해요. 침대는 계속 따로 써요.', S.sleepKR),
@@ -35,9 +58,25 @@
     t('dev4', '발달', 3, 5, '4개월 무렵 모습', '고개를 가누고, 옹알이를 하고, 소리 나는 쪽으로 고개를 돌려요.', S.m('4-months')),
     t('dev6', '발달', 5, 8, '6개월 무렵 모습', '엎드렸다 뒤집고, 손을 짚고 앉고, 소리 내어 웃어요.', S.m('6-months')),
     t('dev9', '발달', 8, 11, '9개월 무렵 모습', '혼자 앉고, 이름을 부르면 보고, 낯을 가려요.', S.m('9-months')),
-    t('dev12', '발달', 11, 15, '돌 무렵 모습', '잡고 서고 잡고 걸어요. 손을 흔들고, 엄지와 검지로 작은 것을 집어요.', S.m('1-year')),
-    t('dev18', '발달', 15, 24, '18개월 무렵 모습', '혼자 걷고, 세 단어 이상 말하려 하고, 관심 있는 것을 가리켜요.', S.m('18-months')),
+    t('dev12', '발달', 11, 14, '돌 무렵 모습', '잡고 서고 잡고 걸어요. 손을 흔들고, 엄지와 검지로 작은 것을 집어요.', S.m('1-year')),
+    t('dev15', '발달', 14, 16, '15개월 무렵 모습', '몇 걸음 걷고, 엄마 아빠 말고도 한두 단어를 말하려 하고, 작은 물건을 두 개 이상 쌓아요.', S.m('15-months')),
+    t('dev18', '발달', 16, 22, '18개월 무렵 모습', '혼자 걷고, 세 단어 이상 말하려 하고, 관심 있는 것을 가리켜요.', S.m('18-months')),
     t('toilet', '생활', 18, 37, '배변 훈련은 서두르지 않기', '대부분 2~3세에 성공해요. 너무 이르면 오히려 힘들어질 수 있어요.', S.m('18-months')),
+    t('sleep1', '수면', 13, 36, '하루 11~14시간 자요', '낮잠을 합한 시간이에요. 자는 순서를 매일 비슷하게 해 주세요.', S.m('15-months')),
+    t('sleep4', '수면', 46, 72, '하루 10~13시간 자요', '낮잠을 합한 시간이에요. 자기 1~2시간 전에는 화면을 끄고, 침실에 두지 않아요.', S.m('4-years')),
+    t('tantrum', '생활', 13, 24, '떼쓰기는 자라는 과정', '피곤하거나 배고플 때 심해져요. 시간이 지나며 짧아지고 줄어들어요.', S.m('15-months')),
+    t('spoon', '먹기', 13, 24, '컵과 숟가락 연습', '뚜껑 없는 컵으로 마시고 숟가락으로 먹어 보게 해 주세요. 흘려도 괜찮아요.', S.m('15-months')),
+    t('appetite', '먹기', 24, 36, '먹는 양은 아이가 정하게', '끼니마다 양이 달라도 괜찮아요. 건강한 음식 두세 가지 중에서 고르게 해 주세요.', S.m('30-months')),
+    t('screen2', '놀이', 24, 72, '화면은 하루 1시간까지', '어린이 프로그램을 어른과 함께 봐요. 식사 때는 끄고 침실에는 두지 않아요.', S.m('3-years')),
+    t('play2', '놀이', 24, 34, '친구 옆에서 따로 놀아요', '아직 나누는 것이 어려워요. 가까이서 지켜보며 차례 지키기를 보여 주세요.', S.m('2-years')),
+    t('feel3', '생활', 34, 46, '감정을 다스리는 법', '속상할 때 깊게 숨 쉬거나 좋아하는 인형을 안게 해 주세요. 규칙은 짧고 분명하게 몇 개만 정해요.', S.m('3-years')),
+    t('active4', '놀이', 46, 72, '매일 몸을 움직이는 놀이', '뛰고 던지고 잡는 시간을 날마다 만들어 주세요.', S.m('4-years')),
+    t('talk5', '생활', 58, 72, '말대꾸에는 짧게, 좋은 말에는 칭찬', '부정적인 말에는 관심을 줄이고, 예의 있게 부탁하면 칭찬해 주세요.', S.m('5-years')),
+    t('dev24', '발달', 22, 28, '두 돌 무렵 모습', '두 단어를 이어 말하고, 달리고, 공을 차고, 숟가락으로 먹어요.', S.m('2-years')),
+    t('dev30', '발달', 28, 34, '30개월 무렵 모습', '50단어쯤 말하고, 두 가지 지시를 따르고, 두 발로 뛰어요.', S.m('30-months')),
+    t('dev36', '발달', 34, 46, '세 돌 무렵 모습', '주고받는 대화를 하고, 동그라미를 따라 그리고, 포크를 쓰고, 옷을 조금 입어요.', S.m('3-years')),
+    t('dev48', '발달', 46, 58, '네 돌 무렵 모습', '네 단어 이상으로 말하고, 하루에 있었던 일을 이야기하고, 큰 공을 잡아요.', S.m('4-years')),
+    t('dev60', '발달', 58, 72, '다섯 돌 무렵 모습', '열까지 세고, 차례를 지키고, 한 발로 뛰고, 단추를 채워요.', S.m('5-years')),
   ];
   const forMonth = m => list.filter(x => m >= x.from && m < x.to);
   const coming = (m, ahead) => list.filter(x => x.from > m && x.from <= m + ahead);
