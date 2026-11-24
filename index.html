@@ -9,6 +9,8 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="아기 수첩">
 <meta name="theme-color" content="#fff8d9">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap" crossorigin media="print" onload="this.media='all'">
 <style>
 /* 배치: 위쪽 디데이와 키재기 자, 아래쪽 다섯 칸 메뉴. 완료는 접종 도장으로 표시한다. */
 :root{--bg:#fff8d9;--card:#fffefa;--ink:#33291a;--sub:#6f6147;--line:#ecdfae;--soft:#fdeeb0;--stamp:#b52d27;--stamp-soft:#ffe3da;
@@ -28,7 +30,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .wrap>*{min-width:0}
 /* 아이폰은 화면 맨 위로 지나가는 내용을 흐리게 한다. 제목 줄을 위에 고정하고 배경을 채워 흐려지지 않게 한다. */
 header{position:sticky;top:0;z-index:6;background:var(--bg);padding-top:env(safe-area-inset-top,0px)}
-header>div{max-width:760px;margin:0 auto;min-height:60px;padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;justify-content:space-between;align-items:center;gap:12px}header h1{min-width:0}header .btn{flex:none}
+header>div{max-width:760px;margin:0 auto;min-height:60px;padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;justify-content:space-between;align-items:center;gap:12px}header h1{min-width:0;font:400 clamp(25px,7.4vw,32px)/1.15 "Jua",var(--font);letter-spacing:-.01em;padding-top:4px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}header .btn{flex:none}
 h1{font-size:17px;margin:0;font-weight:700}
 h2{font-size:18px;margin:0;font-weight:700;text-wrap:balance}
 h3{font-size:14px;margin:0;color:var(--sub);font-weight:600}
@@ -134,7 +136,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
 <script src="drive.js"></script>
 <script>
 'use strict';
-const APP_VERSION = '0.6.1';
+const APP_VERSION = '0.6.2';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
