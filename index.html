@@ -15,13 +15,13 @@
 /* 배치: 위쪽 디데이와 키재기 자, 아래쪽 다섯 칸 메뉴. 완료는 접종 도장으로 표시한다. */
 :root{--bg:#fff8d9;--card:#fffefa;--ink:#33291a;--sub:#6f6147;--line:#ecdfae;--soft:#fdeeb0;--stamp:#b52d27;--stamp-soft:#ffe3da;
 --vaccine:#1c7765;--check:#a45f00;--oral:#7450a8;--screen:#2463b0;--mine:#ad3a72;color-scheme:light;
---font:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif}
+--font:"Jua","Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif}
 *{box-sizing:border-box;touch-action:pan-y}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 html,body{overflow-x:clip}
 html:has(dialog[open]){overflow:hidden}
 [hidden]{display:none!important}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--font);word-break:keep-all;overflow-wrap:anywhere}
+body{margin:0;background:var(--bg);color:var(--ink);font:16.5px/1.5 var(--font);font-synthesis:none;word-break:keep-all;overflow-wrap:anywhere}
 button,input,select,textarea{font:inherit;color:inherit}
 [tabindex="-1"]:focus{outline:none}
 button{cursor:pointer;border:0;background:none;padding:0}
@@ -32,9 +32,9 @@ button{cursor:pointer;border:0;background:none;padding:0}
 header{position:sticky;top:0;z-index:6;background:var(--bg);padding-top:env(safe-area-inset-top,0px)}
 header>div{max-width:760px;margin:0 auto;min-height:60px;padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;justify-content:space-between;align-items:center;gap:12px}header h1{min-width:0;font:400 clamp(25px,7.4vw,32px)/1.15 "Jua",var(--font);letter-spacing:-.01em;padding-top:4px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}header .btn{flex:none}
 h1{font-size:17px;margin:0;font-weight:700}
-h2{font-size:18px;margin:0;font-weight:700;text-wrap:balance}
-h3{font-size:14px;margin:0;color:var(--sub);font-weight:600}
-p{margin:0}.sub{color:var(--sub);font-size:13.5px}
+h2{font-size:20px;margin:0;font-weight:700;text-wrap:balance}
+h3{font-size:15.5px;margin:0;color:var(--sub);font-weight:600}
+p{margin:0}.sub{color:var(--sub);font-size:14.5px}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.between{justify-content:space-between}
 .stack{display:grid;gap:10px}.stack>*{min-width:0}
 .btn{min-height:40px;padding:8px 14px;border-radius:8px;background:var(--soft);font-weight:600}
@@ -45,15 +45,15 @@ p{margin:0}.sub{color:var(--sub);font-size:13.5px}
 .ticks{position:relative;height:34px;border-bottom:2px solid var(--ink)}
 .ticks i{position:absolute;bottom:0;width:1px;background:var(--sub);height:8px}.ticks i.l{height:16px;width:2px;background:var(--ink)}
 .ticks b{position:absolute;bottom:-2px;width:4px;margin-left:-2px;height:34px;background:var(--stamp)}
-.rl{display:flex;justify-content:space-between;font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
+.rl{display:flex;justify-content:space-between;font-size:13px;color:var(--sub);font-variant-numeric:tabular-nums}
 .list{display:grid;border-top:1px solid var(--line)}
 .item{display:grid;grid-template-columns:10px 1fr auto;gap:12px;align-items:center;text-align:left;width:100%;padding:12px 0;border-bottom:1px solid var(--line);min-height:60px}
 .dot{width:10px;height:10px;border-radius:50%;background:var(--c)}
 .t-vaccine{--c:var(--vaccine)}.t-check{--c:var(--check)}.t-oral{--c:var(--oral)}.t-screen{--c:var(--screen)}.t-mine{--c:var(--mine)}.t-diary{--c:var(--sub)}
-.item b{display:block;font-weight:650}.item .when{font-size:13px;color:var(--sub);font-variant-numeric:tabular-nums}
-.chip{font-size:12.5px;font-weight:600;padding:3px 9px;border-radius:99px;background:var(--soft);white-space:nowrap}
+.item b{display:block;font-weight:650}.item .when{font-size:14px;color:var(--sub);font-variant-numeric:tabular-nums}
+.chip{font-size:13.5px;font-weight:600;padding:3px 9px;border-radius:99px;background:var(--soft);white-space:nowrap}
 .chip.hot{background:var(--stamp-soft);color:var(--stamp)}
-.stampmark{width:46px;height:46px;border:2px solid var(--stamp);border-radius:50%;color:var(--stamp);display:grid;place-items:center;font-size:11.5px;line-height:1.15;font-weight:800;text-align:center;transform:rotate(-10deg)}
+.stampmark{width:46px;height:46px;border:2px solid var(--stamp);border-radius:50%;color:var(--stamp);display:grid;place-items:center;font-size:12.5px;line-height:1.15;font-weight:800;text-align:center;transform:rotate(-10deg)}
 .notice{background:var(--soft);border-radius:10px;padding:14px;display:grid;gap:10px}
 .notice.hot{background:var(--stamp-soft)}
 nav{position:fixed;inset:auto 0 0;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
@@ -65,23 +65,23 @@ nav button[aria-current=page]{color:var(--ink);border-top-color:var(--stamp)}
 /* 달력: 「오늘의 하찮은 플랜」처럼 둥근 칸에 완료/전체 개수 */
 .calhead{display:flex;justify-content:space-between;align-items:center}.calhead button{width:42px;height:42px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:18px}
 .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
-.cal span.w{text-align:center;font-size:12px;color:var(--sub);padding:4px 0}
+.cal span.w{text-align:center;font-size:13px;color:var(--sub);padding:4px 0}
 .day{aspect-ratio:1;border-radius:12px;border:1px solid var(--line);background:var(--card);padding:4px 2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;min-width:0;font-variant-numeric:tabular-nums;position:relative}
-.day em{font-style:normal;font-size:12px;line-height:1.2;color:var(--sub)}.day.sun em{color:var(--stamp)}
+.day em{font-style:normal;font-size:13px;line-height:1.2;color:var(--sub)}.day.sun em{color:var(--stamp)}
 .day b{font-size:17px;line-height:1;font-weight:700;color:var(--check);margin-bottom:4px;white-space:nowrap;letter-spacing:-.02em}.day b small{font-size:.7em;font-weight:500;color:var(--sub)}.day b.zero{color:var(--line);font-weight:400}
 .day.all{background:#e4f0dd;border-color:#8fb07e}.day.all b,.day.all b small{color:#3f6b2e}
 .day.sel{border-color:var(--check);background:var(--soft)}.day.today{outline:2px solid var(--stamp);outline-offset:-2px}
 .day .wr{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--mine)}
 .todo{display:grid;gap:8px}.todo>div{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-height:56px}
-.todo .ckb{width:40px;height:40px;display:grid;place-items:center}.todo .ckb i{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--check);display:grid;place-items:center;font-style:normal;font-weight:800;font-size:14px;color:#fffefa}.todo .on .ckb i{background:#5d8a4a;border-color:#5d8a4a}.todo .on .tx b{color:var(--sub);text-decoration:line-through}
-.todo .tx{text-align:left;min-width:0;min-height:40px}.todo .tx b{display:block;font-weight:600}.todo .del{min-width:36px;height:40px;color:var(--sub);font-size:18px}.todo .del[data-sure="1"]{font-size:13px;color:var(--stamp);font-weight:600}
+.todo .ckb{width:40px;height:40px;display:grid;place-items:center}.todo .ckb i{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--check);display:grid;place-items:center;font-style:normal;font-weight:800;font-size:15px;color:#fffefa}.todo .on .ckb i{background:#5d8a4a;border-color:#5d8a4a}.todo .on .tx b{color:var(--sub);text-decoration:line-through}
+.todo .tx{text-align:left;min-width:0;min-height:40px}.todo .tx b{display:block;font-weight:600}.todo .del{min-width:36px;height:40px;color:var(--sub);font-size:18px}.todo .del[data-sure="1"]{font-size:14px;color:var(--stamp);font-weight:600}
 .addrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
 .paper{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:10px}
 .paper p.body{white-space:pre-wrap}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
 .grid button{aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--soft);position:relative}
 .grid img{width:100%;height:100%;object-fit:cover;display:block}
-.grid .x{position:absolute;inset:auto 4px 4px auto;background:var(--card);border-radius:6px;font-size:12px;padding:2px 7px}
+.grid .x{position:absolute;inset:auto 4px 4px auto;background:var(--card);border-radius:6px;font-size:13px;padding:2px 7px}
 a{color:var(--screen)}
 details summary{cursor:pointer;font-weight:650;padding:10px 0}
 dialog{border:0;border-radius:14px;padding:0;width:min(560px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px);background:var(--card);color:var(--ink);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
@@ -90,20 +90,20 @@ dialog form>:first-child{padding-right:44px;min-height:30px}
 dialog::backdrop{background:rgb(10 16 28/.55)}
 dialog form{padding:20px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px}dialog form>*{min-width:0;max-width:100%}
 dialog.wide{width:min(900px,calc(100vw - 24px))}dialog.wide img{max-width:100%;max-height:60vh;margin:auto;display:block;border-radius:8px}
-label.f{display:grid;grid-template-columns:minmax(0,1fr);gap:5px;font-weight:600;font-size:13.5px}
+label.f{display:grid;grid-template-columns:minmax(0,1fr);gap:5px;font-weight:600;font-size:14.5px}
 input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea{width:100%;min-height:44px;font-size:16px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);min-width:0;max-width:100%}
 input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;display:block;text-align:left}input::-webkit-date-and-time-value{text-align:left}
 /* 아이폰은 빈 날짜 칸에 아무것도 보여주지 않아 안내를 넣는다 */
 @supports (-webkit-touch-callout:none){input.blank::before{color:var(--sub);content:'날짜 선택'}input.blank[type=time]::before{content:'시각 선택'}}
 textarea{min-height:150px;resize:vertical;line-height:1.6}
-fieldset{border:0;padding:0;margin:0;min-width:0;display:grid;grid-template-columns:minmax(0,1fr);gap:6px}legend{font-weight:600;font-size:13.5px;padding:0 0 6px}
+fieldset{border:0;padding:0;margin:0;min-width:0;display:grid;grid-template-columns:minmax(0,1fr);gap:6px}legend{font-weight:600;font-size:14.5px;padding:0 0 6px}
 .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:12px}.two>*{min-width:0}
 .ck{display:flex;gap:8px;align-items:center;min-height:32px}
 #toast{position:fixed;left:50%;bottom:calc(78px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:10px;z-index:9;max-width:calc(100vw - 32px);font-weight:600}
 .kids{display:flex;gap:8px;flex-wrap:wrap}.kids button{min-height:40px;padding:6px 16px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-weight:600;max-width:100%}.kids button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .kidbox{border:1px solid var(--line);border-radius:12px;padding:14px;gap:14px}
 .mission{display:grid;grid-template-columns:84px minmax(0,1fr);gap:14px;align-items:center}.mission .face{width:84px;height:84px;border-radius:50%;overflow:hidden;background:var(--soft);border:2px dashed var(--stamp);display:grid;place-items:center;padding:0}.mission .face.on{border-style:solid}.mission img{width:100%;height:100%;object-fit:cover;display:block}
-.grid .d{position:absolute;inset:auto 0 0 0;background:rgb(51 41 26/.72);color:#fffefa;font-size:12px;padding:2px 4px;text-align:center}.grid .miss{border:2px dashed var(--line);background:none;color:var(--sub);font-size:13px}
+.grid .d{position:absolute;inset:auto 0 0 0;background:rgb(51 41 26/.72);color:#fffefa;font-size:13px;padding:2px 4px;text-align:center}.grid .miss{border:2px dashed var(--line);background:none;color:var(--sub);font-size:14px}
 .crop{position:relative;width:100%;max-width:340px;margin:auto;aspect-ratio:1;border-radius:12px;overflow:hidden}.crop canvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab}.crop i{position:absolute;inset:12% 20%;border:3px solid #fffefa;border-radius:50%;box-shadow:0 0 0 400px rgb(51 41 26/.28);pointer-events:none}
 input[type=range]{padding:0!important;border:0!important;accent-color:var(--stamp)}
 .hosp{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}.hosp b{display:block}.pin{width:48px;height:48px;border-radius:50%;background:var(--soft);display:grid;place-items:center}.pin svg{width:24px;height:24px}
@@ -136,7 +136,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
 <script src="drive.js"></script>
 <script>
 'use strict';
-const APP_VERSION = '0.6.2';
+const APP_VERSION = '0.6.3';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -680,9 +680,9 @@ async function makeVideo(sec) {
   const draw = (img, next, a, text) => {
     g.globalAlpha = 1; g.fillStyle = '#33291a'; g.fillRect(0, 0, 720, 720); if (img) g.drawImage(img, 0, 0, 720, 720);
     if (next && a > 0) { g.globalAlpha = a; g.drawImage(next, 0, 0, 720, 720); g.globalAlpha = 1; }
-    if (text) { g.font = '700 34px "Apple SD Gothic Neo","Noto Sans KR",sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(51,41,26,.62)'; g.fillRect(0, 648, 720, 72); g.fillStyle = '#fffefa'; g.fillText(text, 360, 696); }
+    if (text) { g.font = '700 34px "Jua","Apple SD Gothic Neo","Noto Sans KR",sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(51,41,26,.62)'; g.fillRect(0, 648, 720, 72); g.fillStyle = '#fffefa'; g.fillText(text, 360, 696); }
   };
-  const title = () => { g.fillStyle = '#fff8d9'; g.fillRect(0, 0, 720, 720); g.fillStyle = '#33291a'; g.textAlign = 'center'; g.font = '800 60px "Apple SD Gothic Neo","Noto Sans KR",sans-serif'; g.fillText(k.name, 360, 350, 640); g.font = '500 30px "Apple SD Gothic Neo","Noto Sans KR",sans-serif'; g.fillText(`${kd(fs[0].date, true)}부터 ${dayNo(k, fs[fs.length - 1].date)}일차까지`, 360, 410, 640); };
+  const title = () => { g.fillStyle = '#fff8d9'; g.fillRect(0, 0, 720, 720); g.fillStyle = '#33291a'; g.textAlign = 'center'; g.font = '800 60px "Jua","Apple SD Gothic Neo","Noto Sans KR",sans-serif'; g.fillText(k.name, 360, 350, 640); g.font = '500 30px "Jua","Apple SD Gothic Neo","Noto Sans KR",sans-serif'; g.fillText(`${kd(fs[0].date, true)}부터 ${dayNo(k, fs[fs.length - 1].date)}일차까지`, 360, 410, 640); };
   let rec;
   try {
     title();
