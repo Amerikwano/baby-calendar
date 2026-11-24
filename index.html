@@ -58,13 +58,20 @@ nav button{min-height:58px;color:var(--sub);font-weight:600;border-top:3px solid
 nav button[aria-current=page]{color:var(--ink);border-top-color:var(--stamp)}
 .seg{display:inline-flex;background:var(--soft);border-radius:9px;padding:3px}
 .seg button{padding:6px 16px;border-radius:7px;min-height:36px;font-weight:600;color:var(--sub)}.seg button[aria-pressed=true]{background:var(--card);color:var(--ink)}
-.cal{display:grid;grid-template-columns:repeat(7,1fr);background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.cal span{text-align:center;font-size:12.5px;color:var(--sub);padding:8px 0}
-.day{min-height:56px;padding:6px 2px;display:grid;align-content:start;justify-items:center;gap:5px;border-top:1px solid var(--line);min-width:0;font-variant-numeric:tabular-nums}
-.day em{font-style:normal;width:26px;height:26px;display:grid;place-items:center;border-radius:50%}
-.day.today em{border:2px solid var(--stamp)}.day.sel{background:var(--soft)}.day.sel em{background:var(--ink);color:var(--bg)}
-.dots{display:flex;gap:3px;flex-wrap:wrap;justify-content:center}.dots i{width:6px;height:6px;border-radius:50%;background:var(--c)}
-.legend{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:13px;color:var(--sub)}.legend span{display:flex;gap:6px;align-items:center}
+/* 달력: 「오늘의 하찮은 플랜」처럼 둥근 칸에 완료/전체 개수 */
+.calhead{display:flex;justify-content:space-between;align-items:center}.calhead button{width:42px;height:42px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:18px}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.cal span.w{text-align:center;font-size:12px;color:var(--sub);padding:4px 0}
+.day{aspect-ratio:1;border-radius:12px;border:1px solid var(--line);background:var(--card);padding:4px 2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;min-width:0;font-variant-numeric:tabular-nums;position:relative}
+.day em{font-style:normal;font-size:12px;line-height:1.2;color:var(--sub)}.day.sun em{color:var(--stamp)}
+.day b{font-size:17px;line-height:1;font-weight:700;color:var(--check);margin-bottom:4px;white-space:nowrap;letter-spacing:-.02em}.day b small{font-size:.7em;font-weight:500;color:var(--sub)}.day b.zero{color:var(--line);font-weight:400}
+.day.all{background:#e4f0dd;border-color:#8fb07e}.day.all b,.day.all b small{color:#3f6b2e}
+.day.sel{border-color:var(--check);background:var(--soft)}.day.today{outline:2px solid var(--stamp);outline-offset:-2px}
+.day .wr{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--mine)}
+.todo{display:grid;gap:8px}.todo>div{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-height:56px}
+.todo .ckb{width:40px;height:40px;display:grid;place-items:center}.todo .ckb i{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--check);display:grid;place-items:center;font-style:normal;font-weight:800;font-size:14px;color:#fffefa}.todo .on .ckb i{background:#5d8a4a;border-color:#5d8a4a}.todo .on .tx b{color:var(--sub);text-decoration:line-through}
+.todo .tx{text-align:left;min-width:0;min-height:40px}.todo .tx b{display:block;font-weight:600}.todo .del{min-width:36px;height:40px;color:var(--sub);font-size:18px}.todo .del[data-sure="1"]{font-size:13px;color:var(--stamp);font-weight:600}
+.addrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
 .paper{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:10px}
 .paper p.body{white-space:pre-wrap}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
@@ -74,6 +81,8 @@ nav button[aria-current=page]{color:var(--ink);border-top-color:var(--stamp)}
 a{color:var(--screen)}
 details summary{cursor:pointer;font-weight:650;padding:10px 0}
 dialog{border:0;border-radius:14px;padding:0;width:min(560px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px);background:var(--card);color:var(--ink);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+.xbar{position:sticky;top:0;height:0;z-index:5;text-align:right}.xbar button{width:44px;height:44px;margin:10px 10px 0 0;border-radius:50%;background:var(--soft);display:inline-grid;place-items:center;vertical-align:top}.xbar svg{width:20px;height:20px}
+dialog form>:first-child{padding-right:44px;min-height:30px}
 dialog::backdrop{background:rgb(10 16 28/.55)}
 dialog form{padding:20px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px}dialog form>*{min-width:0;max-width:100%}
 dialog.wide{width:min(900px,calc(100vw - 24px))}dialog.wide img{max-width:100%;max-height:60vh;margin:auto;display:block;border-radius:8px}
@@ -121,7 +130,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
 <script src="drive.js"></script>
 <script>
 'use strict';
-const APP_VERSION = '0.5.2';
+const APP_VERSION = '0.6.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -297,7 +306,7 @@ function home() {
   const late = now.filter(i => S.status(i, t) === 'late'), open = now.filter(i => S.status(i, t) === 'open');
   open.sort((a, b) => ((a.hard || a.end) < (b.hard || b.end) ? -1 : 1));
   const next = all.filter(i => S.status(i, t) === 'next').slice(0, K().born ? 5 : 6);
-  const mine = Family.forKid(db.events, K().id).filter(e => e.date >= t).sort((a, b) => a.date < b.date ? -1 : 1).slice(0, 4);
+  const mine = Family.forKid(db.events, K().id).filter(e => e.date >= t && !e.done).sort((a, b) => a.date < b.date ? -1 : 1).slice(0, 4);
   const m = S.ageMonths(K().birth, t), tip = BaseTips.forMonth(K().born ? Math.min(m, 71) : -1)[0];
   const due = !K().born && t >= K().birth;
   return hero() + mission()
@@ -314,27 +323,29 @@ function home() {
 }
 
 /* ── 달력 ── */
-function marks(d, all) {
-  const o = [];
-  all.forEach(i => { if ((i.done || i.appt || i.start) === d) o.push(i.type); });
-  db.events.forEach(e => { if (e.date === d) o.push('mine'); });
-  if (db.diary.some(x => x.date === d)) o.push('diary');
-  return o;
+// 그날의 일정 [접종·검진, 내 일정]과 완료 개수
+function dayList(d, all) {
+  const its = all.filter(i => (i.done || i.appt || i.start) === d), evs = db.events.filter(e => e.date === d).sort((a, b) => (a.time || '') < (b.time || '') ? -1 : 1);
+  return { its, evs, total: its.length + evs.length, done: its.filter(i => i.done).length + evs.filter(e => e.done).length, diary: db.diary.filter(x => x.date === d) };
 }
 function calendar() {
-  const [y, m] = month.split('-').map(Number), first = month + '-01', n = new Date(Date.UTC(y, m, 0)).getUTCDate(), all = famItems();
-  let cells = [...WD].map(w => `<span>${w}</span>`).join('') + '<span></span>'.repeat(0);
-  cells += '<div class="day"></div>'.repeat(dow(first));
+  const [y, m] = month.split('-').map(Number), first = month + '-01', n = new Date(Date.UTC(y, m, 0)).getUTCDate(), all = famItems(), t = today();
+  let cells = [...WD].map(w => `<span class="w">${w}</span>`).join('') + '<span></span>'.repeat(dow(first));
   for (let i = 1; i <= n; i++) {
-    const d = `${month}-${String(i).padStart(2, '0')}`, mk = marks(d, all);
-    cells += `<button class="day ${d === today() ? 'today' : ''} ${d === sel ? 'sel' : ''}" data-act="day" data-d="${d}" aria-label="${kd(d)}${mk.length ? ', 일정 ' + mk.length + '개' : ''}"><em>${i}</em><span class="dots" style="padding:0">${[...new Set(mk)].map(k => `<i class="t-${k}"></i>`).join('')}</span></button>`;
+    const d = `${month}-${String(i).padStart(2, '0')}`, k = dayList(d, all);
+    cells += `<button class="day ${d === t ? 'today' : ''} ${d === sel ? 'sel' : ''} ${k.total && k.done === k.total ? 'all' : ''} ${dow(d) ? '' : 'sun'}" data-act="day" data-d="${d}" ${d === sel ? 'aria-current="date"' : ''} aria-label="${kd(d)}${k.total ? `, ${k.total}개 중 ${k.done}개 완료` : ''}${k.diary.length ? ', 일기 있음' : ''}"><em>${i}</em>${k.total ? `<b>${k.done}<small>/${k.total}</small></b>` : '<b class="zero">·</b>'}${k.diary.length ? '<i class="wr"></i>' : ''}</button>`;
   }
-  cells += '<div class="day"></div>'.repeat((7 - (dow(first) + n) % 7) % 7);
-  const its = all.filter(i => (i.done || i.appt || i.start) === sel), evs = db.events.filter(e => e.date === sel), ds = db.diary.filter(x => x.date === sel);
-  return `<section class="stack"><div class="row between"><button class="btn" data-act="mon" data-n="-1" aria-label="이전 달">이전</button><h2>${y}년 ${m}월</h2><button class="btn" data-act="mon" data-n="1" aria-label="다음 달">다음</button></div>
-    <div class="cal">${cells}</div><div class="legend">${Object.keys(TYPE).map(k => `<span class="t-${k}"><i class="dot"></i>${TYPE[k]}</span>`).join('')}</div></section>
-    <section class="stack"><div class="row between"><h2>${kd(sel)}</h2><div class="row"><button class="btn main" data-act="event">일정 추가</button><button class="btn" data-act="write">일기 쓰기</button></div></div>
-    <div class="list">${its.map(itemRow).join('')}${evs.map(evRow).join('')}${ds.map(x => `<button class="item t-diary" data-act="write" data-id="${x.id}"><span class="dot"></span><span><b>${esc(x.body.slice(0, 40) || '사진 일기')}</b><span class="when">${stageOf(x.date, kidOf(x.kid))}</span></span>${many() ? tag(x.kid) : '<span class="chip">일기</span>'}</button>`).join('')}</div>${its.length + evs.length + ds.length ? '' : '<p class="empty">이날은 일정이 없어요.</p>'}</section>
+  const s = dayList(sel, all), [, sm, sd] = sel.split('-').map(Number), who = id => many() ? (id ? kidOf(id).name : '모두') : '';
+  const row = (on, check, open, title, sub, chip, del) => `<div class="${on ? 'on' : ''}"><button class="ckb" ${check}><i>${on ? '✓' : ''}</i></button><button class="tx" ${open}><b>${title}</b>${sub ? `<span class="sub">${sub}</span>` : ''}</button><span class="chip">${chip}</span>${del}</div>`;
+  const list = s.its.map(i => { const at = `data-act="item" data-id="${i.id}" data-kid="${i.kid}"`; return row(i.done, at + ` aria-label="${esc(i.title)} 받은 날 적기"`, at, esc(i.title), [who(i.kid), i.done ? '완료' : i.appt ? '예약' : i.start === i.end ? '' : `${kd(i.end)}까지`].filter(Boolean).map(esc).join(', '), TYPE[i.type], '<span></span>'); }).join('')
+    + s.evs.map(e => row(e.done, `data-act="evdone" data-id="${e.id}" aria-label="${esc(e.title)} 완료 표시" aria-pressed="${Boolean(e.done)}"`, `data-act="event" data-id="${e.id}"`, esc(e.title), [who(e.kid), e.time].filter(Boolean).map(esc).join(', '), '내 일정', `<button class="del" data-act="evdel" data-id="${e.id}" aria-label="${esc(e.title)} 지우기">×</button>`)).join('');
+  return `<section class="stack" style="gap:12px"><div class="calhead"><button data-act="mon" data-n="-1" aria-label="이전 달">‹</button><h2>${y}년 ${m}월</h2><button data-act="mon" data-n="1" aria-label="다음 달">›</button></div>
+    <div class="cal">${cells}</div><p class="sub">칸의 숫자는 그날 완료한 개수 / 전체 개수예요. 초록색 칸은 모두 마친 날, 분홍 점은 일기를 쓴 날이에요.</p></section>
+    <section class="stack"><h2>${sm}월 ${sd}일${sel === t ? ' (오늘)' : sel > t ? ' (예정)' : ''}${s.total ? ` · ${s.done}/${s.total} 완료` : ''}</h2>
+    ${s.total ? `<div class="todo">${list}</div>` : '<p class="sub">이날은 아직 일정이 없어요.</p>'}
+    <form class="addrow" data-form="quick"><input name="title" maxlength="80" autocomplete="off" aria-label="일정 제목" placeholder="${sm}월 ${sd}일 일정 추가하기"><button class="btn main">추가</button></form>
+    <div class="row"><button class="btn" data-act="event">시간·메모와 함께 추가</button><button class="btn" data-act="write">일기 쓰기</button></div>
+    ${s.diary.length ? `<div class="list">${s.diary.map(x => `<button class="item t-diary" data-act="write" data-id="${x.id}"><span class="dot"></span><span><b>${esc(x.body.slice(0, 40) || '사진 일기')}</b><span class="when">${stageOf(x.date, kidOf(x.kid))}</span></span><span class="chip">${many() ? esc(who(x.kid)) : '일기'}</span></button>`).join('')}</div>` : ''}</section>
     <details><summary>전체 접종·검진 ${all.length}개 보기</summary><div class="list">${all.map(itemRow).join('')}</div></details>`;
 }
 
@@ -430,7 +441,7 @@ async function findPlace() {
   return at;
 }
 async function locate() {
-  openDlg('<form data-form="none"><h2>위치를 찾는 중이에요</h2><p class="sub">휴대폰이 물어보면 허용을 눌러 주세요.</p><div class="row"><button type="button" class="btn" data-act="close">닫기</button></div></form>');
+  openDlg('<form data-form="none"><h2>위치를 찾는 중이에요</h2><p class="sub">휴대폰이 물어보면 허용을 눌러 주세요.</p></form>');
   try { const at = await findPlace(); if (dlg.open) regionDlg(at, true); } catch (e) { if (dlg.open) regionDlg(null, false, e.message); }
 }
 async function regionDlg(at, found, msg) {
@@ -485,11 +496,12 @@ const dlg = $('#dlg');
 function openDlg(html, wide) { if (dlg.open) dlg.close(); dlg.className = wide ? 'wide' : ''; dlg.innerHTML = html; showDlg(dlg); }
 // 창을 열면 첫 입력칸이 저절로 선택돼 아이폰에서 날짜 창이나 자판이 바로 뜬다. 대신 제목에 초점을 둔다.
 function showDlg(d) {
+  d.insertAdjacentHTML('afterbegin', '<div class="xbar"><button type="button" data-act="close" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>');
   const h = d.querySelector('h2') || d;
   h.tabIndex = -1; h.setAttribute('autofocus', ''); d.showModal();
   if (document.activeElement !== h) h.focus({ preventScroll: true });
 }
-const acts = (del) => `<div class="row between"><div class="row"><button class="btn main" value="ok">저장</button><button type="button" class="btn" data-act="close">닫기</button></div>${del ? `<button type="button" class="btn danger" data-act="del" data-k="${del[0]}" data-id="${del[1]}">${del[2]}</button>` : ''}</div>`;
+const acts = (del) => `<div class="row between"><div class="row"><button class="btn main" value="ok">저장</button></div>${del ? `<button type="button" class="btn danger" data-act="del" data-k="${del[0]}" data-id="${del[1]}">${del[2]}</button>` : ''}</div>`;
 
 const whoField = v => many() ? `<label class="f">누구의 기록인가요<select name="kid">${db.kids.map(k => `<option value="${k.id}" ${v === k.id ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}<option value="" ${v === '' ? 'selected' : ''}>모두</option></select></label>` : '';
 function itemDlg(id, kid) {
@@ -511,7 +523,7 @@ function writeDlg(id) {
 }
 function photoDlg(id) {
   const p = db.photos.find(x => x.id === id); if (!p) return;
-  openDlg(`<form data-form="photo" data-id="${id}"><img ${pic(id)} alt="${esc(p.caption || kd(p.date) + ' 사진')}"><div class="two"><label class="f">날짜<input type="date" name="date" required value="${p.date}"></label><label class="f">설명<input name="caption" maxlength="200" value="${esc(p.caption)}"></label></div>${whoField(p.kid)}<p class="sub">${stageOf(p.date, kidOf(p.kid))}</p><div class="row"><button type="button" class="btn" data-act="sharephoto" data-id="${id}">내보내기</button></div>${acts(['photo', id, '사진 지우기'])}</form>`, true);
+  openDlg(`<form data-form="photo" data-id="${id}"><h2>사진</h2><img ${pic(id)} alt="${esc(p.caption || kd(p.date) + ' 사진')}"><div class="two"><label class="f">날짜<input type="date" name="date" required value="${p.date}"></label><label class="f">설명<input name="caption" maxlength="200" value="${esc(p.caption)}"></label></div>${whoField(p.kid)}<p class="sub">${stageOf(p.date, kidOf(p.kid))}</p><div class="row"><button type="button" class="btn" data-act="sharephoto" data-id="${id}">내보내기</button></div>${acts(['photo', id, '사진 지우기'])}</form>`, true);
 }
 function settingsDlg() {
   openDlg(`<form data-form="settings"><h2>설정</h2>
@@ -647,7 +659,7 @@ const videoType = () => ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/web
 function videoDlg() {
   const n = facesOf(K()).length;
   if (!videoType() || !HTMLCanvasElement.prototype.captureStream) return toast('이 브라우저에서는 영상을 만들 수 없어요. 최신 사파리나 크롬에서 열어 주세요.');
-  openDlg(`<form data-form="video"><h2>${esc(K().name)} 성장 영상</h2><p>얼굴 사진 ${n}장을 날짜 순서로 이어요.</p><label class="f">빠르기<select name="sec"><option value="0.3">빠르게 (약 ${Math.ceil(n * .3 + 2)}초)</option><option value="0.6" selected>보통 (약 ${Math.ceil(n * .6 + 2)}초)</option><option value="1.2">천천히 (약 ${Math.ceil(n * 1.2 + 2)}초)</option></select></label><p class="sub">영상 길이만큼 시간이 걸려요. 만드는 동안 화면을 켜 두세요. 사진은 밖으로 보내지 않아요.</p><div class="row"><button class="btn main">만들기</button><button type="button" class="btn" data-act="close">닫기</button></div></form>`);
+  openDlg(`<form data-form="video"><h2>${esc(K().name)} 성장 영상</h2><p>얼굴 사진 ${n}장을 날짜 순서로 이어요.</p><label class="f">빠르기<select name="sec"><option value="0.3">빠르게 (약 ${Math.ceil(n * .3 + 2)}초)</option><option value="0.6" selected>보통 (약 ${Math.ceil(n * .6 + 2)}초)</option><option value="1.2">천천히 (약 ${Math.ceil(n * 1.2 + 2)}초)</option></select></label><p class="sub">영상 길이만큼 시간이 걸려요. 만드는 동안 화면을 켜 두세요. 사진은 밖으로 보내지 않아요.</p><div class="row"><button class="btn main">만들기</button></div></form>`);
 }
 async function makeVideo(sec) {
   const k = K(), fs = facesOf(k), type = videoType();
@@ -695,7 +707,7 @@ function readyDlg(blob, name, title) {
   const file = new File([blob], name, { type: blob.type || 'application/octet-stream' });
   out = { blob, name, file, url: blob.type.startsWith('video') ? URL.createObjectURL(blob) : '' };
   const can = navigator.canShare && navigator.canShare({ files: [file] });
-  openDlg(`<form data-form="none"><h2>${esc(title)}</h2>${out.url ? `<video src="${out.url}" controls playsinline></video>` : ''}<p class="sub">${esc(name)}, ${(blob.size / 1048576).toFixed(1)}MB${can ? ". 아이폰은 '저장·공유'를 누르고 '파일에 저장'에서 iCloud Drive를 고르면 돼요." : ''}</p><div class="row">${can ? '<button type="button" class="btn main" data-act="outshare">저장·공유</button>' : ''}<button type="button" class="btn ${can ? '' : 'main'}" data-act="outsave">이 기기에 내려받기</button><button type="button" class="btn" data-act="close">닫기</button></div></form>`);
+  openDlg(`<form data-form="none"><h2>${esc(title)}</h2>${out.url ? `<video src="${out.url}" controls playsinline></video>` : ''}<p class="sub">${esc(name)}, ${(blob.size / 1048576).toFixed(1)}MB${can ? ". 아이폰은 '저장·공유'를 누르고 '파일에 저장'에서 iCloud Drive를 고르면 돼요." : ''}</p><div class="row">${can ? '<button type="button" class="btn main" data-act="outshare">저장·공유</button>' : ''}<button type="button" class="btn ${can ? '' : 'main'}" data-act="outsave">이 기기에 내려받기</button></div></form>`);
 }
 
 /* ── 인근 병원 ── */
@@ -717,7 +729,11 @@ async function fillNear(box, n) {
   const head = box.querySelector('h2').outerHTML, list = listHosp(n), at = (db.sido + ' ' + db.sigungu).trim();
   box.innerHTML = head + `<p class="sub">${spot ? '지금 위치에서 가까운 순서예요.' : at ? `${esc(at)}에 있는 곳이에요. 내 위치를 켜면 가까운 순서로 볼 수 있어요.` : '내 위치를 켜면 가까운 병원을 찾아드려요.'}</p>${spot ? '' : `<div class="row"><button type="button" class="btn main" data-act="nearme" data-n="${n}">내 위치로 찾기</button></div>`}${list.length ? `<div class="list">${list.map(hospRow).join('')}</div>` : spot || at ? '<p class="sub">찾은 병원이 없어요.</p>' : ''}${n < 10 && list.length ? '<button type="button" class="btn" data-act="hospitals">더 보기</button>' : ''}<p class="sub">맞으려는 백신이 있는지, 무료로 맞을 수 있는지는 가기 전에 전화로 확인하세요. 무료 접종 기관은 <a href="https://nip.kdca.go.kr" target="_blank" rel="noopener noreferrer">예방접종도우미</a>에서 볼 수 있어요. 자료: ${esc(hosp.info.source)}, ${hosp.info.asOf.replace(/-/g, '.')}</p>`;
 }
-function hospDlg() { openDlg('<form data-form="none"><div class="row between"><h2>인근 병원</h2><button type="button" class="btn" data-act="close">닫기</button></div><section class="stack" id="near"><h2 style="font-size:15px">소아청소년과와 보건소</h2><p class="sub">불러오는 중</p></section></form>'); fillNear($('#near'), 20); }
+function hospDlg() { openDlg('<form data-form="none"><div class="row between"><h2>인근 병원</h2></div><section class="stack" id="near"><h2 style="font-size:15px">소아청소년과와 보건소</h2><p class="sub">불러오는 중</p></section></form>'); fillNear($('#near'), 20); }
+// 휴대폰에서는 새 창 없이 카카오맵 앱을 바로 연다. 웹 주소로 열면 돌아왔을 때 빈 창이 남는다.
+const phone = () => /iPhone|iPad|iPod|Android/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+const kakaoWeb = (x, cls, label) => `<a class="${cls}" target="_blank" rel="noopener noreferrer" href="https://map.kakao.com/link/to/${encodeURIComponent(x[0].replace(/,/g, ' '))},${x[3]},${x[4]}">${label}</a>`;
+document.addEventListener('click', ev => { if (ev.target.closest('[data-kakao]')) setTimeout(() => { const n = $('#nokakao'); if (n) n.hidden = false; }, 1500); });
 let leaflet = null;
 function loadLeaflet() {
   return leaflet || (leaflet = new Promise((ok, no) => {
@@ -730,9 +746,9 @@ const mapDlg = $('#mapdlg'); let map = null;
 mapDlg.addEventListener('close', () => { if (map) { map.remove(); map = null; } mapDlg.innerHTML = ''; });
 async function showMap(i) {
   const r = hosp.rows[i]; if (!r) return;
-  const card = x => `<b>${esc(x[0])}</b><span class="sub">${esc(x[1])}</span><div class="row">${/^[\d-]{7,}$/.test(x[2]) ? `<a class="btn" href="tel:${x[2]}">전화 ${x[2]}</a>` : ''}<a class="btn" target="_blank" rel="noopener noreferrer" href="https://map.kakao.com/link/to/${encodeURIComponent(x[0].replace(/,/g, ' '))},${x[3]},${x[4]}">카카오맵 길찾기</a></div>`;
+  const card = x => `<b>${esc(x[0])}</b><span class="sub">${esc(x[1])}</span><div class="row">${/^[\d-]{7,}$/.test(x[2]) ? `<a class="btn" href="tel:${x[2]}">전화 ${x[2]}</a>` : ''}${phone() ? `<a class="btn" data-kakao="1" href="kakaomap://route?ep=${x[3]},${x[4]}&by=car">카카오맵 길찾기</a>` : kakaoWeb(x, 'btn', '카카오맵 길찾기')}</div>${phone() ? `<p class="sub" id="nokakao" hidden>카카오맵 앱이 없어 열리지 않으면 ${kakaoWeb(x, '', '웹 지도로 보기')}</p>` : ''}`;
   if (mapDlg.open) mapDlg.close();
-  mapDlg.innerHTML = `<form data-form="none"><div class="row between"><h2>병원 위치</h2><button type="button" class="btn" data-act="close">닫기</button></div><div id="map"></div><div class="stack" id="mapcard">${card(r)}</div></form>`;
+  mapDlg.innerHTML = `<form data-form="none"><div class="row between"><h2>병원 위치</h2></div><div id="map"></div><div class="stack" id="mapcard">${card(r)}</div></form>`;
   showDlg(mapDlg);
   try { await loadLeaflet(); } catch { if ($('#map')) $('#map').innerHTML = '<p class="empty">지도를 불러오지 못했어요. 아래 카카오맵으로 열어 주세요.</p>'; return; }
   if (!$('#map') || !mapDlg.open) return;
@@ -774,7 +790,7 @@ function driveBar() {
 }
 async function afterLogin(r) {
   if (r.error) { toast(r.error); return; }
-  try { await Drive.me(); toast('로그인했어요'); await syncSent(); render(); const n = waiting().length; openDlg(`<form data-form="none"><h2>${n ? `사진 ${n}장을 드라이브에 올릴까요?` : '구글 드라이브를 쓸 준비가 됐어요'}</h2><p class="sub">${esc(Drive.account().email)}의 드라이브에 '우리 아기 수첩' 폴더를 만들어 담아요. 나만 볼 수 있어요.</p>${autoBox()}<div class="row">${n ? '<button type="button" class="btn main" data-act="upload">올리기</button>' : ''}<button type="button" class="btn" data-act="close">${n ? '나중에' : '닫기'}</button></div></form>`); } catch (e) { toast(e.message); render(); }
+  try { await Drive.me(); toast('로그인했어요'); await syncSent(); render(); const n = waiting().length; openDlg(`<form data-form="none"><h2>${n ? `사진 ${n}장을 드라이브에 올릴까요?` : '구글 드라이브를 쓸 준비가 됐어요'}</h2><p class="sub">${esc(Drive.account().email)}의 드라이브에 '우리 아기 수첩' 폴더를 만들어 담아요. 나만 볼 수 있어요.</p>${autoBox()}<div class="row">${n ? '<button type="button" class="btn main" data-act="upload">올리기</button>' : ''}${n ? '<button type="button" class="btn" data-act="close">나중에</button>' : ''}</div></form>`); } catch (e) { toast(e.message); render(); }
 }
 async function syncSent() { const files = await Drive.list(); sent = new Set(files.map(f => f.appProperties && f.appProperties.pid).filter(Boolean)); keepSent(); return files; }
 const extOf = b => ({ 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'image/heic': 'heic', 'image/heif': 'heif' }[b.type] || 'jpg');
@@ -806,13 +822,13 @@ let driveFiles = [];
 async function driveDlg() {
   if (!Drive.token()) return Drive.login(GOOGLE_ID);
   const who = Drive.account() || {};
-  openDlg('<form data-form="none"><h2>드라이브 사진 관리</h2><p class="sub">불러오는 중</p><div class="row"><button type="button" class="btn" data-act="close">닫기</button></div></form>');
+  openDlg('<form data-form="none"><h2>드라이브 사진 관리</h2><p class="sub">불러오는 중</p></form>');
   try { driveFiles = await syncSent(); } catch (e) { if (dlg.open) dlg.close(); return toast(e.message); }
   if (!dlg.open) return;
   const here = new Map(allPhotos().map(p => [pid(p), p]));
   driveFiles.sort((a, b) => (a.appProperties.date || '') < (b.appProperties.date || '') ? 1 : -1);
   const only = driveFiles.filter(f => !here.has(f.appProperties.pid)), n = waiting().length;
-  openDlg(`<form data-form="none"><div class="row between"><h2>드라이브 사진 관리</h2><button type="button" class="btn" data-act="close">닫기</button></div><p class="sub">${esc(who.email || who.name || '')}, 내 드라이브의 '우리 아기 수첩' 폴더에 ${driveFiles.length}장</p><div class="row">${n ? `<button type="button" class="btn main" data-act="upload">안 올린 ${n}장 올리기</button>` : ''}${only.length ? `<button type="button" class="btn" data-act="pull">드라이브에만 있는 ${only.length}장 가져오기</button>` : ''}</div>${autoBox()}
+  openDlg(`<form data-form="none"><div class="row between"><h2>드라이브 사진 관리</h2></div><p class="sub">${esc(who.email || who.name || '')}, 내 드라이브의 '우리 아기 수첩' 폴더에 ${driveFiles.length}장</p><div class="row">${n ? `<button type="button" class="btn main" data-act="upload">안 올린 ${n}장 올리기</button>` : ''}${only.length ? `<button type="button" class="btn" data-act="pull">드라이브에만 있는 ${only.length}장 가져오기</button>` : ''}</div>${autoBox()}
     ${driveFiles.length ? `<div class="list">${driveFiles.map(f => { const p = here.get(f.appProperties.pid); return `<div class="hosp"><span class="row" style="flex-wrap:nowrap">${p ? `<img ${pic(p.id, 1)} alt="" width="52" height="52" style="object-fit:cover;border-radius:8px;flex:none">` : ''}<span style="min-width:0"><b>${esc(f.name)}</b><span class="sub">${p ? '이 기기에도 있어요' : '드라이브에만 있어요'}${f.size ? `, ${(f.size / 1048576).toFixed(1)}MB` : ''}</span></span></span><button type="button" class="btn danger" data-act="drivedel" data-id="${esc(f.id)}">빼기</button></div>`; }).join('')}</div>` : '<p class="empty">아직 올린 사진이 없어요.</p>'}<p class="sub">빼기를 누르면 구글 드라이브 휴지통으로 옮겨요. 이 기기의 사진은 그대로예요.</p></form>`);
 }
 async function pull() {
@@ -836,6 +852,8 @@ async function moreActs(act, b, id) {
   if (act === 'kid') { if (id !== db.cur) { await save(x => { x.cur = id; }); syncAI(); } }
   else if (act === 'morekid') { const f = b.form, i = Math.max(...kidRows(f)) + 1, v = readKid(f, 0); $('#kidrows').insertAdjacentHTML('beforeend', kidFields(i, { birth: v.birth, born: v.born })); startPreview(f); }
   else if (act === 'dropkid') b.closest('[data-kidbox]').remove();
+  else if (act === 'evdone') await save(x => { const e = x.events.find(y => y.id === id); if (e) e.done = !e.done; });
+  else if (act === 'evdel') { if (d.sure !== '1') { d.sure = '1'; b.textContent = '지우기'; } else if (await save(x => { x.events = x.events.filter(y => y.id !== id); })) toast('일정을 지웠어요'); }
   else if (act === 'kidedit') kidDlg(id);
   else if (act === 'addkid') addKidDlg();
   else if (act === 'grow') { tab = 'diary'; rec = 'grow'; render(); scrollTo(0, 0); }
@@ -945,6 +963,7 @@ document.addEventListener('submit', async ev => {
     }
   }
   if (kind === 'none') return;
+  if (kind === 'quick') { if (!v.title.trim()) return toast('일정을 적어 주세요'); if (await save(d => d.events.push({ id: uid(), title: v.title.trim(), date: sel, time: '', memo: '', kid: '' }))) toast('일정을 추가했어요'); return; }
   if (kind === 'crop') { const ok = f.querySelector('[value=ok]'); ok.disabled = true; await saveFace(v.date); ok.disabled = false; return; }
   if (kind === 'video') return makeVideo(Number(v.sec));
   if (kind === 'region') { ok = await save(d => { d.sido = v.sido; d.sigungu = v.sigungu || ''; }); if (ok) { tab = 'money'; scrollTo(0, 0); } }
