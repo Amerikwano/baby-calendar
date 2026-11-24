@@ -175,9 +175,9 @@
     items.filter(it => !it.done).forEach(it => {
       const desc = `권장 시기: ${it.age} (${it.start} ~ ${it.end})\n${it.note || ''}`.trim();
       const date = alertDate(it, today);
-      event(it.id, date, `${name} ${it.title}${it.appt ? ' (예약)' : ''}`, desc, days);
+      event(it.uid || it.id, date, `${it.who || name} ${it.title}${it.appt ? ' (예약)' : ''}`, desc, days);
       const lc = lastChance(it);
-      if (lc && lc > date && lc > today && !it.appt) event(it.id + '-last', lc, `${name} ${it.title} 마감 임박 (${it.hard}까지)`, desc, [0]);
+      if (lc && lc > date && lc > today && !it.appt) event((it.uid || it.id) + '-last', lc, `${it.who || name} ${it.title} 마감 임박 (${it.hard}까지)`, desc, [0]);
     });
     (cfg.events || []).forEach(e => {
       count++;

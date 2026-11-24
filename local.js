@@ -52,6 +52,8 @@
     if (thumb) urls.set(k, u); return u;
   }
 
+  async function photoBlob(id) { const r = await getPhoto(id); return r ? new Blob([r.data], { type: r.type }) : null; }
+
   /* ── zip (압축 없이 묶기만) ── */
   const T = new Uint32Array(256).map((_, n) => { for (let k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ (n >>> 1) : n >>> 1; return n >>> 0; });
   function crc32(u8) { let c = 0xffffffff; for (let i = 0; i < u8.length; i++) c = T[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
@@ -86,10 +88,10 @@
   }
   async function backup() {
     const s = await getState(), files = [{ name: 'state.json', data: new TextEncoder().encode(JSON.stringify(s.data)) }];
-    for (const p of (s.data && s.data.photos) || []) {
+    for (const p of s.data ? (s.data.photos || []).concat((s.data.faces || []).map(f => Object.assign({ face: 1 }, f))) : []) {
       const r = await getPhoto(p.id); if (!r) continue;
       const ext = (r.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
-      files.push({ name: `photos/${p.date}_${p.id}.${ext}`, data: new Uint8Array(r.data) });
+      files.push({ name: `photos/${p.face ? '얼굴_' : ''}${p.date}_${p.id}.${ext}`, data: new Uint8Array(r.data) });
       if (r.thumb) files.push({ name: `thumbs/${p.id}.jpg`, data: new Uint8Array(r.thumb) });
     }
     return zip(files);
@@ -115,6 +117,6 @@
     });
     urls.clear();
   }
-  const out = { api, photoUrl, backup, restore, zip, unzip };
+  const out = { api, photoUrl, photoBlob, backup, restore, zip, unzip };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Local = out;
 })(this);
