@@ -21,6 +21,7 @@ html:has(dialog[open]){overflow:hidden}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--font);word-break:keep-all;overflow-wrap:anywhere}
 button,input,select,textarea{font:inherit;color:inherit}
+[tabindex="-1"]:focus{outline:none}
 button{cursor:pointer;border:0;background:none;padding:0}
 :focus-visible{outline:3px solid var(--screen);outline-offset:2px}
 .wrap{max-width:760px;margin:0 auto;padding-block:16px 110px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:22px}
@@ -120,7 +121,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
 <script src="drive.js"></script>
 <script>
 'use strict';
-const APP_VERSION = '0.5.1';
+const APP_VERSION = '0.5.2';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -481,7 +482,13 @@ function render() {
   document.querySelectorAll('#main details').forEach(x => { if (opened.includes(x.dataset.key || 'all')) x.open = true; });
 }
 const dlg = $('#dlg');
-function openDlg(html, wide) { if (dlg.open) dlg.close(); dlg.className = wide ? 'wide' : ''; dlg.innerHTML = html; dlg.showModal(); }
+function openDlg(html, wide) { if (dlg.open) dlg.close(); dlg.className = wide ? 'wide' : ''; dlg.innerHTML = html; showDlg(dlg); }
+// 창을 열면 첫 입력칸이 저절로 선택돼 아이폰에서 날짜 창이나 자판이 바로 뜬다. 대신 제목에 초점을 둔다.
+function showDlg(d) {
+  const h = d.querySelector('h2') || d;
+  h.tabIndex = -1; h.setAttribute('autofocus', ''); d.showModal();
+  if (document.activeElement !== h) h.focus({ preventScroll: true });
+}
 const acts = (del) => `<div class="row between"><div class="row"><button class="btn main" value="ok">저장</button><button type="button" class="btn" data-act="close">닫기</button></div>${del ? `<button type="button" class="btn danger" data-act="del" data-k="${del[0]}" data-id="${del[1]}">${del[2]}</button>` : ''}</div>`;
 
 const whoField = v => many() ? `<label class="f">누구의 기록인가요<select name="kid">${db.kids.map(k => `<option value="${k.id}" ${v === k.id ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}<option value="" ${v === '' ? 'selected' : ''}>모두</option></select></label>` : '';
@@ -726,7 +733,7 @@ async function showMap(i) {
   const card = x => `<b>${esc(x[0])}</b><span class="sub">${esc(x[1])}</span><div class="row">${/^[\d-]{7,}$/.test(x[2]) ? `<a class="btn" href="tel:${x[2]}">전화 ${x[2]}</a>` : ''}<a class="btn" target="_blank" rel="noopener noreferrer" href="https://map.kakao.com/link/to/${encodeURIComponent(x[0].replace(/,/g, ' '))},${x[3]},${x[4]}">카카오맵 길찾기</a></div>`;
   if (mapDlg.open) mapDlg.close();
   mapDlg.innerHTML = `<form data-form="none"><div class="row between"><h2>병원 위치</h2><button type="button" class="btn" data-act="close">닫기</button></div><div id="map"></div><div class="stack" id="mapcard">${card(r)}</div></form>`;
-  mapDlg.showModal();
+  showDlg(mapDlg);
   try { await loadLeaflet(); } catch { if ($('#map')) $('#map').innerHTML = '<p class="empty">지도를 불러오지 못했어요. 아래 카카오맵으로 열어 주세요.</p>'; return; }
   if (!$('#map') || !mapDlg.open) return;
   map = L.map('map', { attributionControl: true }).setView([r[3], r[4]], 16);
