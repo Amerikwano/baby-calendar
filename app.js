@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.7.4';
+const APP_VERSION = '0.7.5';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -119,6 +119,14 @@ const evRow = e => `<button class="item t-mine" data-act="event" data-id="${e.id
 // 아이 한 명을 적는 칸. 첫 화면과 아이 추가 창에서 같이 쓴다.
 // 성별 고르기. 태어난 아이는 남자·여자, 출산 예정이면 모름까지 고른다.
 const sexOpts = (n, sex, born) => `<div class="f sexf" data-sexbox><span>성별</span><div class="opts">${[['boy', '남자'], ['girl', '여자'], ['', '모름']].map(([v, t]) => `<label ${v ? '' : `data-unk ${born ? 'hidden' : ''}`}><input type="radio" name="${n}" value="${v}" ${v ? (sex === v ? 'checked' : '') : !sex && !born ? 'checked' : ''}><span class="${v}">${t}</span></label>`).join('')}</div></div>`;
+// 성별이 비었으면 그 칸으로 데려가 무엇이 빠졌는지 보여 준다.
+function flagSex(box) {
+  if (!box) return;
+  if (!box.querySelector('.errm')) box.insertAdjacentHTML('beforeend', '<p class="errm" role="alert">남자나 여자 중에 골라 주세요</p>');
+  box.classList.add('err'); box.scrollIntoView({ block: 'center' });
+}
+document.addEventListener('change', ev => { const b = ev.target.closest && ev.target.closest('[data-sexbox]'); if (b) { b.classList.remove('err'); const m = b.querySelector('.errm'); if (m) m.remove(); } });
+const sexBoxOf = (f, name) => { const i = f.querySelector(`[name="${name}"]`); return i && i.closest('[data-sexbox]'); };
 // 태어났는지가 바뀌면 '모름'을 보이거나 감춘다.
 function syncSex(box, born) {
   const u = box.querySelector('[data-unk]'); if (!u) return;
@@ -159,6 +167,7 @@ function readKids(f) {
   const rows = kidRows(f), out = [];
   for (const i of rows) {
     const v = readKid(f, i), bad = Family.sexProblem(v.sex, v.born) || dateProblem(v.birth, v.born);
+    if (Family.sexProblem(v.sex, v.born)) flagSex(sexBoxOf(f, 'sex' + i));
     if (bad) return { bad: rows.length > 1 ? `${out.length + 1}번째 아이: ${bad}` : bad };
     out.push(Object.assign(v, { row: i }));
   }
@@ -223,6 +232,7 @@ new MutationObserver(() => document.querySelectorAll('img[data-pic]').forEach(i 
   Local.photoUrl(id, Boolean(t)).then(u => { if (!u) return; i.src = u; if (!t) i.onload = () => URL.revokeObjectURL(u); }).catch(() => {});
 })).observe(document.body, { childList: true, subtree: true });
 // 빈 날짜·시각 칸 표시
+if (/Android/.test(navigator.userAgent)) document.documentElement.classList.add('android');
 const markBlank = () => document.querySelectorAll('input[type=date],input[type=time]').forEach(i => i.classList.toggle('blank', !i.value));
 new MutationObserver(markBlank).observe(document.body, { childList: true, subtree: true });
 ['input', 'change', 'focusout'].forEach(n => document.addEventListener(n, markBlank));
@@ -868,10 +878,12 @@ document.addEventListener('submit', async ev => {
   if (kind === 'rename') { if (!v.name.trim()) return toast('이름을 적어 주세요'); ok = await save(d => { d.kids.find(k => k.id === K().id).name = v.name.trim(); }); }
   if (kind === 'born') {
     const tw = new FormData(f).getAll('twin');
-    if (Family.sexProblem(v.sex, true) || tw.some(x => Family.sexProblem(v['ts_' + x], true))) return toast('성별을 골라 주세요.');
+    const miss = Family.sexProblem(v.sex, true) ? 'sex' : tw.map(x => 'ts_' + x).find(n => Family.sexProblem(v[n], true));
+    if (miss) { flagSex(sexBoxOf(f, miss)); return toast('성별을 골라 주세요.'); }
     ok = await save(d => { Object.assign(d.kids.find(k => k.id === K().id), { birth: v.birth, time: v.time, born: true, sex: v.sex, name: v.name.trim() || K().name }); tw.forEach(x => { const k = d.kids.find(y => y.id === x); Object.assign(k, { birth: v.birth, time: v['tt_' + x], born: true, sex: v['ts_' + x], name: v['tn_' + x].trim() || k.name }); }); Family.rank(d.kids); });
   }
   if (kind === 'kid') {
+    if (Family.sexProblem(v.sex, Boolean(v.born))) flagSex(sexBoxOf(f, 'sex'));
     const bad = Family.sexProblem(v.sex, Boolean(v.born)) || dateProblem(v.birth, Boolean(v.born)); if (bad) return toast(bad);
     ok = await save(d => { const k = d.kids.find(x => x.id === id); Object.assign(k, { name: v.name.trim() || k.name, birth: v.birth, time: v.time, sex: v.sex || '', born: Boolean(v.born), order: Number(v.order), options: { combo: v.combo, rota: v.rota, je: v.je } }); });
   }

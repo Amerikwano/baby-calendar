@@ -154,3 +154,6 @@ body:not(.on) .wrap{padding-block:0}
 main.stack>.stack:empty{display:none}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .sexf{display:grid;gap:5px;font-weight:600;font-size:14.5px}.opts input:checked+.boy{background:#e6f1f8;border-color:#6ea9cf}.opts input:checked+.girl{background:#fbe9ef;border-color:#e092ab}
+/* 안드로이드도 빈 날짜·시각 칸에 글자를 보여 주지 않는다 */
+html.android input.blank{position:relative}html.android input.blank::before{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--sub);content:'날짜 선택';pointer-events:none}html.android input.blank[type=time]::before{content:'시각 선택'}html.android input.blank::-webkit-datetime-edit{opacity:0}
+.sexf.err .opts span{border-color:#df6f69;background:var(--stamp-soft)}.errm{color:var(--stamp);font-weight:700}
