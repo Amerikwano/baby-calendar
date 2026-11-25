@@ -27,6 +27,8 @@
     shield: '<path d="M12 3.5l7 2.5v5.5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2.5 2.5L15.5 10"/>',
     gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.2 2.2M16.2 16.2l2.2 2.2M18.4 5.6l-2.2 2.2M7.8 16.2l-2.2 2.2"/>',
     cam: '<rect x="3" y="7" width="18" height="13" rx="3"/><path d="M8.5 7l1.5-3h4l1.5 3"/><circle cx="12" cy="13.5" r="3.5"/>',
+    video: '<rect x="3" y="6.5" width="12" height="11" rx="3"/><path d="M15 11l5.5-3v8L15 13z"/>', vplay: '<path d="M8 5.5l11 6.5-11 6.5z"/>', vpause: '<path d="M8.5 5.5v13M15.5 5.5v13" stroke-width="2.6"/>',
+    dots: '<path d="M5.5 12h.01M12 12h.01M18.5 12h.01" stroke-width="3.4"/>', x: '<path d="M6 6l12 12M18 6L6 18" stroke-width="2.2"/>',
     plus: '<path d="M12 5v14M5 12h14"/>', down: '<path d="M6 9.5l6 6 6-6"/>', right: '<path d="M9.5 6l6 6-6 6"/>', left: '<path d="M14.5 6l-6 6 6 6"/>',
     grid: '<rect x="4" y="4" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="2"/>',
     heart: '<path d="M12 20c-5-3.5-8.5-7-8.5-10.5a4.6 4.6 0 0 1 8.5-2.4 4.6 4.6 0 0 1 8.5 2.4C20.5 13 17 16.5 12 20z"/>',

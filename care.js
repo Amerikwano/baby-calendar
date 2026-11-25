@@ -61,7 +61,7 @@ function topBar() {
 function navBar() {
   const main = { home: 'home', cal: 'cal', diary: 'diary', album: 'album', grow: 'album' }[tab] || 'more';
   const b = (t, n, i) => `<button data-tab="${t}" ${main === t ? 'aria-current="page"' : ''}>${i}<span>${n}</span></button>`;
-  return `<div>${b('home', '홈', `<span class="navface">${face(K())}</span>`)}${b('cal', '달력', icon('cal'))}${b('diary', '육아일기', icon('diary'))}${b('album', '아기앨범', icon('album'))}${b('more', '더보기', icon('more'))}</div>`;
+  return `<div>${b('home', '홈', `<span class="navface">${face(K())}</span>`)}${b('cal', '달력', icon('cal'))}${b('diary', '육아일기', icon('diary'))}${b('album', '앨범', icon('album'))}${b('more', '더보기', icon('more'))}</div>`;
 }
 const typesFor = k => k.born ? Care.BORN : Care.WAIT;
 const typeBtn = (t, act) => `<button type="button" data-act="${act}" data-t="${t}" style="--c:${Care.TYPES[t].c}">${icon(t)}<span>${Care.TYPES[t].name}</span></button>`;

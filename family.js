@@ -25,7 +25,7 @@
     d.kids = d.kids.filter(k => k.id !== id);
     if (d.cur === id) d.cur = d.kids[0].id;
     ['events', 'diary', 'photos'].forEach(n => d[n].forEach(x => { if (x.kid === id) x.kid = ''; }));
-    d.faces.filter(f => f.kid === id).forEach(f => d.photos.push(Object.assign({}, f, { kid: '', caption: '' })));
+    d.faces.filter(f => f.kid === id).forEach(f => d.photos.push(Object.assign({}, f, { kid: '', caption: f.caption || '' })));
     d.faces = d.faces.filter(f => f.kid !== id);
     d.logs = d.logs.filter(l => l.kid !== id);
     return true;

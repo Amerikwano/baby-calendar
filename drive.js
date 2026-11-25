@@ -69,8 +69,16 @@
     const b = 'bn' + Array.from(crypto.getRandomValues(new Uint8Array(12)), x => x.toString(16).padStart(2, '0')).join('');
     return { type: 'multipart/related; boundary=' + b, body: new Blob([`--${b}\r\ncontent-type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${b}\r\ncontent-type: ${blob.type || 'image/jpeg'}\r\n\r\n`, blob, `\r\n--${b}--`]) };
   }
+  // 5MB가 넘으면(동영상 등) 이어 올리기 방식으로 보낸다.
+  async function uploadBig(blob, meta) {
+    const s = await call('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id', { method: 'POST', headers: { 'content-type': 'application/json; charset=UTF-8', 'x-upload-content-type': blob.type || 'application/octet-stream', 'x-upload-content-length': String(blob.size) }, body: JSON.stringify(meta) });
+    const to = s.headers.get('location'); if (!to || !to.startsWith('https://www.googleapis.com/')) throw new Error('구글 드라이브에서 올릴 주소를 받지 못했어요.');
+    return (await call(to, { method: 'PUT', headers: { 'content-type': blob.type || 'application/octet-stream' }, body: blob })).json();
+  }
   async function upload(blob, name, props) {
-    const m = multipart({ name, parents: [await ensureFolder()], appProperties: Object.assign({ bn: 'photo' }, props) }, blob);
+    const meta = { name, parents: [await ensureFolder()], appProperties: Object.assign({ bn: 'photo' }, props) };
+    if (blob.size > 5 * 1048576) return uploadBig(blob, meta);
+    const m = multipart(meta, blob);
     return (await call(UP, { method: 'POST', headers: { 'content-type': m.type }, body: m.body })).json();
   }
   const download = id => call(`/files/${encodeURIComponent(id)}?alt=media`).then(r => r.blob());

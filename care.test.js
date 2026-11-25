@@ -80,3 +80,22 @@ test('맡아 두는 곳이 고장 나도 로그인은 된다', async () => {
   assert.equal((await handle(new Request(`https://a.test/login/kakao?state=${S32}&c=${'a'.repeat(64)}`), env, get, bad)).status, 302);
   assert.match((await handle(new Request(`https://a.test/callback/kakao?code=C&state=${S32}`), env, get, bad)).headers.get('location'), /id=[0-9a-f]{32}/);
 });
+test('동영상: 형식, 길이, 찍은 시각', async () => {
+  const M = require('./media.js');
+  assert.deepEqual([M.isVideo({ type: 'video/quicktime' }), M.isVideo({ type: '', name: 'a.MOV' }), M.isVideo({ type: 'image/jpeg' }), M.ext('video/quicktime'), M.ext('video/webm;codecs=vp9'), M.clock(75.4)], [true, true, false, 'mov', 'webm', '1:15']);
+  const box = (n, ...p) => { const b = Buffer.concat(p), h = Buffer.alloc(8); h.writeUInt32BE(b.length + 8); h.write(n, 4); return Buffer.concat([h, b]); }, hd = Buffer.alloc(20); hd.writeUInt32BE(Date.UTC(2026, 10, 3, 1) / 1000 + 2082844800, 4);
+  const f = new Blob([box('ftyp', Buffer.alloc(8)), box('mdat', Buffer.alloc(5000)), box('moov', box('free', Buffer.alloc(4)), box('mvhd', hd))]);
+  assert.equal((await M.madeAt(f)).toISOString(), '2026-11-03T01:00:00.000Z'); assert.equal(await M.madeAt(new Blob(['x'])), null);
+});
+test('백업 zip에 동영상이 그대로 들어가고 손상을 찾는다', async () => {
+  const { zip, unzip, blobCrc } = require('./local.js'), data = new Uint8Array(300000).map((_, i) => i * 7), blob = new Blob([data]);
+  const z = zip([{ name: 'state.json', data: new TextEncoder().encode('{}') }, { name: 'photos/2026-11-03_' + 'a'.repeat(24) + '.mov', blob, crc: await blobCrc(blob) }]), r = await unzip(z);
+  assert.ok(r[1].blob); assert.deepEqual(new Uint8Array(await r[1].blob.arrayBuffer()), data);
+  const bad = new Uint8Array(await z.arrayBuffer()); bad[90000] ^= 1; await assert.rejects(unzip(new Blob([bad])), /손상/);
+});
+test('드라이브: 큰 파일은 이어 올리기로 보낸다', async () => {
+  const D = require('./drive.js'), old = { f: globalThis.fetch, s: globalThis.sessionStorage }, calls = [];
+  globalThis.sessionStorage = { getItem: () => JSON.stringify({ token: 'T', until: Date.now() + 1e6 }), setItem() { }, removeItem() { } };
+  globalThis.fetch = async (u, o = {}) => { calls.push([o.method || 'GET', String(u).slice(0, 90)]); if (String(u).includes('uploadType=resumable')) return new Response('', { headers: { location: 'https://www.googleapis.com/upload/x' } }); return new Response(JSON.stringify({ files: [{ id: 'F' }], id: 'I' })); };
+  try { assert.equal((await D.upload(new Blob([new Uint8Array(6 * 1048576)], { type: 'video/mp4' }), 'a.mp4', { pid: '1' })).id, 'I'); assert.deepEqual(calls.slice(-2).map(c => c[0]), ['POST', 'PUT']); calls.length = 0; await D.upload(new Blob(['x']), 'b.jpg', {}); assert.ok(calls.at(-1)[1].includes('multipart')); } finally { globalThis.fetch = old.f; globalThis.sessionStorage = old.s; }
+});

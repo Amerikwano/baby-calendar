@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.9.2';
+const APP_VERSION = '0.9.3';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -236,7 +236,7 @@ if (/Android/.test(navigator.userAgent)) document.documentElement.classList.add(
 const markBlank = () => document.querySelectorAll('input[type=date],input[type=time]').forEach(i => i.classList.toggle('blank', !i.value));
 new MutationObserver(markBlank).observe(document.body, { childList: true, subtree: true });
 ['input', 'change', 'focusout'].forEach(n => document.addEventListener(n, markBlank));
-const thumb = p => `<button type="button" data-act="photo" data-id="${p.id}" aria-label="${kd(p.date)} 사진"><img ${pic(p.id, 1)} alt="${esc(p.caption || kd(p.date) + ' 사진')}"></button>`;
+const thumb = p => `<button type="button" data-act="photo" data-id="${p.id}" aria-label="${kd(p.date)} ${p.type ? '동영상' : '사진'}"><img ${pic(p.id, 1)} alt="${esc(p.caption || kd(p.date) + ' 사진')}"></button>`;
 function records() {
   const ds = Family.forKid(db.diary, K().id).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
   return (ds.length ? ds.map(x => `<article class="paper"><div class="row between"><div><h2>${kd(x.date)}</h2><span class="sub">${stageOf(x.date)}</span></div>${many() && !x.kid ? tag('') : ''}<button class="btn" data-act="write" data-id="${x.id}">고치기</button></div>${x.body ? `<p class="body">${esc(x.body)}</p>` : ''}${x.photos.length ? `<div class="grid">${x.photos.map(id => db.photos.find(p => p.id === id)).filter(Boolean).map(thumb).join('')}</div>` : ''}</article>`).join('') : `<div class="empty">${icon('diary', 'xl')}<p>아직 쓴 일기가 없어요.<br>${K().born ? '오늘 있었던 일을' : '기다리는 마음을'} 적어 보세요.</p></div>`) + `<button class="fab" data-act="write">${icon('plus')}일기 쓰기</button>`;
@@ -362,9 +362,10 @@ function render() {
   const q = $('#main .pill'), qx = q ? q.scrollLeft : 0, mt = $('#main .mtabs'), mx = mt ? mt.scrollLeft : 0;
   const opened = [...document.querySelectorAll('#main details[open]')].map(x => x.dataset.key || 'all');
   $('#main').className = 'stack tab-' + tab;
-  $('#main').innerHTML = { home, cal: calendar, diary: records, album, more, tips, money, vax, grow: () => backRow('성장 앨범', 'album') + growth() }[tab]();
+  $('#main').innerHTML = { home, cal: calendar, diary: records, album, more, tips, money, vax, grow: () => `<div class="albtop">${albSeg()}</div>` + growth() }[tab]();
   document.querySelectorAll('#main details').forEach(x => { if (opened.includes(x.dataset.key || 'all')) x.open = true; });
   if ($('#main .pill')) $('#main .pill').scrollLeft = qx; if ($('#main .mtabs')) $('#main .mtabs').scrollLeft = mx;
+  if (vw) viewRefresh();
 }
 const dlg = $('#dlg');
 function openDlg(html, wide) { if (dlg.open) dlg.close(); dlg.className = wide ? 'wide' : ''; dlg.innerHTML = html; showDlg(dlg); }
@@ -397,7 +398,7 @@ function writeDlg(id) {
 }
 function photoDlg(id) {
   const p = db.photos.find(x => x.id === id); if (!p) return;
-  openDlg(`<form data-form="photo" data-id="${id}"><h2>사진</h2><img ${pic(id)} alt="${esc(p.caption || kd(p.date) + ' 사진')}"><div class="two"><label class="f">날짜<input type="date" name="date" required value="${p.date}"></label><label class="f">설명<input name="caption" maxlength="200" value="${esc(p.caption)}"></label></div>${whoField(p.kid)}<p class="sub">${stageOf(p.date, kidOf(p.kid))}</p><div class="row"><button type="button" class="btn favb" data-act="fav" data-id="${id}" aria-pressed="${Boolean(p.fav)}">${icon('heart', p.fav ? 'fill' : '')}즐겨찾기</button><button type="button" class="btn" data-act="sharephoto" data-id="${id}">내보내기</button></div>${acts(['photo', id, '사진 지우기'])}</form>`, true);
+  openDlg(`<form data-form="photo" data-id="${id}"><h2>${p.type ? '동영상 정보' : '사진 정보'}</h2><label class="f">날짜<input type="date" name="date" required value="${p.date}"></label><label class="f">설명<textarea name="caption" class="cap1" maxlength="1000" placeholder="이 사진의 이야기를 적어 보세요">${esc(p.caption)}</textarea></label>${whoField(p.kid)}<p class="sub">${stageOf(p.date, kidOf(p.kid))}</p><div class="row"><button type="button" class="btn favb" data-act="fav" data-id="${id}" aria-pressed="${Boolean(p.fav)}">${icon('heart', p.fav ? 'fill' : '')}즐겨찾기</button><button type="button" class="btn" data-act="sharephoto" data-id="${id}">내보내기</button></div>${acts(['photo', id, p.type ? '동영상 지우기' : '사진 지우기'])}</form>`);
 }
 function settingsDlg() {
   openDlg(`<form data-form="settings"><h2>설정</h2>
@@ -444,21 +445,15 @@ async function exifDate(file) {
   } catch { } return null;
 }
 async function upload(files, fixedDate) {
-  const added = [], bad = [];
+  const added = [], bad = []; if (files.some(Media.isVideo)) toast('동영상을 저장하는 중이에요. 화면을 켜 두세요.');
   for (const f of files) {
     try {
-      const bmp = await createImageBitmap(f);
-      const r = await api('/api/photos', { method: 'POST', body: f });
-      const k = Math.min(1, 480 / Math.max(bmp.width, bmp.height)), c = document.createElement('canvas');
-      c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
-      const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(bmp, 0, 0, c.width, c.height);
-      const b = await new Promise(x => c.toBlob(x, 'image/jpeg', .82));
-      if (b) await api(`/photos/${r.id}/thumb`, { method: 'PUT', body: b }).catch(() => { });
-      added.push({ id: r.id, date: fixedDate || await exifDate(f) || new Date(f.lastModified).toLocaleDateString('sv-SE'), caption: '', kid: K().id });
-    } catch (e) { bad.push(f.name + (e.status ? ': ' + e.message : ': 열 수 없는 사진이에요')); }
+      const m = await storeMedia(f), made = m.type ? await Media.madeAt(f) : null;
+      added.push(Object.assign(m, { date: fixedDate || (made ? made.toLocaleDateString('sv-SE') : await exifDate(f)) || new Date(f.lastModified || Date.now()).toLocaleDateString('sv-SE'), caption: '', kid: K().id }));
+    } catch (e) { bad.push((f.name || '파일') + (e.status ? ': ' + e.message : ': 열 수 없는 파일이에요')); }
   }
   if (added.length && await save(d => d.photos.push(...added))) autoUpload();
-  if (bad.length) toast(bad[0] + (bad.length > 1 ? ` 외 ${bad.length - 1}장` : '')); else if (added.length) toast(`사진 ${added.length}장을 넣었어요`);
+  if (bad.length) toast(bad[0] + (bad.length > 1 ? ` 외 ${bad.length - 1}장` : '')); else if (added.length) { const v = added.filter(x => x.type).length, n = added.length - v; toast([n ? `사진 ${n}장` : '', v ? `동영상 ${v}개` : ''].filter(Boolean).join(', ') + (v ? '를' : '을') + ' 넣었어요'); }
   return added;
 }
 
@@ -510,7 +505,7 @@ function growPlay() {
 }
 // 찍을지 고를지 묻는 창
 const shootBtns = (cam, pick) => `<div class="picks two2"><button type="button" ${cam}>${icon('cam', 'xl')}<b>사진 찍기</b></button><button type="button" ${pick}>${icon('album', 'xl')}<b>앨범에서 고르기</b></button></div>`;
-const addDlg = () => openDlg(`<form data-form="none"><h2>사진 추가</h2>${shootBtns('data-act="albcam"', 'data-act="albpick"')}<p class="sub">여기서 찍은 사진은 아기앨범에 오늘 날짜로 들어가요. 휴대폰 사진첩에도 두려면 사진을 열고 내보내기를 눌러 주세요.</p></form>`);
+const addDlg = () => openDlg(`<form data-form="none"><h2>사진·동영상 추가</h2><div class="picks two2 three"><button type="button" data-act="albcam">${icon('cam', 'xl')}<b>사진 찍기</b></button><button type="button" data-act="albvid">${icon('video', 'xl')}<b>동영상 찍기</b></button><button type="button" data-act="albpick">${icon('album', 'xl')}<b>앨범에서 고르기</b></button></div><p class="sub">여기서 찍은 것은 아기 앨범에 오늘 날짜로 들어가요. 휴대폰 사진첩에도 두려면 열어서 내보내기를 눌러 주세요. 동영상은 하나에 200MB까지 넣을 수 있어요.</p></form>`);
 const faceAsk = d => openDlg(`<form data-form="none"><h2>${esc(K().name)} ${dayNo(K(), d)}일차</h2>${shootBtns(`data-act="faceadd" data-d="${d}" data-cam="1"`, `data-act="faceadd" data-d="${d}"`)}</form>`);
 function pickFace(date, cam) {
   pickFiles({ capture: cam ? 'environment' : '' }, async ([f]) => cropDlg(f, date || await exifDate(f) || new Date(f.lastModified).toLocaleDateString('sv-SE'), !date));
@@ -548,13 +543,13 @@ async function saveFace(date) {
   const th = await new Promise(x => s.toBlob(x, 'image/jpeg', .82));
   let r; try { r = await api('/api/photos', { method: 'POST', body: b }); await api(`/photos/${r.id}/thumb`, { method: 'PUT', body: th }).catch(() => { }); } catch (e) { return toast(e.message); }
   const old = db.faces.filter(f => f.kid === k.id && f.date === date);
-  if (!await save(d => { d.faces = d.faces.filter(f => !(f.kid === k.id && f.date === date)); d.faces.push({ id: r.id, date, kid: k.id }); })) { await api('/api/photos/' + r.id, { method: 'DELETE' }).catch(() => { }); return; }
+  if (!await save(d => { d.faces = d.faces.filter(f => !(f.kid === k.id && f.date === date)); d.faces.push({ id: r.id, date, kid: k.id, caption: old[0] && old[0].caption || '' }); })) { await api('/api/photos/' + r.id, { method: 'DELETE' }).catch(() => { }); return; }
   old.forEach(f => api('/api/photos/' + f.id, { method: 'DELETE' }).catch(() => { }));
   dlg.close(); toast(`${dayNo(k, date)}일차 사진을 저장했어요`); autoUpload();
 }
 function faceDlg(id) {
   const f = db.faces.find(x => x.id === id); if (!f) return; const k = kidOf(f.kid);
-  openDlg(`<form data-form="face" data-id="${id}"><h2>${esc(k.name)} ${dayNo(k, f.date)}일차</h2><img ${pic(id)} alt="${dayNo(k, f.date)}일차 얼굴 사진"><label class="f">날짜<input type="date" name="date" required min="${k.birth}" max="${today()}" value="${f.date}"></label><div class="row"><button type="button" class="btn" data-act="faceask" data-d="${f.date}">사진 바꾸기</button><button type="button" class="btn" data-act="sharephoto" data-id="${id}">내보내기</button></div>${acts(['face', id, '사진 지우기'])}</form>`, true);
+  openDlg(`<form data-form="face" data-id="${id}"><h2>${esc(k.name)} ${dayNo(k, f.date)}일차</h2><label class="f">날짜<input type="date" name="date" required min="${k.birth}" max="${today()}" value="${f.date}"></label><label class="f">설명<textarea name="caption" class="cap1" maxlength="1000" placeholder="이 사진의 이야기를 적어 보세요">${esc(f.caption || '')}</textarea></label><div class="row"><button type="button" class="btn" data-act="faceask" data-d="${f.date}">사진 바꾸기</button><button type="button" class="btn" data-act="sharephoto" data-id="${id}">내보내기</button></div>${acts(['face', id, '사진 지우기'])}</form>`);
 }
 const photoBlob = id => local ? Local.photoBlob(id) : fetch('photos/' + id).then(r => r.ok ? r.blob() : null);
 
@@ -705,7 +700,7 @@ async function afterLogin(r) {
   try { await Drive.me(); toast('로그인했어요'); await syncSent(); render(); const n = waiting().length; openDlg(`<form data-form="none"><h2>${n ? `사진 ${n}장을 드라이브에 올릴까요?` : '구글 드라이브를 쓸 준비가 됐어요'}</h2><p class="sub">${esc(Drive.account().email)}의 드라이브에 '우리 아기 수첩' 폴더를 만들어 담아요. 나만 볼 수 있어요.</p>${autoBox()}<div class="row">${n ? '<button type="button" class="btn main" data-act="upload">올리기</button>' : ''}${n ? '<button type="button" class="btn" data-act="close">나중에</button>' : ''}</div></form>`); } catch (e) { toast(e.message); render(); }
 }
 async function syncSent() { const files = await Drive.list(); sent = new Set(files.map(f => f.appProperties && f.appProperties.pid).filter(Boolean)); keepSent(); return files; }
-const extOf = b => ({ 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'image/heic': 'heic', 'image/heif': 'heif' }[b.type] || 'jpg');
+const extOf = b => Media.ext(b.type);
 async function uploadAll() {
   if (job.on) return;
   if (!Drive.token()) return Drive.login(GOOGLE_ID);
@@ -747,11 +742,9 @@ async function pull() {
   const here = new Set(allPhotos().map(pid)), list = driveFiles.filter(f => !here.has(f.appProperties.pid)); let n = 0;
   for (const f of list) {
     try {
-      const a = f.appProperties, b = await Drive.download(f.id), bmp = await createImageBitmap(b), r = await api('/api/photos', { method: 'POST', body: b });
-      const z = Math.min(1, 480 / Math.max(bmp.width, bmp.height)), c = document.createElement('canvas'); c.width = Math.max(1, Math.round(bmp.width * z)); c.height = Math.max(1, Math.round(bmp.height * z)); c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
-      const th = await new Promise(x => c.toBlob(x, 'image/jpeg', .82)); if (th) await api(`/photos/${r.id}/thumb`, { method: 'PUT', body: th }).catch(() => { });
+      const a = f.appProperties, b = await Drive.download(f.id), r = await storeMedia(b);
       const date = isDate(a.date) ? a.date : today(), kid = db.kids.some(k => k.id === a.kid) ? a.kid : '', face = a.kind === 'face' && kid && !db.faces.some(x => x.kid === kid && x.date === date);
-      if (await save(d => face ? d.faces.push({ id: r.id, date, kid, drive: a.pid }) : d.photos.push({ id: r.id, date, caption: '', kid, drive: a.pid }))) n++;
+      if (await save(d => face ? d.faces.push({ id: r.id, date, kid, drive: a.pid }) : d.photos.push(Object.assign({}, r, { date, caption: '', kid, drive: a.pid })))) n++;
       const s = dlg.querySelector('[data-act=pull]'); if (s) s.textContent = `가져오는 중 ${n}/${list.length}`;
     } catch (e) { if (e.login) { toast(e.message); break; } }
   }
@@ -801,9 +794,13 @@ async function moreActs(act, b, id) {
   else if (act === 'sharelink') shareLink();
   else if (act === 'faceask') faceAsk(d.d);
   else if (act === 'faceadd') pickFace(d.d || '', Boolean(d.cam));
-  else if (act === 'face') faceDlg(id);
+  else if (act === 'face') { const f = db.faces.find(x => x.id === id); if (f) viewPhoto('face', id, () => facesOf(kidOf(f.kid)).reverse()); }
+  else if (act === 'vmenu') { const p = vItem(), pl = vVideo(); if (pl) pl.pause(); if (p) (vw.kind === 'face' ? faceDlg : photoDlg)(p.id); }
+  else if (act === 'vtip') vTip($('#vtip').hidden);
+  else if (act === 'vgo') vGo(Number(d.n));
+  else if (act === 'vplay') vPlay();
   else if (act === 'video') videoDlg();
-  else if (act === 'sharephoto') { const p = allPhotos().find(x => x.id === id), bl = await photoBlob(id); if (bl) readyDlg(bl, `${p.date}.${extOf(bl)}`, '사진 내보내기'); else toast('사진을 찾지 못했어요'); }
+  else if (act === 'sharephoto') { const p = allPhotos().find(x => x.id === id), bl = await photoBlob(id); if (bl) readyDlg(bl, `${p.date}.${extOf(bl)}`, p.type ? '동영상 내보내기' : '사진 내보내기'); else toast('파일을 찾지 못했어요'); }
   else if (act === 'outshare') navigator.share({ files: [out.file] }).catch(e => { if (e.name !== 'AbortError') toast('공유 창을 열지 못했어요. 내려받기를 눌러 주세요.'); });
   else if (act === 'outsave') saveFile(out.blob, out.name);
   else if (act === 'hospitals') hospDlg();
@@ -841,7 +838,10 @@ document.addEventListener('click', async ev => {
   else if (act === 'item') itemDlg(id, b.dataset.kid);
   else if (act === 'event') eventDlg(id);
   else if (act === 'write') writeDlg(id);
-  else if (act === 'photo') photoDlg(id);
+  else if (act === 'photo') {
+    const fav = b.closest('[data-favs]'), all = fav ? () => albPhotos().filter(p => p.fav) : albPhotos;
+    viewPhoto('photo', id, all().some(p => p.id === id) ? all : () => db.photos.filter(p => p.id === id));
+  }
   else if (act === 'donetoday') { dlg.querySelector('[name=done]').value = today(); markBlank(); }
   else if (act === 'day') { sel = b.dataset.d; render(); }
   else if (act === 'mon') { month = S.addMonths(month + '-01', Number(b.dataset.n)).slice(0, 7); sel = month === today().slice(0, 7) ? today() : month + '-01'; render(); }
@@ -854,7 +854,8 @@ document.addEventListener('click', async ev => {
   }
   else if (act === 'addphotos') addDlg();
   else if (act === 'albcam') { if (dlg.open) dlg.close(); pickFiles({ capture: 'environment' }, fs => upload(fs, today())); }
-  else if (act === 'albpick') { if (dlg.open) dlg.close(); pickFiles({ multiple: true }, fs => upload(fs)); }
+  else if (act === 'albvid') { if (dlg.open) dlg.close(); pickFiles({ accept: 'video/*', capture: 'environment' }, fs => upload(fs, today())); }
+  else if (act === 'albpick') { if (dlg.open) dlg.close(); pickFiles({ accept: 'image/*,video/*', multiple: true }, fs => upload(fs)); }
   else if (act === 'undraft') { draft = draft.filter(x => x !== id); $('#dgrid').innerHTML = draftGrid(); }
   else if (act === 'adddue') { const k = b.dataset; if (await save(d => d.events.push({ id: uid(), title: k.title, date: k.date, time: '', memo: '혜택 신청 마감일', from: k.key, kid: K().id }))) toast('달력에 추가했어요'); }
   else if (act === 'del') {
@@ -865,7 +866,7 @@ document.addEventListener('click', async ev => {
     if (k === 'kid') { const av = kidOf(id).photo; if (!await save(d => { Family.removeKid(d, id); Family.rank(d.kids); })) return; if (av) api('/api/photos/' + av, { method: 'DELETE' }).catch(() => { }); dlg.close(); toast('아이를 뺐어요. 일기와 사진은 남아 있어요.'); }
     if (k === 'log' && await save(d => { d.logs = d.logs.filter(x => x.id !== id); })) { dlg.close(); toast('기록을 지웠어요'); }
     if (k === 'face' && await save(d => { d.faces = d.faces.filter(x => x.id !== id); })) { await api('/api/photos/' + id, { method: 'DELETE' }).catch(() => { }); dlg.close(); toast('얼굴 사진을 지웠어요'); }
-    if (k === 'photo' && await save(d => { d.photos = d.photos.filter(x => x.id !== id); d.diary.forEach(x => x.photos = x.photos.filter(y => y !== id)); })) { await api('/api/photos/' + id, { method: 'DELETE' }).catch(() => { }); dlg.close(); toast('사진을 지웠어요'); }
+    if (k === 'photo' && await save(d => { d.photos = d.photos.filter(x => x.id !== id); d.diary.forEach(x => x.photos = x.photos.filter(y => y !== id)); })) { await api('/api/photos/' + id, { method: 'DELETE' }).catch(() => { }); dlg.close(); toast('지웠어요'); }
   }
 });
 document.addEventListener('change', ev => { const f = ev.target.form; if (f && f.dataset.form === 'kid' && ev.target.name === 'born') syncSex(f, ev.target.checked); });
@@ -925,7 +926,7 @@ document.addEventListener('submit', async ev => {
     const bad = Family.sexProblem(v.sex, Boolean(v.born)) || dateProblem(v.birth, Boolean(v.born)); if (bad) return toast(bad);
     ok = await save(d => { const k = d.kids.find(x => x.id === id); Object.assign(k, { name: v.name.trim() || k.name, birth: v.birth, time: v.time, sex: v.sex || '', born: Boolean(v.born), order: Number(v.order), options: { combo: v.combo, rota: v.rota, je: v.je } }); });
   }
-  if (kind === 'face') { ok = await save(d => { const x = d.faces.find(y => y.id === id); if (d.faces.some(y => y.id !== id && y.kid === x.kid && y.date === v.date)) { v.dup = 1; return; } x.date = v.date; }); if (v.dup) return toast('그 날짜에는 이미 얼굴 사진이 있어요'); }
+  if (kind === 'face') { ok = await save(d => { const x = d.faces.find(y => y.id === id); if (d.faces.some(y => y.id !== id && y.kid === x.kid && y.date === v.date)) { v.dup = 1; return; } x.date = v.date; x.caption = v.caption.trim(); }); if (v.dup) return toast('그 날짜에는 이미 얼굴 사진이 있어요'); }
   if (kind === 'settings') {
     if (local && v.aiCode != null) saveAI(v.aiCode.trim());
     ok = await save(d => Object.assign(d, { leads: new FormData(f).getAll('lead').map(Number), hour: Number(v.hour) }));
