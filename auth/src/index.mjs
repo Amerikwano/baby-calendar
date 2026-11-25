@@ -33,7 +33,7 @@ async function handle(req, env, get = fetch) {
   try {
     const [u, body] = P.token(env, cb, code, state);
     const t = await (await get(u, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded;charset=utf-8' }, body: new URLSearchParams(body) })).json();
-    if (!t.access_token) throw new Error('token');
+    if (!t.access_token) throw new Error('token ' + String(t.error_code || t.error || '').slice(0, 40)); // 값 없이 오류 종류만 남긴다
     const r = await get(P.me, { headers: { authorization: 'Bearer ' + t.access_token } }); if (!r.ok) throw new Error('me');
     const who = P.user(await r.json()); if (!who.id) throw new Error('id');
     // 원래 회원번호 대신 이 앱에서만 쓰는 값으로 바꿔 돌려준다.
