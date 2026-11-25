@@ -99,3 +99,9 @@ test('드라이브: 큰 파일은 이어 올리기로 보낸다', async () => {
   globalThis.fetch = async (u, o = {}) => { calls.push([o.method || 'GET', String(u).slice(0, 90)]); if (String(u).includes('uploadType=resumable')) return new Response('', { headers: { location: 'https://www.googleapis.com/upload/x' } }); return new Response(JSON.stringify({ files: [{ id: 'F' }], id: 'I' })); };
   try { assert.equal((await D.upload(new Blob([new Uint8Array(6 * 1048576)], { type: 'video/mp4' }), 'a.mp4', { pid: '1' })).id, 'I'); assert.deepEqual(calls.slice(-2).map(c => c[0]), ['POST', 'PUT']); calls.length = 0; await D.upload(new Blob(['x']), 'b.jpg', {}); assert.ok(calls.at(-1)[1].includes('multipart')); } finally { globalThis.fetch = old.f; globalThis.sessionStorage = old.s; }
 });
+test('밀어서 탭 옮기기: 순서와 판정', () => {
+  const W = require('./swipe.js');
+  assert.deepEqual(['home', 'cal', 'diary', 'album', 'grow', 'more'].map(t => W.next(t, 1)), ['cal', 'diary', 'album', 'grow', 'more', '']);
+  assert.deepEqual(['home', 'cal', 'more', 'tips', 'vax'].map(t => W.next(t, -1)), ['', 'home', 'grow', 'more', 'more']); assert.equal(W.next('tips', 1), '');
+  assert.deepEqual([W.judge(-120, 10, 200), W.judge(120, 10, 200), W.judge(-40, 0, 100), W.judge(-100, 80, 200), W.judge(-200, 5, 1500)], [1, -1, 0, 0, 0]);
+});

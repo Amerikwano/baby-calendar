@@ -187,3 +187,6 @@ html:has(#viewer[open]),body:has(#viewer[open]){background:#120d0b}
 #viewer.drag::backdrop{background:transparent}#viewer.drag>:not(.vstage){opacity:0}#viewer.drag .vstage::after{opacity:0}
 #viewer>:not(.vstage){transition:opacity .15s}
 .vs img{position:absolute;inset:0}
+/* 밀어서 탭을 옮길 때. 떠 있는 단추(.fab)는 움직이지 않는다 */
+@keyframes inR{from{transform:translateX(36px);opacity:.25}}@keyframes inL{from{transform:translateX(-36px);opacity:.25}}
+#main.in-r>:not(.fab){animation:inR .24s ease-out}#main.in-l>:not(.fab){animation:inL .24s ease-out}@media (prefers-reduced-motion:reduce){#main.in-r>*,#main.in-l>*{animation:none!important}}

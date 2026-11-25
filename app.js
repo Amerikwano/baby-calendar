@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.9.4';
+const APP_VERSION = '0.9.5';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -837,9 +837,10 @@ async function moreActs(act, b, id) {
 }
 
 /* ── 동작 ── */
+function goTab(t) { tab = t; if (dlg.open) dlg.close(); syncAI(); render(); scrollTo(0, 0); }
 document.addEventListener('click', async ev => {
   const nt = ev.target.closest('[data-tab]');
-  if (nt && ready && started) { tab = nt.dataset.tab; if (dlg.open) dlg.close(); syncAI(); render(); scrollTo(0, 0); return; }
+  if (nt && ready && started) { goTab(nt.dataset.tab); return; }
   const b = ev.target.closest('[data-act]'); if (!b || !ready) return;
   const { act, id } = b.dataset;
   if (act === 'close') (b.closest('dialog') || dlg).close();
