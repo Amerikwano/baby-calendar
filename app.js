@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.7.1';
+const APP_VERSION = '0.7.2';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -588,10 +588,15 @@ async function fillNear(box, n) {
   box.innerHTML = head + `<p class="sub">${spot ? '지금 위치에서 가까운 순서예요.' : at ? `${esc(at)}에 있는 곳이에요. 내 위치를 켜면 가까운 순서로 볼 수 있어요.` : '내 위치를 켜면 가까운 병원을 찾아드려요.'}</p>${spot ? '' : `<div class="row"><button type="button" class="btn main" data-act="nearme" data-n="${n}">내 위치로 찾기</button></div>`}${list.length ? `<div class="list">${list.map(hospRow).join('')}</div>` : spot || at ? '<p class="sub">찾은 병원이 없어요.</p>' : ''}${n < 10 && list.length ? '<button type="button" class="btn" data-act="hospitals">더 보기</button>' : ''}<p class="sub">맞으려는 백신이 있는지, 무료로 맞을 수 있는지는 가기 전에 전화로 확인하세요. 무료 접종 기관은 <a href="https://nip.kdca.go.kr" target="_blank" rel="noopener noreferrer">예방접종도우미</a>에서 볼 수 있어요. 자료: ${esc(hosp.info.source)}, ${hosp.info.asOf.replace(/-/g, '.')}</p>`;
 }
 function hospDlg() { openDlg('<form data-form="none"><div class="row between"><h2>인근 병원</h2></div><section class="stack" id="near"><h2 style="font-size:15px">소아청소년과와 보건소</h2><p class="sub">불러오는 중</p></section></form>'); fillNear($('#near'), 20); }
-// 휴대폰에서는 새 창 없이 카카오맵 앱을 바로 연다. 웹 주소로 열면 돌아왔을 때 빈 창이 남는다.
+// 휴대폰에서는 새 창 없이 네이버지도 앱을 바로 연다. 웹 주소로 열면 돌아왔을 때 빈 창이 남는다.
+const android = () => /Android/.test(navigator.userAgent);
 const phone = () => /iPhone|iPad|iPod|Android/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
-const kakaoWeb = (x, cls, label) => `<a class="${cls}" target="_blank" rel="noopener noreferrer" href="https://map.kakao.com/link/to/${encodeURIComponent(x[0].replace(/,/g, ' '))},${x[3]},${x[4]}">${label}</a>`;
-document.addEventListener('click', ev => { if (ev.target.closest('[data-kakao]')) setTimeout(() => { const n = $('#nokakao'); if (n) n.hidden = false; }, 1500); });
+function naverApp(x) {
+  const q = `place?lat=${x[3]}&lng=${x[4]}&name=${encodeURIComponent(x[0])}&appname=${encodeURIComponent('https://amerikwano.github.io/baby-calendar/')}`;
+  return android() ? `intent://${q}#Intent;scheme=nmap;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=com.nhn.android.nmap;end` : 'nmap://' + q;
+}
+const naverWeb = (x, cls, label) => `<a class="${cls}" target="_blank" rel="noopener noreferrer" href="https://map.naver.com/p/search/${encodeURIComponent(x[1].split(' ').slice(0, 2).join(' ') + ' ' + x[0])}">${label}</a>`;
+document.addEventListener('click', ev => { if (ev.target.closest('[data-naver]')) setTimeout(() => { const n = $('#nonaver'); if (n) n.hidden = false; }, 1500); });
 let leaflet = null;
 function loadLeaflet() {
   return leaflet || (leaflet = new Promise((ok, no) => {
@@ -601,14 +606,15 @@ function loadLeaflet() {
   }).catch(e => { leaflet = null; throw e; }));
 }
 const mapDlg = $('#mapdlg'); let map = null;
-mapDlg.addEventListener('close', () => { if (map) { map.remove(); map = null; } mapDlg.innerHTML = ''; });
+const dropMap = () => { if (map) { map.remove(); map = null; } };
+mapDlg.addEventListener('close', () => { if (mapDlg.open) return; dropMap(); mapDlg.innerHTML = ''; }); // 닫자마자 다시 연 창은 비우지 않는다
 async function showMap(i) {
   const r = hosp.rows[i]; if (!r) return;
-  const card = x => `<b>${esc(x[0])}</b><span class="sub">${esc(x[1])}</span><div class="row">${/^[\d-]{7,}$/.test(x[2]) ? `<a class="btn" href="tel:${x[2]}">전화 ${x[2]}</a>` : ''}${phone() ? `<a class="btn" data-kakao="1" href="kakaomap://route?ep=${x[3]},${x[4]}&by=car">카카오맵 길찾기</a>` : kakaoWeb(x, 'btn', '카카오맵 길찾기')}</div>${phone() ? `<p class="sub" id="nokakao" hidden>카카오맵 앱이 없어 열리지 않으면 ${kakaoWeb(x, '', '웹 지도로 보기')}</p>` : ''}`;
-  if (mapDlg.open) mapDlg.close();
+  const card = x => `<b>${esc(x[0])}</b><span class="sub">${esc(x[1])}</span><div class="row">${/^[\d-]{7,}$/.test(x[2]) ? `<a class="btn" href="tel:${x[2]}">전화 ${x[2]}</a>` : ''}${phone() ? `<a class="btn" data-naver="1" href="${esc(naverApp(x))}">네이버지도로 보기</a>` : naverWeb(x, 'btn', '네이버지도로 보기')}</div>${phone() ? `<p class="sub" id="nonaver" hidden>네이버지도 앱이 없어 열리지 않으면 ${naverWeb(x, '', '웹 지도로 보기')}</p>` : ''}`;
+  if (mapDlg.open) mapDlg.close(); dropMap();
   mapDlg.innerHTML = `<form data-form="none"><div class="row between"><h2>병원 위치</h2></div><div id="map"></div><div class="stack" id="mapcard">${card(r)}</div></form>`;
   showDlg(mapDlg);
-  try { await loadLeaflet(); } catch { if ($('#map')) $('#map').innerHTML = '<p class="empty">지도를 불러오지 못했어요. 아래 카카오맵으로 열어 주세요.</p>'; return; }
+  try { await loadLeaflet(); } catch { if ($('#map')) $('#map').innerHTML = '<p class="empty">지도를 불러오지 못했어요. 아래 네이버지도로 열어 주세요.</p>'; return; }
   if (!$('#map') || !mapDlg.open) return;
   map = L.map('map', { attributionControl: true }).setView([r[3], r[4]], 16);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> 기여자' }).addTo(map);
