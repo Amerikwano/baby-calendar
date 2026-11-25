@@ -19,7 +19,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 /* 아이폰은 화면 맨 위로 지나가는 내용을 흐리게 한다. 제목 줄을 위에 고정하고 배경을 채워 흐려지지 않게 한다. */
 header{position:sticky;top:0;z-index:6;background:var(--bg);padding-top:env(safe-area-inset-top,0px)}
 header>div{max-width:760px;margin:0 auto;min-height:76px;padding-block:10px;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));display:flex;gap:10px;align-items:center}
-.me{display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left}.me>span:last-child{min-width:0}.me b{display:flex;gap:6px;align-items:center;font-size:18px;line-height:1.3;font-weight:700}.me b .ic{width:20px;height:20px;color:#4f8fb0;flex:none}.me b .ic.s{color:var(--sub);width:16px}.me em{font-style:normal;color:var(--sub);font-size:14px;font-variant-numeric:tabular-nums}
+.me{display:flex;gap:12px;align-items:center;flex:1;min-width:0;text-align:left}.me>span:last-child{min-width:0}.me b{display:flex;gap:6px;align-items:center;font-size:18px;line-height:1.3;font-weight:700}.me b .ic{width:20px;height:20px;color:#b08a5c;flex:none}.me b .ic.boy{color:#3f86b5}.me b .ic.girl{color:#cf6f92}.me b .ic.s{color:var(--sub);width:16px}.me em{font-style:normal;color:var(--sub);font-size:14px;font-variant-numeric:tabular-nums}
 .av{width:54px;height:54px;border-radius:18px;overflow:hidden;background:#fff;display:grid;place-items:center;box-shadow:var(--shadow);flex:none}.av img{width:100%;height:100%;object-fit:cover;display:block}.av svg{width:78%}.av.xl{width:108px;height:108px;border-radius:50%;border:5px solid var(--sun)}
 .sq{width:48px;height:48px;border-radius:16px;background:var(--card);box-shadow:var(--shadow);display:grid;place-items:center;position:relative;flex:none}.sq i{position:absolute;top:-3px;right:-3px;width:13px;height:13px;border-radius:50%;background:#df6f69;border:2px solid var(--bg)}
 .ic{width:24px;height:24px;flex:none}.ic.s{width:18px;height:18px}.ic.xl{width:56px;height:56px;stroke-width:1.3}.ic.fill{fill:#e5737c;stroke:#e5737c}
@@ -152,3 +152,5 @@ body:not(.on) .wrap{padding-block:0}
 .favb{display:inline-flex;gap:6px;align-items:center}
 .strip.mis{padding:10px 14px}.fc{width:50px;height:50px;border-radius:50%;overflow:hidden;border:2px dashed #df9a6a;display:grid;place-items:center;color:#c07f45;background:var(--bg)}.fc.on{border:3px solid var(--sun)}.fc img{width:100%;height:100%;object-fit:cover}.strip .tx{text-align:left;min-width:0}
 main.stack>.stack:empty{display:none}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.sexf{display:grid;gap:5px;font-weight:600;font-size:14.5px}.opts input:checked+.boy{background:#e6f1f8;border-color:#6ea9cf}.opts input:checked+.girl{background:#fbe9ef;border-color:#e092ab}

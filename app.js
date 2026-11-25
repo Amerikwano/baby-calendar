@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.7.0';
+const APP_VERSION = '0.7.1';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -103,15 +103,24 @@ const evRow = e => `<button class="item t-mine" data-act="event" data-id="${e.id
 
 /* ── 아이 등록 칸 ── */
 // 아이 한 명을 적는 칸. 첫 화면과 아이 추가 창에서 같이 쓴다.
+// 성별 고르기. 태어난 아이는 남자·여자, 출산 예정이면 모름까지 고른다.
+const sexOpts = (n, sex, born) => `<div class="f sexf" data-sexbox><span>성별</span><div class="opts">${[['boy', '남자'], ['girl', '여자'], ['', '모름']].map(([v, t]) => `<label ${v ? '' : `data-unk ${born ? 'hidden' : ''}`}><input type="radio" name="${n}" value="${v}" ${v ? (sex === v ? 'checked' : '') : !sex && !born ? 'checked' : ''}><span class="${v}">${t}</span></label>`).join('')}</div></div>`;
+// 태어났는지가 바뀌면 '모름'을 보이거나 감춘다.
+function syncSex(box, born) {
+  const u = box.querySelector('[data-unk]'); if (!u) return;
+  u.hidden = born; const i = u.querySelector('input');
+  if (born) i.checked = false; else if (!box.querySelector('[data-sexbox] input:checked')) i.checked = true;
+}
 // fixed: 첫 화면에서 이미 골랐으므로 태어났는지 다시 묻지 않는다.
 const kidFields = (i, v, first, fixed) => `<fieldset class="${first ? '' : 'kidbox'}" data-kidbox="${i}" style="gap:16px">${first ? '' : `<div class="row between"><b>${i + 1}번째 아이</b><button type="button" class="btn danger" data-act="dropkid" data-i="${i}">빼기</button></div>`}
   ${fixed ? `<button type="button" class="avpick" data-act="obphoto" data-i="${i}"><span class="av xl">${FACE}</span><span>${icon('cam', 's')}사진 넣기</span></button>` : ''}
   <label class="f">${v.born ? '이름이나 애칭' : '태명이나 이름'}<input name="name${i}" maxlength="20" placeholder="예: 콩이 (비워 둬도 돼요)" autocomplete="off" value="${esc(v.name || '')}"></label>
   ${fixed && first ? `<input type="hidden" name="born${i}" value="${v.born ? '1' : ''}">` : `<div class="opts"><label><input type="radio" name="born${i}" value="1" ${v.born ? 'checked' : ''}><span>태어났어요</span></label><label><input type="radio" name="born${i}" value="" ${v.born ? '' : 'checked'}><span>출산 예정이에요</span></label></div>`}
+  ${sexOpts('sex' + i, v.sex || '', Boolean(v.born))}
   <div class="two"><label class="f"><span class="lb">${v.born ? '태어난 날' : '출산 예정일'}</span><input type="date" name="birth${i}" required value="${v.birth || ''}"></label><label class="f"><span class="lt">${v.born ? '태어난 시각' : '예정 시각'} (선택)</span><input type="time" name="time${i}" value="${v.time || ''}"></label></div>
   <div class="pv stack" aria-live="polite"></div></fieldset>`;
 const kidRows = f => [...f.querySelectorAll('[data-kidbox]')].map(b => Number(b.dataset.kidbox));
-const readKid = (f, i) => ({ name: f.elements['name' + i].value.trim(), born: f.elements['born' + i].value === '1', birth: f.elements['birth' + i].value, time: f.elements['time' + i].value });
+const readKid = (f, i) => ({ name: f.elements['name' + i].value.trim(), born: f.elements['born' + i].value === '1', birth: f.elements['birth' + i].value, time: f.elements['time' + i].value, sex: f.elements['sex' + i].value });
 // 날짜가 말이 되는지 보고, 안 되면 이유를 돌려준다.
 function dateProblem(d, born) {
   if (!isDate(d)) return '날짜를 골라 주세요.';
@@ -122,6 +131,7 @@ function dateProblem(d, born) {
 function startPreview(f) {
   f.querySelectorAll('[data-kidbox]').forEach(box => {
     const { born, birth: d, time } = readKid(f, box.dataset.kidbox);
+    syncSex(box, born);
     box.querySelector('.lb').textContent = born ? '태어난 날' : '출산 예정일';
     box.querySelector('.lt').textContent = (born ? '태어난 시각' : '예정 시각') + ' (선택)';
     if (!d) return;
@@ -134,7 +144,7 @@ document.addEventListener('input', ev => { if (ev.target.form && ['start', 'addk
 function readKids(f) {
   const rows = kidRows(f), out = [];
   for (const i of rows) {
-    const v = readKid(f, i), bad = dateProblem(v.birth, v.born);
+    const v = readKid(f, i), bad = Family.sexProblem(v.sex, v.born) || dateProblem(v.birth, v.born);
     if (bad) return { bad: rows.length > 1 ? `${out.length + 1}번째 아이: ${bad}` : bad };
     out.push(Object.assign(v, { row: i }));
   }
@@ -374,7 +384,7 @@ function settingsDlg() {
 }
 function kidDlg(id) {
   const k = kidOf(id), r = (n, v, l) => `<label class="ck"><input type="radio" name="${n}" value="${v}" ${k.options[n] === v ? 'checked' : ''}>${l}</label>`;
-  openDlg(`<form data-form="kid" data-id="${k.id}"><h2>${esc(k.name)} 정보</h2><button type="button" class="avpick" data-act="avatar" data-id="${k.id}">${face(k, 'xl')}<span>${icon('cam', 's')}사진 ${k.photo ? '바꾸기' : '넣기'}</span></button>${k.photo ? `<button type="button" class="btn" data-act="avatardel" data-id="${k.id}">프로필 사진 빼기</button>` : ''}<label class="f">이름이나 태명<input name="name" required maxlength="20" autocomplete="off" value="${esc(k.name)}"></label><label class="ck"><input type="checkbox" name="born" ${k.born ? 'checked' : ''}>태어났어요</label>
+  openDlg(`<form data-form="kid" data-id="${k.id}"><h2>${esc(k.name)} 정보</h2><button type="button" class="avpick" data-act="avatar" data-id="${k.id}">${face(k, 'xl')}<span>${icon('cam', 's')}사진 ${k.photo ? '바꾸기' : '넣기'}</span></button>${k.photo ? `<button type="button" class="btn" data-act="avatardel" data-id="${k.id}">프로필 사진 빼기</button>` : ''}<label class="f">이름이나 태명<input name="name" required maxlength="20" autocomplete="off" value="${esc(k.name)}"></label><label class="ck"><input type="checkbox" name="born" ${k.born ? 'checked' : ''}>태어났어요</label>${sexOpts('sex', k.sex || '', k.born)}
   <div class="two"><label class="f">${k.born ? '생일' : '출산 예정일'}<input type="date" name="birth" required value="${k.birth}"></label><label class="f">${k.born ? '태어난 시각' : '예정 시각'} (선택)<input type="time" name="time" value="${k.time || ''}"></label></div>
   <label class="f">몇째<select name="order">${[1, 2, 3].map(n => `<option value="${n}" ${k.order === n ? 'selected' : ''}>${['첫째', '둘째', '셋째 이상'][n - 1]}</option>`).join('')}</select></label>
   <fieldset><legend>혼합백신 (2·4·6개월)</legend>${r('combo', '5', '4가·5가, 1개월에 B형간염 2차 따로')}${r('combo', '6', '6가, B형간염 포함')}</fieldset><fieldset><legend>로타바이러스</legend>${r('rota', 'RV1', '2회 (RV1)')}${r('rota', 'RV5', '3회 (RV5)')}</fieldset><fieldset><legend>일본뇌염</legend>${r('je', 'dead', '불활성화 백신 5회')}${r('je', 'live', '생백신 2회')}</fieldset><p class="sub">백신 종류는 병원에서 정한 뒤 바꾸면 돼요.</p>${acts(many() && ['kid', k.id, '이 아이 빼기'])}${many() ? '<p class="sub">아이를 빼면 접종·육아 기록은 지워지고, 일기와 사진은 \'모두\'의 기록으로 남아요.</p>' : ''}</form>`);
@@ -386,7 +396,7 @@ function addKidDlg() {
 }
 function bornDlg() {
   const k = K(), twins = db.kids.filter(x => x.id !== k.id && !x.born && x.birth === k.birth);
-  openDlg(`<form data-form="born"><h2>축하해요! 생일을 넣어 주세요</h2><div class="two"><label class="f">태어난 날<input type="date" name="birth" required max="${today()}" value="${today()}"></label><label class="f">태어난 시각 (선택)<input type="time" name="time"></label></div><label class="f">이름 (정해졌다면 바꿔 주세요)<input name="name" required maxlength="20" autocomplete="off" value="${esc(k.name)}"></label>${twins.map(x => `<div class="kidbox stack"><label class="ck"><input type="checkbox" name="twin" value="${x.id}" checked>${esc(x.name)}도 같은 날 태어났어요</label><div class="two"><label class="f">이름<input name="tn_${x.id}" maxlength="20" autocomplete="off" value="${esc(x.name)}"></label><label class="f">태어난 시각 (선택)<input type="time" name="tt_${x.id}"></label></div></div>`).join('')}${acts()}</form>`);
+  openDlg(`<form data-form="born"><h2>축하해요! 생일을 넣어 주세요</h2><div class="two"><label class="f">태어난 날<input type="date" name="birth" required max="${today()}" value="${today()}"></label><label class="f">태어난 시각 (선택)<input type="time" name="time"></label></div><label class="f">이름 (정해졌다면 바꿔 주세요)<input name="name" required maxlength="20" autocomplete="off" value="${esc(k.name)}"></label>${sexOpts('sex', k.sex || '', true)}${twins.map(x => `<div class="kidbox stack"><label class="ck"><input type="checkbox" name="twin" value="${x.id}" checked>${esc(x.name)}도 같은 날 태어났어요</label><div class="two"><label class="f">이름<input name="tn_${x.id}" maxlength="20" autocomplete="off" value="${esc(x.name)}"></label><label class="f">태어난 시각 (선택)<input type="time" name="tt_${x.id}"></label></div>${sexOpts('ts_' + x.id, x.sex || '', true)}</div>`).join('')}${acts()}</form>`);
 }
 
 /* ── 사진 ── */
@@ -794,6 +804,7 @@ document.addEventListener('click', async ev => {
     if (k === 'photo' && await save(d => { d.photos = d.photos.filter(x => x.id !== id); d.diary.forEach(x => x.photos = x.photos.filter(y => y !== id)); })) { await api('/api/photos/' + id, { method: 'DELETE' }).catch(() => { }); dlg.close(); toast('사진을 지웠어요'); }
   }
 });
+document.addEventListener('change', ev => { const f = ev.target.form; if (f && f.dataset.form === 'kid' && ev.target.name === 'born') syncSex(f, ev.target.checked); });
 document.addEventListener('change', async ev => {
   if (ev.target.id !== 'dfile') return;
   const form = ev.target.form, files = [...ev.target.files], ok = form.querySelector('[value=ok]');
@@ -822,13 +833,13 @@ document.addEventListener('submit', async ev => {
     if (kind === 'start') {
       const ids = []; try { for (const x of list) ids.push(ob.photo[x.row] ? await saveAvatarBlob(ob.photo[x.row]) : ''); } catch (e) { return toast(e.message); }
       started = true;
-      ok = await save(d => { d.kids = list.map((x, i) => Family.newKid('k' + (i + 1), { name: blankName(list, x, i), born: x.born, birth: x.birth, time: x.time, photo: ids[i], options: Object.assign({}, S.DEFAULT_OPTIONS) })); d.cur = 'k1'; Family.rank(d.kids); });
+      ok = await save(d => { d.kids = list.map((x, i) => Family.newKid('k' + (i + 1), { name: blankName(list, x, i), born: x.born, birth: x.birth, time: x.time, sex: x.sex, photo: ids[i], options: Object.assign({}, S.DEFAULT_OPTIONS) })); d.cur = 'k1'; Family.rank(d.kids); });
       if (!ok) { started = false; render(); return; }
       tab = 'home'; scrollTo(0, 0); await showSplash(`${db.kids[0].name} 수첩을 준비하고 있어요`, db.kids[0].photo);
       setTimeout(askLocationOnce, 300);
     } else {
       const nid = uid();
-      ok = await save(d => { d.kids.push(Family.newKid(nid, Object.assign({}, { born: list[0].born, birth: list[0].birth, time: list[0].time }, { name: list[0].name || '아기 ' + (d.kids.length + 1), options: Object.assign({}, S.DEFAULT_OPTIONS) }))); d.cur = nid; Family.rank(d.kids); });
+      ok = await save(d => { d.kids.push(Family.newKid(nid, Object.assign({}, { born: list[0].born, birth: list[0].birth, time: list[0].time, sex: list[0].sex }, { name: list[0].name || '아기 ' + (d.kids.length + 1), options: Object.assign({}, S.DEFAULT_OPTIONS) }))); d.cur = nid; Family.rank(d.kids); });
     }
   }
   if (kind === 'none') return;
@@ -841,11 +852,12 @@ document.addEventListener('submit', async ev => {
   if (kind === 'rename') { if (!v.name.trim()) return toast('이름을 적어 주세요'); ok = await save(d => { d.kids.find(k => k.id === K().id).name = v.name.trim(); }); }
   if (kind === 'born') {
     const tw = new FormData(f).getAll('twin');
-    ok = await save(d => { Object.assign(d.kids.find(k => k.id === K().id), { birth: v.birth, time: v.time, born: true, name: v.name.trim() || K().name }); tw.forEach(x => { const k = d.kids.find(y => y.id === x); Object.assign(k, { birth: v.birth, time: v['tt_' + x], born: true, name: v['tn_' + x].trim() || k.name }); }); Family.rank(d.kids); });
+    if (Family.sexProblem(v.sex, true) || tw.some(x => Family.sexProblem(v['ts_' + x], true))) return toast('성별을 골라 주세요.');
+    ok = await save(d => { Object.assign(d.kids.find(k => k.id === K().id), { birth: v.birth, time: v.time, born: true, sex: v.sex, name: v.name.trim() || K().name }); tw.forEach(x => { const k = d.kids.find(y => y.id === x); Object.assign(k, { birth: v.birth, time: v['tt_' + x], born: true, sex: v['ts_' + x], name: v['tn_' + x].trim() || k.name }); }); Family.rank(d.kids); });
   }
   if (kind === 'kid') {
-    const bad = dateProblem(v.birth, Boolean(v.born)); if (bad) return toast(bad);
-    ok = await save(d => { const k = d.kids.find(x => x.id === id); Object.assign(k, { name: v.name.trim() || k.name, birth: v.birth, time: v.time, born: Boolean(v.born), order: Number(v.order), options: { combo: v.combo, rota: v.rota, je: v.je } }); });
+    const bad = Family.sexProblem(v.sex, Boolean(v.born)) || dateProblem(v.birth, Boolean(v.born)); if (bad) return toast(bad);
+    ok = await save(d => { const k = d.kids.find(x => x.id === id); Object.assign(k, { name: v.name.trim() || k.name, birth: v.birth, time: v.time, sex: v.sex || '', born: Boolean(v.born), order: Number(v.order), options: { combo: v.combo, rota: v.rota, je: v.je } }); });
   }
   if (kind === 'face') { ok = await save(d => { const x = d.faces.find(y => y.id === id); if (d.faces.some(y => y.id !== id && y.kid === x.kid && y.date === v.date)) { v.dup = 1; return; } x.date = v.date; }); if (v.dup) return toast('그 날짜에는 이미 얼굴 사진이 있어요'); }
   if (kind === 'settings') {

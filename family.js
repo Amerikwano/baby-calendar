@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const KID = ['name', 'birth', 'time', 'born', 'order', 'options', 'records'];
-  const newKid = (id, v) => Object.assign({ id, name: '아기', birth: '', time: '', born: false, photo: '', order: 1, options: {}, records: {} }, v);
+  const newKid = (id, v) => Object.assign({ id, name: '아기', birth: '', time: '', born: false, sex: '', photo: '', order: 1, options: {}, records: {} }, v);
   // 한 명만 있던 때의 내용(name, birth가 바깥에 있음)을 아이 목록으로 바꾼다.
   function migrate(data) {
     if (!data) return data;
@@ -32,6 +32,9 @@
   }
   const forKid = (list, id) => list.filter(x => !x.kid || x.kid === id);
   const timeText = t => { if (!/^\d\d:\d\d$/.test(t || '')) return ''; const [h, m] = t.split(':').map(Number); return `${h < 12 ? '오전' : '오후'} ${h % 12 || 12}시${m ? ' ' + m + '분' : ''}`; };
-  const out = { newKid, migrate, rank, removeKid, forKid, timeText };
+  // 성별: boy, girl, ''(모름). 태어난 아이는 남자와 여자만 고른다.
+  const SEX = { boy: '남자', girl: '여자' };
+  const sexProblem = (sex, born) => born && !SEX[sex] ? '성별을 골라 주세요.' : '';
+  const out = { SEX, sexProblem, newKid, migrate, rank, removeKid, forKid, timeText };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Family = out;
 })(this);

@@ -56,7 +56,7 @@ function alerts(k) {
 }
 function topBar() {
   const k = K(), a = alerts(k), hot = a.late.length || a.miss.length || a.events.length || !k.born && today() >= k.birth;
-  return `<div><button class="me" data-act="kids" aria-label="${esc(k.name)}, 아이 고르기">${face(k)}<span><b>${esc(k.name)}${icon('baby')}${many() ? icon('down', 's') : ''}</b><em>${ageLine(k)}</em></span></button><button class="sq" data-act="report" aria-label="하루 요약">${icon('pie')}</button><button class="sq" data-act="alerts" aria-label="알림${hot ? ', 확인할 것이 있어요' : ''}">${icon('bell')}${hot ? '<i></i>' : ''}</button></div>`;
+  return `<div><button class="me" data-act="kids" aria-label="${esc(k.name)}, 아이 고르기">${face(k)}<span><b>${esc(k.name)}${icon('baby', k.sex || 'unk')}${k.sex ? `<span class="vh">${Family.SEX[k.sex]}아이</span>` : ''}${many() ? icon('down', 's') : ''}</b><em>${ageLine(k)}</em></span></button><button class="sq" data-act="report" aria-label="하루 요약">${icon('pie')}</button><button class="sq" data-act="alerts" aria-label="알림${hot ? ', 확인할 것이 있어요' : ''}">${icon('bell')}${hot ? '<i></i>' : ''}</button></div>`;
 }
 function navBar() {
   const main = { home: 'home', cal: 'cal', diary: 'diary', album: 'album', grow: 'album' }[tab] || 'more';
@@ -126,7 +126,7 @@ function alertsDlg() {
   const k = K(), a = alerts(k), sec = (t, l) => l.length ? `<section class="stack"><h3>${t}</h3><div class="list">${l.join('')}</div></section>` : '';
   openDlg(`<form data-form="none"><h2>${esc(k.name)} 알림</h2>${sec('놓친 기록', a.miss.map(logRow))}${sec('내 일정', a.events.map(evRow))}${sec('시기가 지난 일정', a.late.slice(0, 8).map(itemRow))}${sec('지금 받을 것', a.open.slice(0, 8).map(itemRow))}${sec(k.born ? '다음 일정' : '태어나면 바로 챙길 것', a.next.map(itemRow))}<p class="sub">휴대폰 알림은 더보기에서 캘린더 파일을 받아 캘린더 앱에 넣으면 울려요.</p></form>`);
 }
-const kidsDlg = () => openDlg(`<form data-form="none"><h2>아이</h2><div class="list">${db.kids.map(k => `<div class="kidrow"><button type="button" data-act="pickkid" data-id="${k.id}" ${k.id === K().id ? 'aria-current="true"' : ''}>${face(k)}<span><b>${esc(k.name)}</b><em>${ageLine(k)}</em></span></button><button type="button" class="btn" data-act="kidedit" data-id="${k.id}">고치기</button></div>`).join('')}</div><button type="button" class="btn" data-act="addkid">쌍둥이·형제 더하기</button></form>`);
+const kidsDlg = () => openDlg(`<form data-form="none"><h2>아이</h2><div class="list">${db.kids.map(k => `<div class="kidrow"><button type="button" data-act="pickkid" data-id="${k.id}" ${k.id === K().id ? 'aria-current="true"' : ''}>${face(k)}<span><b>${esc(k.name)}</b><em>${k.sex ? Family.SEX[k.sex] + ', ' : k.born ? '' : '성별 모름, '}${ageLine(k)}</em></span></button><button type="button" class="btn" data-act="kidedit" data-id="${k.id}">고치기</button></div>`).join('')}</div><button type="button" class="btn" data-act="addkid">쌍둥이·형제 더하기</button></form>`);
 
 /* ── 더보기 ── */
 function more() {

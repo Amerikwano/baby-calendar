@@ -47,3 +47,7 @@ test('로그인 서버: 시작, 확인, 거절', async () => {
   assert.match(loc(await handle(req(`/callback/kakao?code=C&state=${S32}`), env, async () => new Response('{}'))), /error=fail/);
   assert.match(loc(await handle(req('/login/naver?state=' + S32), Object.assign({}, env, { NAVER_SECRET: '' }))), /error=off/);
 });
+test('성별: 태어난 아이는 남자·여자만, 예정이면 모름도 된다', () => {
+  assert.equal(F.sexProblem('boy', true), ''); assert.equal(F.sexProblem('girl', true), ''); assert.ok(F.sexProblem('', true)); assert.equal(F.sexProblem('', false), '');
+  assert.equal(F.migrate({ v: 1, kids: [{ id: 'k1', name: 'a', birth: '2027-01-01' }], photos: [], diary: [], events: [] }).kids[0].sex, '');
+});
