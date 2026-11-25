@@ -31,8 +31,10 @@ function sinceBirth(end) {
 const lastDay = ym => S.addDays(S.addMonths(ym + '-01', 1), -1);
 const cell = (p, cls) => `<button class="${cls || ''}" data-act="photo" data-id="${p.id}" aria-label="${kd(p.date)} ${p.type ? '동영상' : '사진'}"><img ${pic(p.id, 1)} alt="${esc(p.caption || kd(p.date) + ' 사진')}">${p.type ? `<s>${icon('vplay', 's')}${p.dur ? Media.clock(p.dur) : ''}</s>` : ''}${p.fav ? `<i>${icon('heart', 'fill')}</i>` : ''}</button>`;
 const yearCard = (y, l) => { const c = Album.cover(l); return `<button class="ycard" data-act="albyear" data-y="${y}"><img ${pic(c.id, 1)} alt=""><b>${y}</b><em>${esc(sinceBirth(y + '-12-31'))}</em></button>`; };
-// 아기앨범과 성장 앨범을 오가는 위쪽 탭
-const albSeg = () => `<div class="albseg" role="tablist" aria-label="앨범 종류"><button role="tab" data-tab="album" aria-selected="${tab === 'album'}">아기 앨범</button><button role="tab" data-tab="grow" aria-selected="${tab === 'grow'}">성장 앨범</button></div>`;
+// 한 메뉴 안의 두 화면을 오가는 위쪽 탭
+const segTabs = (label, list) => `<div class="albseg" role="tablist" aria-label="${label}">${list.map(([t, n]) => `<button role="tab" data-tab="${t}" aria-selected="${tab === t}">${n}</button>`).join('')}</div>`;
+const albSeg = () => segTabs('앨범 종류', [['album', '아기 앨범'], ['grow', '성장 앨범']]);
+const tipSeg = () => `<div class="albtop">${segTabs('꿀팁 종류', [['tips', '육아 팁'], ['money', '혜택']])}</div>`;
 function album() {
   if (db.photos.some(p => p.type === 'video' && p.th !== 1)) setTimeout(repairPosters, 500);
   const all = albPhotos(), ys = Album.years(all), ty = today().slice(0, 4);

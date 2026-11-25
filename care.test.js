@@ -101,7 +101,7 @@ test('드라이브: 큰 파일은 이어 올리기로 보낸다', async () => {
 });
 test('밀어서 탭 옮기기: 순서와 판정', () => {
   const W = require('./swipe.js');
-  assert.deepEqual(['home', 'cal', 'diary', 'album', 'grow', 'more'].map(t => W.next(t, 1)), ['cal', 'diary', 'album', 'grow', 'more', '']);
-  assert.deepEqual(['home', 'cal', 'more', 'tips', 'vax'].map(t => W.next(t, -1)), ['', 'home', 'grow', 'more', 'more']); assert.equal(W.next('tips', 1), '');
+  assert.deepEqual(['home', 'cal', 'diary', 'album', 'grow', 'tips', 'money', 'more'].map(t => W.next(t, 1)), ['cal', 'diary', 'album', 'grow', 'tips', 'money', 'more', '']);
+  assert.deepEqual(['home', 'cal', 'more', 'tips', 'vax'].map(t => W.next(t, -1)), ['', 'home', 'money', 'grow', 'more']); assert.equal(W.next('vax', 1), '');
   assert.deepEqual([W.judge(-120, 10, 200), W.judge(120, 10, 200), W.judge(-40, 0, 100), W.judge(-100, 80, 200), W.judge(-200, 5, 1500)], [1, -1, 0, 0, 0]);
 });

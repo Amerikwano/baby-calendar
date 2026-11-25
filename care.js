@@ -59,9 +59,9 @@ function topBar() {
   return `<div><button class="me" data-act="kids" aria-label="${esc(k.name)}, 아이 고르기">${face(k)}<span><b>${esc(k.name)}${icon('baby', k.sex || 'unk')}${k.sex ? `<span class="vh">${Family.SEX[k.sex]}아이</span>` : ''}${many() ? icon('down', 's') : ''}</b><em>${ageLine(k)}</em></span></button><button class="sq" data-act="report" aria-label="하루 요약">${icon('pie')}</button><button class="sq" data-act="alerts" aria-label="알림${hot ? ', 확인할 것이 있어요' : ''}">${icon('bell')}${hot ? '<i></i>' : ''}</button></div>`;
 }
 function navBar() {
-  const main = { home: 'home', cal: 'cal', diary: 'diary', album: 'album', grow: 'album' }[tab] || 'more';
+  const main = { home: 'home', cal: 'cal', diary: 'diary', album: 'album', grow: 'album', tips: 'tips', money: 'tips' }[tab] || 'more';
   const b = (t, n, i) => `<button data-tab="${t}" ${main === t ? 'aria-current="page"' : ''}>${i}<span>${n}</span></button>`;
-  return `<div>${b('home', '홈', `<span class="navface">${face(K())}</span>`)}${b('cal', '달력', icon('cal'))}${b('diary', '육아일기', icon('diary'))}${b('album', '앨범', icon('album'))}${b('more', '더보기', icon('more'))}</div>`;
+  return `<div>${b('home', '홈', `<span class="navface">${face(K())}</span>`)}${b('cal', '달력', icon('cal'))}${b('diary', '육아일기', icon('diary'))}${b('album', '앨범', icon('album'))}${b('tips', '꿀팁', icon('tips'))}${b('more', '더보기', icon('more'))}</div>`;
 }
 const typesFor = k => k.born ? Care.BORN : Care.WAIT;
 const typeBtn = (t, act) => `<button type="button" data-act="${act}" data-t="${t}" style="--c:${Care.TYPES[t].c}">${icon(t)}<span>${Care.TYPES[t].name}</span></button>`;
@@ -127,8 +127,7 @@ const kidsDlg = () => openDlg(`<form data-form="none"><h2>아이</h2><div class=
 /* ── 더보기 ── */
 function more() {
   const it = (i, t, s, at) => `<button class="menu" ${at}><span class="lic">${icon(i)}</span><span><b>${t}</b><em>${s}</em></span>${icon('right', 's')}</button>`;
-  return accountCard() + `<section class="menus"><h3>아기</h3>${it('heart', '성장 앨범', '매일 얼굴 사진과 성장 영상', 'data-tab="grow"')}${it('shield', '접종·검진', '전체 일정과 완료 기록', 'data-tab="vax"')}${it('hospital', '인근 병원', '가까운 소아청소년과와 보건소', 'data-act="hospitals"')}</section>
-  <section class="menus"><h3>정보</h3>${it('tips', '육아 팁', '개월 수에 맞는 육아법', 'data-tab="tips"')}${it('gift', '혜택', '우리 지역과 전국 지원', 'data-tab="money"')}${it('bell', '캘린더에 넣기', '일정을 캘린더 파일로 받기', 'data-act="ics"')}</section>
+  return accountCard() + `<section class="menus"><h3>아기</h3>${it('heart', '성장 앨범', '매일 얼굴 사진과 성장 영상', 'data-tab="grow"')}${it('shield', '접종·검진', '전체 일정과 완료 기록', 'data-tab="vax"')}${it('hospital', '인근 병원', '가까운 소아청소년과와 보건소', 'data-act="hospitals"')}${it('bell', '캘린더에 넣기', '일정을 캘린더 파일로 받기', 'data-act="ics"')}</section>
   <section class="menus"><h3>앱</h3>${it('heart', '카카오톡으로 공유하기', '디데이나 앱 소개 보내기', 'data-act="sharek"')}${it('gear', '설정', '아이 정보, 지역, 백업', 'data-act="settings"')}</section><p class="sub">질병관리청 표준예방접종일정표(2026) 기준이에요. 실제 접종은 병원 안내를 먼저 따르세요. 버전 ${APP_VERSION}</p>`;
 }
 const backRow = (t, to) => `<div class="backrow"><button data-tab="${to || 'more'}" aria-label="뒤로">${icon('left')}</button><h2>${t}</h2></div>`;

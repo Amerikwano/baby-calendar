@@ -1,8 +1,8 @@
 /* 화면을 좌우로 밀어 탭을 옮긴다. */
 (function (root) {
   'use strict';
-  const ORDER = ['home', 'cal', 'diary', 'album', 'grow', 'more'];
-  // dir: 1은 왼쪽으로 밀기(다음), -1은 오른쪽으로 밀기(이전). 더보기 안의 화면은 더보기로만 돌아간다.
+  const ORDER = ['home', 'cal', 'diary', 'album', 'grow', 'tips', 'money', 'more'];
+  // dir: 1은 왼쪽으로 밀기(다음), -1은 오른쪽으로 밀기(이전). 더보기 안의 화면(접종·검진)은 더보기로만 돌아간다.
   function next(tab, dir) { const i = ORDER.indexOf(tab); return i < 0 ? (dir < 0 ? 'more' : '') : ORDER[i + dir] || ''; }
   // 짧고 분명하게 옆으로 민 것만 넘긴다(위아래로 훑는 것과 구별).
   function judge(dx, dy, ms) { const x = Math.abs(dx), y = Math.abs(dy); return ms < 800 && x > 60 && x > y * 1.7 ? (dx < 0 ? 1 : -1) : 0; }

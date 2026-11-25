@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.9.5';
+const APP_VERSION = '0.9.6';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -268,7 +268,7 @@ function aiBox(kind, title, desc, label) {
 }
 function tips() {
   const t = today(), m = K().born ? S.ageMonths(K().birth, t) : -1, mm = Math.min(m, 71), d = aiData.tips;
-  return backRow('육아 팁') + `<section class="stack"><h2>${m < 0 ? '출산을 앞두고' : ageText(t) + ' 육아'}</h2><p class="sub">${m < 0 ? '태어나면 개월 수를 확인해 그때 필요한 팁으로 바꿔 보여줘요.' : m > 71 ? '자료가 만 5세까지라 마지막 시기의 팁을 보여줘요.' : '앱이 개월 수를 확인해 지금 필요한 팁을 골랐어요.'}</p>${aiBox('tips', 'AI 육아 제안', '개월 수를 확인해 지금 필요한 육아법과 곧 준비할 것을 찾아요. AI에는 개월 수만 보내요.', '이번 달 제안 받기')}</section>`
+  return tipSeg() + `<section class="stack"><h2>${m < 0 ? '출산을 앞두고' : ageText(t) + ' 육아'}</h2><p class="sub">${m < 0 ? '태어나면 개월 수를 확인해 그때 필요한 팁으로 바꿔 보여줘요.' : m > 71 ? '자료가 만 5세까지라 마지막 시기의 팁을 보여줘요.' : '앱이 개월 수를 확인해 지금 필요한 팁을 골랐어요.'}</p>${aiBox('tips', 'AI 육아 제안', '개월 수를 확인해 지금 필요한 육아법과 곧 준비할 것을 찾아요. AI에는 개월 수만 보내요.', '이번 달 제안 받기')}</section>`
     + (d ? `<section class="stack"><p>${esc(d.summary)}</p>${d.tips.map(tipCard).join('')}${d.doctor.length ? `<div class="notice hot"><b>이럴 땐 소아과에 상의하세요</b>${d.doctor.map(x => `<p>${esc(x)}</p>`).join('')}</div>` : ''}</section>` : '')
     + `<section class="stack"><h2>${m < 0 ? '미리 준비할 것' : '지금 필요한 팁'}</h2>${BaseTips.forMonth(mm).map(tipCard).join('') || '<p class="empty">이 시기의 기본 팁은 아직 없어요.</p>'}</section>`
     + `<section class="stack"><h2>곧 시작할 것</h2>${BaseTips.coming(mm, 3).map(x => tipCard(Object.assign({}, x, { timing: x.from < 1 ? '태어나면 바로' : `${x.from}개월 무렵` }))).join('') || '<p class="sub">석 달 안에 새로 시작할 것은 없어요.</p>'}</section>
@@ -298,7 +298,7 @@ function localCard(b) {
 }
 const nationalList = () => `<section class="stack"><h2>전국 공통 혜택</h2>${BaseBenefits.list.map(b => moneyCard(b, 'base:' + b.id)).join('')}</section><p class="sub">전국 혜택은 ${kd(BaseBenefits.checkedAt, true)}에 확인했어요. 금액과 조건은 바뀔 수 있으니 신청 전에 정부24나 주민센터(129)에서 확인하세요.</p>`;
 function money() {
-  if (!db.sido) return backRow('혜택') + `<section class="notice"><b>사는 지역의 혜택을 볼까요?</b><p class="sub">위치를 허용하면 그 지역에서 주는 혜택을 먼저 보여줘요.</p><div class="row"><button class="btn main" data-act="locate">현재 위치로 찾기</button><button class="btn" data-act="region">직접 고르기</button></div></section>` + nationalList();
+  if (!db.sido) return tipSeg() + `<section class="notice"><b>사는 지역의 혜택을 볼까요?</b><p class="sub">위치를 허용하면 그 지역에서 주는 혜택을 먼저 보여줘요.</p><div class="row"><button class="btn main" data-act="locate">현재 위치로 찾기</button><button class="btn" data-act="region">직접 고르기</button></div></section>` + nationalList();
   loadRegion();
   const d = regionData, show = x => !cashOnly || /현금|이용권/.test(x.k), cash = x => /현금|이용권/.test(x.k) ? 0 : 1;
   const rows = (d.rows || []).filter(show).sort((a, b) => cash(a) - cash(b)), mine = db.sigungu ? rows.filter(x => x.g === db.sigungu) : [], wide = rows.filter(x => !x.g);
@@ -308,7 +308,7 @@ function money() {
   const body = d.err ? `<div class="notice"><p>${esc(d.err)}</p><div class="row"><button class="btn" data-act="reload">다시 불러오기</button></div></div>` : !d.rows ? '<p class="empty">지역 혜택을 불러오는 중</p>' :
     (db.sigungu ? `<section class="stack"><h2>${esc(db.sigungu)} 혜택 ${mine.length}개</h2>${mine.map(localCard).join('') || `<p class="sub">${known ? '조건에 맞는 혜택이 없어요.' : '이 지역으로 등록된 혜택을 찾지 못했어요. 지역 이름이 맞는지 확인해 주세요.'}</p>`}</section>` : `<div class="notice"><p>시·군·구를 고르면 더 가까운 혜택을 볼 수 있어요.</p><div class="row"><button class="btn" data-act="region">시·군·구 고르기</button></div></div>`)
     + `<section class="stack"><h2>${esc(db.sido)} 공통 혜택 ${wide.length}개</h2>${wide.map(localCard).join('') || '<p class="sub">조건에 맞는 혜택이 없어요.</p>'}</section>`;
-  return backRow('혜택') + head + (!local && ai ? aiBox('benefits', 'AI 혜택 찾기', 'AI로 더 찾아볼 수 있어요. API 요금이 들어요.', '혜택 찾기') + (aiData.benefits ? aiData.benefits.items.map(b => moneyCard(b, 'ai:' + b.title)).join('') : '') : '') + body + nationalList()
+  return tipSeg() + head + (!local && ai ? aiBox('benefits', 'AI 혜택 찾기', 'AI로 더 찾아볼 수 있어요. API 요금이 들어요.', '혜택 찾기') + (aiData.benefits ? aiData.benefits.items.map(b => moneyCard(b, 'ai:' + b.title)).join('') : '') : '') + body + nationalList()
     + (d.info ? `<p class="sub">지역 자료 출처: ${esc(d.info.source)}. 지자체가 등록한 내용을 그대로 옮겼고, 지난해 내용이 남아 있을 수 있어요. 임신 중에 받는 혜택도 함께 나와요.</p>` : '');
 }
 
