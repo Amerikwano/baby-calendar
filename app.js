@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.8.2';
+const APP_VERSION = '0.9.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -792,6 +792,9 @@ async function moreActs(act, b, id) {
   else if (act === 'albmenu') albMenu();
   else if (act === 'fav') { if (await save(x => { const p = x.photos.find(y => y.id === id); if (p) p.fav = !p.fav; })) { const on = db.photos.find(y => y.id === id).fav; b.setAttribute('aria-pressed', Boolean(on)); b.querySelector('svg').classList.toggle('fill', Boolean(on)); } }
   else if (act === 'social') Social.begin(AUTH.url, d.p);
+  else if (act === 'sharek') shareDlg();
+  else if (act === 'sendkakao') sendKakao();
+  else if (act === 'sharelink') shareLink();
   else if (act === 'faceadd') pickFace(d.d || '', Boolean(d.cam));
   else if (act === 'face') faceDlg(id);
   else if (act === 'video') videoDlg();
@@ -944,7 +947,7 @@ async function load() { const s = await api('/api/state'); rev = s.rev; db = Obj
     if (soc) { toast(soc.error || `${Social.NAME[soc.acct.provider]}로 로그인했어요`); }
     if (back) afterLogin(back); else if (!soc && !location.search.includes('alerts')) setTimeout(askLocationOnce, 1500);
     if (started && K().photo) { const u = local ? await Local.photoUrl(K().photo, true).catch(() => '') : `photos/${K().photo}/thumb`; if (u) $('#splashFace').innerHTML = `<img src="${u}" alt="">`; }
-    hideSplash();
+    hideSplash(); if (local) checkAuth();
     const bell = new URLSearchParams(location.search).has('alerts'); if (bell) history.replaceState(null, '', location.pathname);
     if (bell && started) setTimeout(alertsDlg, 1500);
     if (local && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});

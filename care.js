@@ -129,7 +129,7 @@ function more() {
   const it = (i, t, s, at) => `<button class="menu" ${at}><span class="lic">${icon(i)}</span><span><b>${t}</b><em>${s}</em></span>${icon('right', 's')}</button>`;
   return accountCard() + `<section class="menus"><h3>아기</h3>${it('heart', '성장 앨범', '매일 얼굴 사진과 성장 영상', 'data-tab="grow"')}${it('shield', '접종·검진', '전체 일정과 완료 기록', 'data-tab="vax"')}${it('hospital', '인근 병원', '가까운 소아청소년과와 보건소', 'data-act="hospitals"')}</section>
   <section class="menus"><h3>정보</h3>${it('tips', '육아 팁', '개월 수에 맞는 육아법', 'data-tab="tips"')}${it('gift', '혜택', '우리 지역과 전국 지원', 'data-tab="money"')}${it('bell', '캘린더에 넣기', '일정을 캘린더 파일로 받기', 'data-act="ics"')}</section>
-  <section class="menus"><h3>앱</h3>${it('gear', '설정', '아이 정보, 지역, 백업', 'data-act="settings"')}</section><p class="sub">질병관리청 표준예방접종일정표(2026) 기준이에요. 실제 접종은 병원 안내를 먼저 따르세요. 버전 ${APP_VERSION}</p>`;
+  <section class="menus"><h3>앱</h3>${it('heart', '카카오톡으로 공유하기', '디데이나 앱 소개 보내기', 'data-act="sharek"')}${it('gear', '설정', '아이 정보, 지역, 백업', 'data-act="settings"')}</section><p class="sub">질병관리청 표준예방접종일정표(2026) 기준이에요. 실제 접종은 병원 안내를 먼저 따르세요. 버전 ${APP_VERSION}</p>`;
 }
 const backRow = (t, to) => `<div class="backrow"><button data-tab="${to || 'more'}" aria-label="뒤로">${icon('left')}</button><h2>${t}</h2></div>`;
 function vax() {

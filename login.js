@@ -27,8 +27,13 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Social = out;
 })(typeof window !== 'undefined' ? window : globalThis);
 
-// 로그인 서버 주소와 켠 서비스. 비어 있으면 그 단추는 나오지 않는다.
-const AUTH = { url: '', kakao: false, naver: false };
+// 로그인 서버 주소
+const AUTH = { url: 'https://baby-notebook-auth.baby-calendar.workers.dev', kakao: false, naver: false };
+try { Object.assign(AUTH, JSON.parse(localStorage.getItem('baby-auth') || '{}')); } catch { }
+// 로그인 서버에 준비된 로그인만 단추로 보인다.
+async function checkAuth() {
+  try { const j = await (await fetch(AUTH.url + '/ready', { signal: AbortSignal.timeout(8000) })).json(), n = { kakao: j.kakao === true, naver: j.naver === true }, same = n.kakao === AUTH.kakao && n.naver === AUTH.naver; Object.assign(AUTH, n); localStorage.setItem('baby-auth', JSON.stringify(n)); if (!same && ready && !dlg.open && (tab === 'more' || !started && ob.step === 'login')) render(); } catch { }
+}
 const KAKAO_MARK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#191600" d="M12 4C6.8 4 2.6 7.3 2.6 11.4c0 2.6 1.7 4.9 4.3 6.2l-.9 3.4c-.1.3.2.5.5.3l4-2.6c.5.1 1 .1 1.5.100 5.2 0 9.4-3.3 9.4-7.4S17.2 4 12 4z"/></svg>';
 const NAVER_MARK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M15.2 12.7L8.6 3.5H3.5v17h5.3v-9.2l6.6 9.2h5.1v-17h-5.3z"/></svg>';
 // 지금 로그인한 계정(카카오·네이버 또는 구글)

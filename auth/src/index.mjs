@@ -19,7 +19,10 @@ const go = url => new Response(null, { status: 302, headers: { location: url, 'c
 const back = (env, p, state, o) => go(env.APP_URL + '#' + new URLSearchParams(Object.assign({ social: p, state }, o)));
 
 async function handle(req, env, get = fetch) {
-  const url = new URL(req.url), m = url.pathname.match(/^\/(login|callback)\/(kakao|naver)$/);
+  const url = new URL(req.url);
+  // 어느 로그인이 준비됐는지만 알려 준다(값은 알려 주지 않는다).
+  if (req.method === 'GET' && url.pathname === '/ready') return new Response(JSON.stringify(Object.fromEntries(Object.entries(PROVIDERS).map(([n, p]) => [n, Boolean(p.ready(env))]))), { headers: { 'content-type': 'application/json', 'access-control-allow-origin': new URL(env.APP_URL).origin, 'cache-control': 'no-store' } });
+  const m = url.pathname.match(/^\/(login|callback)\/(kakao|naver)$/);
   if (req.method !== 'GET' || !m) return new Response('없는 주소예요.', { status: 404 });
   const p = m[2], P = PROVIDERS[p], cb = `${url.origin}/callback/${p}`, state = url.searchParams.get('state') || '';
   if (!STATE.test(state)) return new Response('잘못된 요청이에요.', { status: 400 });
