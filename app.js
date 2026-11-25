@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.7.3';
+const APP_VERSION = '0.7.4';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -73,7 +73,21 @@ function save(change) {
     }
   });
 }
-let tt; function toast(m) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 3500); }
+// 열린 창 위에도 보이도록 맨 위층(popover)에 띄운다. 지원하지 않으면 열린 창 안으로 옮긴다.
+let tt; function toast(m) {
+  const t = $('#toast'), top = typeof t.showPopover === 'function'; t.textContent = m; t.hidden = false;
+  if (top) { if (t.matches(':popover-open')) t.hidePopover(); t.showPopover(); } else ([...document.querySelectorAll('dialog[open]')].pop() || document.body).append(t);
+  clearTimeout(tt); tt = setTimeout(() => { if (top && t.matches(':popover-open')) t.hidePopover(); t.hidden = true; if (!top) document.body.append(t); }, 3500);
+}
+// 파일 고르기. 아이폰은 화면에 붙어 있지 않은 칸의 결과를 버릴 수 있어, 다 고를 때까지 문서(열린 창이 있으면 그 안)에 붙여 둔다.
+let picker = null;
+function pickFiles(o, done) {
+  if (picker) picker.remove();
+  const i = picker = document.createElement('input'); i.type = 'file'; i.className = 'vh'; i.tabIndex = -1; i.setAttribute('aria-hidden', 'true');
+  i.accept = o.accept || 'image/*'; i.multiple = Boolean(o.multiple); if (o.capture) i.capture = o.capture;
+  i.addEventListener('change', () => { const fs = [...i.files]; i.remove(); if (picker === i) picker = null; if (fs.length) done(fs); });
+  ([...document.querySelectorAll('dialog[open]')].pop() || document.body).append(i); i.click();
+}
 const items = (k = K()) => S.build(k.birth, k.options, k.records).map(i => Object.assign(i, { kid: k.id }));
 const famItems = () => db.kids.flatMap(k => items(k)).sort((a, b) => a.start < b.start ? -1 : a.start > b.start ? 1 : 0);
 const tag = id => many() ? `<span class="chip">${id ? esc(kidOf(id).name) : '모두'}</span>` : '';
@@ -464,9 +478,7 @@ function growth() {
     <div class="grid">${cells.map(c => c.f ? `<button data-act="face" data-id="${c.f.id}" aria-label="${dayNo(k, c.d)}일차 사진"><img ${pic(c.f.id, 1)} alt="${dayNo(k, c.d)}일차 얼굴 사진"><span class="d">${dayNo(k, c.d)}일차</span></button>` : `<button class="miss" data-act="faceadd" data-d="${c.d}" aria-label="${dayNo(k, c.d)}일차 사진 넣기">${dayNo(k, c.d)}일차<br>넣기</button>`).join('')}</div><div class="row"><button class="btn" data-act="faceadd">다른 날짜 사진 넣기</button></div></section>`;
 }
 function pickFace(date, cam) {
-  const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; if (cam) i.capture = 'environment';
-  i.onchange = async () => { const f = i.files[0]; if (f) cropDlg(f, date || await exifDate(f) || new Date(f.lastModified).toLocaleDateString('sv-SE'), !date); };
-  i.click();
+  pickFiles({ capture: cam ? 'environment' : '' }, async ([f]) => cropDlg(f, date || await exifDate(f) || new Date(f.lastModified).toLocaleDateString('sv-SE'), !date));
 }
 // 얼굴을 원 안에 맞춘다. 같은 자리에 맞춰 두면 영상이 매끄럽다.
 let crop = null;
@@ -792,11 +804,9 @@ document.addEventListener('click', async ev => {
   else if (act === 'backup') { try { readyDlg(await Local.backup(), `아기수첩-백업-${today()}.zip`, '백업 파일을 만들었어요'); } catch (e) { toast(e.message); } }
   else if (act === 'restore') {
     if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = '지금 내용을 지우고 되돌리기'; return; }
-    const i = document.createElement('input'); i.type = 'file'; i.accept = '.zip,application/zip';
-    i.onchange = async () => { try { await Local.restore(i.files[0]); await load(); dlg.close(); toast('백업을 되돌렸어요'); } catch (e) { toast(e.message || '되돌리지 못했어요'); } };
-    i.click();
+    pickFiles({ accept: '.zip,application/zip' }, async ([zip]) => { try { await Local.restore(zip); await load(); dlg.close(); toast('백업을 되돌렸어요'); } catch (e) { toast(e.message || '되돌리지 못했어요'); } });
   }
-  else if (act === 'addphotos') { if (dlg.open) dlg.close(); const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.multiple = true; i.onchange = () => upload([...i.files]); i.click(); }
+  else if (act === 'addphotos') { if (dlg.open) dlg.close(); pickFiles({ multiple: true }, fs => upload(fs)); }
   else if (act === 'undraft') { draft = draft.filter(x => x !== id); $('#dgrid').innerHTML = draftGrid(); }
   else if (act === 'adddue') { const k = b.dataset; if (await save(d => d.events.push({ id: uid(), title: k.title, date: k.date, time: '', memo: '혜택 신청 마감일', from: k.key, kid: K().id }))) toast('달력에 추가했어요'); }
   else if (act === 'del') {

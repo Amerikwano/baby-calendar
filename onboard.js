@@ -24,13 +24,11 @@ function onboard() {
 /* ── 프로필 사진 ── */
 // 네모로 자른 사진을 만든다. done(blob)으로 돌려준다.
 function pickAvatar(done) {
-  const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*';
-  i.onchange = async () => {
-    let bmp; try { bmp = await createImageBitmap(i.files[0]); } catch { return toast('열 수 없는 사진이에요'); }
+  pickFiles({}, async ([file]) => {
+    let bmp; try { bmp = await createImageBitmap(file); } catch { return toast('열 수 없는 사진이에요'); }
     openDlg(`<form data-form="avatar"><h2>프로필 사진</h2><div class="crop round"><canvas id="cropc" width="720" height="720" aria-label="사진을 끌어서 옮기기"></canvas><i></i></div><label class="f">크기<input type="range" id="cropz" min="1" max="5" step="0.01" value="1"></label>${acts()}</form>`);
     crop = { bmp, z: 1, x: bmp.width / 2, y: bmp.height / 2, done }; bindCrop(720);
-  };
-  i.click();
+  });
 }
 async function saveAvatarBlob(b) {
   const r = await api('/api/photos', { method: 'POST', body: b }), bmp = await createImageBitmap(b), s = document.createElement('canvas'); s.width = s.height = 240; s.getContext('2d').drawImage(bmp, 0, 0, 240, 240);
