@@ -34,7 +34,7 @@ async function pushOn() {
   if (!push.key) push.key = (await pushCall('/key')).key;
   const reg = await navigator.serviceWorker.ready; let sub = await reg.pushManager.getSubscription();
   if (sub && sub.options && sub.options.applicationServerKey) { const a = new Uint8Array(sub.options.applicationServerKey), b = keyBytes(push.key); if (a.length !== b.length || a.some((x, i) => x !== b[i])) { await sub.unsubscribe(); sub = null; } }
-  push.sub = sub || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(push.key) });
+  push.sub = sub || await Promise.race([reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(push.key) }), new Promise((_, no) => setTimeout(() => no(new Error('휴대폰이 알림 주소를 주지 않았어요. 잠시 뒤 다시 켜 주세요.')), 25000))]);
   push.state = 'on'; try { localStorage.setItem('baby-push', 'on'); } catch { }
   try { await pushSync(true); } catch (e) { push.state = 'ask'; throw e; }
 }

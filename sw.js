@@ -1,5 +1,5 @@
 // 수정할 때 CACHE와 index.html의 APP_VERSION을 함께 올린다.
-const CACHE = 'baby-notebook-v0.8.1';
+const CACHE = 'baby-notebook-v0.8.2';
 const FILES = ['./', 'index.html', 'schedule.js', 'base-benefits.js', 'base-tips.js', 'local.js', 'regions.js', 'family.js', 'hospitals.js', 'drive.js', 'login.js', 'icons.js', 'care.js', 'album.js', 'notice.js', 'bell.js', 'onboard.js', 'app.js', 'app.css', 'manifest.webmanifest', 'icon-192.png', 'apple-touch-icon.png'];
 importScripts('schedule.js', 'family.js', 'local.js', 'notice.js');
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
@@ -13,7 +13,8 @@ self.addEventListener('fetch', e => {
 });
 
 /* 알림: 서버는 시각만 알려 주고, 글은 이 기기에 저장된 내용으로 여기서 만든다. */
-const localNow = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+// 서버와 휴대폰 시계가 조금 다를 수 있어 1분 반까지는 때가 된 것으로 본다.
+const localNow = () => { const d = new Date(Date.now() + 90000), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
 async function notify() {
   let m = null, shown = [];
   try {

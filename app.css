@@ -161,3 +161,5 @@ html.android input.blank{position:relative}html.android input.blank::before{posi
 .notice .btn:not(.main){background:var(--card)}
 .gvimg{aspect-ratio:1;max-height:60dvh;border-radius:22px;overflow:hidden;background:var(--soft);width:100%;max-width:480px;margin:auto}dialog.wide .gvimg img{width:100%;height:100%;max-height:none;object-fit:cover;border-radius:0}.gvbar{display:flex;gap:8px;justify-content:center}.gvbar .btn.main{min-width:140px}.mid{text-align:center}
 .opts.rem span{min-height:42px;padding:4px 10px;font-size:14px}
+.ob .errm{color:var(--stamp)}
+.obback{position:sticky;top:0;z-index:3;width:calc(100% + 24px);justify-items:start;padding-left:12px;background:var(--bg)}
