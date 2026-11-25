@@ -34,6 +34,7 @@ const yearCard = (y, l) => { const c = Album.cover(l); return `<button class="yc
 // 아기앨범과 성장 앨범을 오가는 위쪽 탭
 const albSeg = () => `<div class="albseg" role="tablist" aria-label="앨범 종류"><button role="tab" data-tab="album" aria-selected="${tab === 'album'}">아기 앨범</button><button role="tab" data-tab="grow" aria-selected="${tab === 'grow'}">성장 앨범</button></div>`;
 function album() {
+  if (db.photos.some(p => p.type === 'video' && p.th !== 1)) setTimeout(repairPosters, 500);
   const all = albPhotos(), ys = Album.years(all), ty = today().slice(0, 4);
   if (!albYear || !ys.includes(albYear)) albYear = ys[0] || ty;
   const ms = Album.months(all, albYear); if (albView !== 'col' && !ms.includes(albView)) albView = 'col';

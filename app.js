@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.9.3';
+const APP_VERSION = '0.9.4';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -79,14 +79,28 @@ let tt; function toast(m) {
   if (top) { if (t.matches(':popover-open')) t.hidePopover(); t.showPopover(); } else ([...document.querySelectorAll('dialog[open]')].pop() || document.body).append(t);
   clearTimeout(tt); tt = setTimeout(() => { if (top && t.matches(':popover-open')) t.hidePopover(); t.hidden = true; if (!top) document.body.append(t); }, 3500);
 }
+// 가져오고 저장하는 동안 보이는 창. 저장 중에는 닫히지 않는다.
+const busyDlg = $('#busy'); let busyLock = false, busyWait = 0;
+busyDlg.addEventListener('cancel', e => { if (busyLock) e.preventDefault(); });
+function busy(title, sub, done, total) {
+  busyLock = total != null;
+  if (!busyDlg.open) { busyDlg.innerHTML = `<div class="bz"><div class="spin" aria-hidden="true"></div><b id="busyt" role="status"></b><span id="busys"></span><progress id="busyp" hidden></progress><button type="button" class="btn" data-act="close" id="busyx">취소</button></div>`; busyDlg.showModal(); }
+  $('#busyt').textContent = title; $('#busys').textContent = sub || '';
+  $('#busyp').hidden = !busyLock || total < 2; if (busyLock) { $('#busyp').max = total; $('#busyp').value = done; }
+  $('#busyx').hidden = busyLock;
+}
+function busyOff() { clearTimeout(busyWait); busyLock = false; if (busyDlg.open) busyDlg.close(); }
 // 파일 고르기. 아이폰은 화면에 붙어 있지 않은 칸의 결과를 버릴 수 있어, 다 고를 때까지 문서(열린 창이 있으면 그 안)에 붙여 둔다.
 let picker = null;
 function pickFiles(o, done) {
   if (picker) picker.remove();
   const i = picker = document.createElement('input'); i.type = 'file'; i.className = 'vh'; i.tabIndex = -1; i.setAttribute('aria-hidden', 'true');
   i.accept = o.accept || 'image/*'; i.multiple = Boolean(o.multiple); if (o.capture) i.capture = o.capture;
-  i.addEventListener('change', () => { const fs = [...i.files]; i.remove(); if (picker === i) picker = null; if (fs.length) done(fs); });
+  i.addEventListener('change', () => { const fs = [...i.files]; i.remove(); if (picker === i) picker = null; if (fs.length) done(fs); else if (o.busy) busyOff(); });
+  i.addEventListener('cancel', () => { i.remove(); if (picker === i) picker = null; if (o.busy) busyOff(); });
   ([...document.querySelectorAll('dialog[open]')].pop() || document.body).append(i); i.click();
+  // 다 고른 뒤 휴대폰이 동영상을 준비하는 몇 초 동안 보이도록 고르는 화면 뒤에 미리 띄운다. 아이폰의 고르기 메뉴와 겹치지 않게 조금 늦춘다.
+  clearTimeout(busyWait); if (o.busy) busyWait = setTimeout(() => { if (picker === i) busy(o.busy, '휴대폰이 준비하고 있어요. 잠시 기다려 주세요'); }, o.capture ? 1200 : 3000);
 }
 const items = (k = K()) => S.build(k.birth, k.options, k.records).map(i => Object.assign(i, { kid: k.id }));
 const famItems = () => db.kids.flatMap(k => items(k)).sort((a, b) => a.start < b.start ? -1 : a.start > b.start ? 1 : 0);
@@ -445,14 +459,16 @@ async function exifDate(file) {
   } catch { } return null;
 }
 async function upload(files, fixedDate) {
-  const added = [], bad = []; if (files.some(Media.isVideo)) toast('동영상을 저장하는 중이에요. 화면을 켜 두세요.');
+  const added = [], bad = []; let n = 0;
   for (const f of files) {
+    busy(Media.isVideo(f) ? '동영상을 저장하는 중이에요' : '사진을 저장하는 중이에요', files.length > 1 ? `${++n} / ${files.length}, 화면을 켜 두세요` : '화면을 켜 두세요', n - 1, files.length);
+    await new Promise(r => setTimeout(r, 30)); // 창이 먼저 그려지게 한다
     try {
       const m = await storeMedia(f), made = m.type ? await Media.madeAt(f) : null;
       added.push(Object.assign(m, { date: fixedDate || (made ? made.toLocaleDateString('sv-SE') : await exifDate(f)) || new Date(f.lastModified || Date.now()).toLocaleDateString('sv-SE'), caption: '', kid: K().id }));
     } catch (e) { bad.push((f.name || '파일') + (e.status ? ': ' + e.message : ': 열 수 없는 파일이에요')); }
   }
-  if (added.length && await save(d => d.photos.push(...added))) autoUpload();
+  const kept = added.length && await save(d => d.photos.push(...added)); busyOff(); if (kept) autoUpload();
   if (bad.length) toast(bad[0] + (bad.length > 1 ? ` 외 ${bad.length - 1}장` : '')); else if (added.length) { const v = added.filter(x => x.type).length, n = added.length - v; toast([n ? `사진 ${n}장` : '', v ? `동영상 ${v}개` : ''].filter(Boolean).join(', ') + (v ? '를' : '을') + ' 넣었어요'); }
   return added;
 }
@@ -853,9 +869,9 @@ document.addEventListener('click', async ev => {
     pickFiles({ accept: '.zip,application/zip' }, async ([zip]) => { try { await Local.restore(zip); await load(); dlg.close(); toast('백업을 되돌렸어요'); } catch (e) { toast(e.message || '되돌리지 못했어요'); } });
   }
   else if (act === 'addphotos') addDlg();
-  else if (act === 'albcam') { if (dlg.open) dlg.close(); pickFiles({ capture: 'environment' }, fs => upload(fs, today())); }
-  else if (act === 'albvid') { if (dlg.open) dlg.close(); pickFiles({ accept: 'video/*', capture: 'environment' }, fs => upload(fs, today())); }
-  else if (act === 'albpick') { if (dlg.open) dlg.close(); pickFiles({ accept: 'image/*,video/*', multiple: true }, fs => upload(fs)); }
+  else if (act === 'albcam') { if (dlg.open) dlg.close(); pickFiles({ capture: 'environment', busy: '사진을 저장하는 중이에요' }, fs => upload(fs, today())); }
+  else if (act === 'albvid') { if (dlg.open) dlg.close(); pickFiles({ accept: 'video/*', capture: 'environment', busy: '동영상을 저장하는 중이에요' }, fs => upload(fs, today())); }
+  else if (act === 'albpick') { if (dlg.open) dlg.close(); pickFiles({ accept: 'image/*,video/*', multiple: true, busy: '사진·동영상을 저장하는 중이에요' }, fs => upload(fs)); }
   else if (act === 'undraft') { draft = draft.filter(x => x !== id); $('#dgrid').innerHTML = draftGrid(); }
   else if (act === 'adddue') { const k = b.dataset; if (await save(d => d.events.push({ id: uid(), title: k.title, date: k.date, time: '', memo: '혜택 신청 마감일', from: k.key, kid: K().id }))) toast('달력에 추가했어요'); }
   else if (act === 'del') {

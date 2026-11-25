@@ -12,7 +12,7 @@ function viewPhoto(kind, id, list) {
   vSwipe(viewer.querySelector('.vstage'));
   $('#vrange').addEventListener('input', e => { const v = vVideo(); if (v && v.duration) v.currentTime = v.duration * e.target.value / 1000; });
   if (!viewRefresh()) return;
-  vTheme('#120d0b'); viewer.tabIndex = -1; viewer.showModal(); viewer.focus({ preventScroll: true });
+  viewer.className = viewer.classList.contains('isvid') ? 'isvid' : ''; viewer.style.background = ''; vTheme('#120d0b'); viewer.tabIndex = -1; viewer.showModal(); viewer.focus({ preventScroll: true });
 }
 // 저장하거나 지운 뒤에도 같은 자리를 보여 준다. 남은 사진이 없으면 닫는다.
 function viewRefresh() {
@@ -79,26 +79,40 @@ async function vPlay() {
   v = document.createElement('video'); v.playsInline = true; v.preload = 'auto'; v.draggable = false; slide.append(v);
   ['play', 'pause', 'ended', 'timeupdate', 'loadedmetadata'].forEach(n => v.addEventListener(n, () => { if (vw === now && vVideo() === v) vBar(); }));
   v.addEventListener('playing', () => { slide.querySelector('img').hidden = true; });
+  v.addEventListener('timeupdate', () => { if (v.currentTime < 1.5) posterFromPlaying(p, v); }, { once: true });
   v.addEventListener('error', () => { if (v.getAttribute('src')) { v.remove(); slide.querySelector('img').hidden = false; toast('이 기기에서 재생할 수 없는 형식이에요. ⋯에서 내보내기로 저장해 보세요.'); } });
   let u = now.urls.get(p.id); if (!u) { const b = await photoBlob(p.id).catch(() => null); if (!b) { v.remove(); return toast('동영상을 찾지 못했어요'); } if (vw !== now || vItem() !== p) { v.remove(); return; } u = URL.createObjectURL(b); now.urls.set(p.id, u); }
   v.src = u; v.play().catch(() => vBar());
 }
+// 아래로 끌면 사진이 따라 내려가며 뒤가 비친다.
+function vDrag(dy, anim) {
+  const st = viewer.querySelector('.vstage'), k = Math.min(1, dy / Math.max(1, viewer.clientHeight * .6));
+  st.style.transition = anim ? 'transform .2s ease-out' : 'none'; st.style.transform = dy ? `translateY(${dy}px) scale(${1 - k * .18})` : '';
+  viewer.classList.toggle('drag', dy > 0); viewer.style.background = dy ? `rgb(18 13 11 / ${(1 - k * .85).toFixed(3)})` : '';
+}
 function vSwipe(st) {
   let s = null;
-  st.addEventListener('pointerdown', e => { if (!e.isPrimary || vw.busy || e.button > 0) return; s = { x: e.clientX, y: e.clientY, t: e.timeStamp, dx: 0, on: false }; st.setPointerCapture(e.pointerId); });
+  st.addEventListener('pointerdown', e => { if (!e.isPrimary || vw.busy || e.button > 0) return; s = { x: e.clientX, y: e.clientY, t: e.timeStamp, dx: 0, dy: 0, on: '' }; st.setPointerCapture(e.pointerId); });
   st.addEventListener('pointermove', e => {
     if (!s || !e.isPrimary) return; const dx = e.clientX - s.x, dy = e.clientY - s.y;
-    if (!s.on && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) s.on = true;
-    if (!s.on) return;
-    const edge = dx > 0 && vw.i === 0 || dx < 0 && vw.i === vw.items.length - 1; s.dx = dx; vPlace(edge ? dx / 4 : dx);
+    // 처음 움직인 방향으로 좌우 넘기기와 아래로 닫기를 나눈다
+    if (!s.on && Math.max(Math.abs(dx), Math.abs(dy)) > 8) { s.on = Math.abs(dx) > Math.abs(dy) ? 'x' : dy > 0 ? 'y' : 'no'; if (s.on === 'y') vTip(false); }
+    if (s.on === 'x') { const edge = dx > 0 && vw.i === 0 || dx < 0 && vw.i === vw.items.length - 1; s.dx = dx; vPlace(edge ? dx / 4 : dx); }
+    if (s.on === 'y') { s.dy = Math.max(0, dy); vDrag(s.dy); }
   });
   const end = e => {
-    if (!s || !e.isPrimary) return; const { dx, on, t } = s; s = null;
-    if (!on) { if (e.type === 'pointerup') { if (!$('#vtip').hidden) vTip(false); else if ((vItem() || {}).type) vPlay(); } return; }
-    const quick = Math.abs(dx) / Math.max(1, e.timeStamp - t) > .4 && Math.abs(dx) > 24;
-    if (e.type === 'pointerup' && (quick || Math.abs(dx) > viewer.clientWidth * .28)) vGo(dx < 0 ? 1 : -1); else vPlace(0, true);
+    if (!s || !e.isPrimary) return; const { dx, dy, on, t } = s, up = e.type === 'pointerup', ms = Math.max(1, e.timeStamp - t); s = null;
+    if (!on) { if (up) { if (!$('#vtip').hidden) vTip(false); else if ((vItem() || {}).type) vPlay(); } return; }
+    if (on === 'y') {
+      if (up && (dy > 120 || dy / ms > .5 && dy > 40)) { const now = vw; vw.busy = true; vDrag(viewer.clientHeight, true); setTimeout(() => { if (vw === now && viewer.open) viewer.close(); }, matchMedia('(prefers-reduced-motion:reduce)').matches ? 0 : 190); }
+      else vDrag(0, true);
+      return;
+    }
+    if (on !== 'x') return;
+    const quick = Math.abs(dx) / ms > .4 && Math.abs(dx) > 24;
+    if (up && (quick || Math.abs(dx) > viewer.clientWidth * .28)) vGo(dx < 0 ? 1 : -1); else vPlace(0, true);
   };
   st.addEventListener('pointerup', end); st.addEventListener('pointercancel', end);
 }
 viewer.addEventListener('keydown', e => { if (!vw || e.target.closest('input,textarea')) return; if (e.key === 'ArrowRight') vGo(1); else if (e.key === 'ArrowLeft') vGo(-1); });
-viewer.addEventListener('close', () => { if (viewer.open || !vw) return; vTheme('#faf5ee'); const v = vVideo(); if (v) v.pause(); vw.urls.forEach(u => URL.revokeObjectURL(u)); vw = null; viewer.innerHTML = ''; });
+viewer.addEventListener('close', () => { if (viewer.open || !vw) return; vTheme('#faf5ee'); const v = vVideo(); if (v) v.pause(); vw.urls.forEach(u => URL.revokeObjectURL(u)); vw = null; viewer.innerHTML = ''; viewer.className = ''; viewer.style.background = ''; });

@@ -42,7 +42,7 @@
         try { await putPhoto(id, { type, data: video ? new Blob([body], { type }) : await body.arrayBuffer() }); } catch (e) { if (!video || e.name === 'QuotaExceededError') throw e; await putPhoto(id, { type, data: await body.arrayBuffer() }); }
         return { id }; }
       const m = url.match(/photos\/([0-9a-f]{24})(\/thumb)?$/);
-      if (m && m[2] && method === 'PUT') { const r = await getPhoto(m[1]); r.thumb = await body.arrayBuffer(); await putPhoto(m[1], r); return {}; }
+      if (m && m[2] && method === 'PUT') { const r = await getPhoto(m[1]); r.thumb = await body.arrayBuffer(); await putPhoto(m[1], r); urls.delete(m[1] + 't'); return {}; }
       if (m && method === 'DELETE') { await delPhoto(m[1]); return {}; }
     } catch (e) {
       if (e.status) throw e;
