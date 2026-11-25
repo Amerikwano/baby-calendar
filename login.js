@@ -8,7 +8,7 @@
   function readReturn(hash, saved, now) {
     const q = new URLSearchParams(String(hash).replace(/^#/, '')), p = q.get('social');
     if (!p) return null;
-    if (NAME[p] && !saved && q.get('id')) return { error: '로그인이 끝났어요. 처음 누른 앱으로 돌아가면 이어져요.' };
+    if (NAME[p] && !saved && q.get('id')) return { error: '로그인이 끝났어요. 처음 누른 앱으로 돌아가면 이어져요.', handoff: true };
     if (!NAME[p] || !saved || saved.p !== p || saved.state !== q.get('state') || now - saved.t > 15 * 60000) return { error: '로그인을 확인하지 못했어요. 다시 시도해 주세요.' };
     if (q.get('error')) return { error: q.get('error') === 'cancel' ? '로그인을 취소했어요. 로그인하지 않아도 계속 쓸 수 있어요.' : `${NAME[p]} 로그인에 실패했어요. 다시 시도해 주세요.` };
     const id = q.get('id') || ''; if (!/^[\w-]{1,80}$/.test(id)) return { error: '로그인을 확인하지 못했어요. 다시 시도해 주세요.' };
@@ -46,7 +46,9 @@
     if (r.acct) { put('baby-acct', r.acct); if (s && s.v && typeof AUTH !== 'undefined') ask(AUTH.url, s).catch(() => { }); } // 맡겨 둔 결과를 지운다
     return r;
   }
-  const out = { NAME, readReturn, readResult, begin, finish, resume, account: () => get('baby-acct'), logout: () => put('baby-acct', null) };
+  // 카카오톡 같은 앱 안에서 열린 창. 기록이 그 앱 안에만 남고, 로그인하다 다른 브라우저로 넘어가기도 한다.
+  const inApp = ua => /KAKAOTALK/i.test(ua) ? 'kakao' : /NAVER\(inapp|Instagram|FBAN|FBAV|\bLine\/|DaumApps|BAND\/|everytimeApp|; wv\)/i.test(ua) ? 'other' : '';
+  const out = { NAME, inApp, readReturn, readResult, begin, finish, resume, account: () => get('baby-acct'), logout: () => put('baby-acct', null) };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Social = out;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -75,6 +77,16 @@ if (typeof document !== 'undefined') {
 function accountCard() {
   if (!canLogin()) return '';
   const a = account(), g = Drive.account();
-  if (!a) return `<section class="acct"><div><b>로그인하고 시작해 보세요</b><p class="sub">구글로 로그인하면 사진을 내 구글 드라이브에 올리고 관리할 수 있어요. 로그인하지 않아도 다른 기능은 모두 쓸 수 있어요.</p></div><div class="socs">${socialBtns()}</div></section>`;
+  if (!a) return `<section class="acct"><div><b>로그인하고 시작해 보세요</b><p class="sub">기록은 지금 쓰는 이 브라우저에 저장돼요. 구글로 로그인하면 사진을 내 구글 드라이브에 올려 둘 수 있어요.</p></div><div class="socs">${socialBtns()}</div></section>`;
   return `<section class="acct"><div class="row between"><div><b>${esc(a.name)}</b><p class="sub">${Social.NAME[a.p]}로 로그인했어요</p></div><button class="btn" data-act="logout">로그아웃</button></div>${canDrive() ? `<div class="row between"><span class="sub">구글 드라이브 ${g ? `연결됨 (${esc(g.email || g.name)})` : '연결 안 됨'}</span><button class="btn" data-act="${g ? 'drive' : 'login'}">${g ? '사진 관리' : '연결하기'}</button></div>` : ''}</section>`;
+}
+// 앱 안 브라우저에서 열었을 때 알림. 카카오톡은 바깥 브라우저로 바로 열 수 있다.
+const IN_APP = typeof Social !== 'undefined' && typeof navigator !== 'undefined' ? Social.inApp(navigator.userAgent) : '';
+function inAppCard() {
+  if (!IN_APP) return '';
+  return `<section class="notice hot inapp"><b>${IN_APP === 'kakao' ? '카카오톡' : '다른 앱'} 안에서 열었어요</b><p class="sub">여기서 쓴 기록은 이 창에만 남아서, 크롬이나 사파리에서는 보이지 않아요. 로그인도 중간에 다른 창으로 넘어가 끊길 수 있어요. ${IN_APP === 'kakao' ? '아래 단추로 열고, 홈 화면에 추가해서 쓰는 걸 권해요.' : '오른쪽 위 메뉴에서 ‘다른 브라우저로 열기’를 눌러 주세요.'}</p>${IN_APP === 'kakao' ? '<button type="button" class="btn main" data-act="external">크롬·사파리로 열기</button>' : ''}</section>`;
+}
+// 로그인이 시작한 창이 아닌 곳으로 돌아왔을 때 (예: 카카오톡에서 시작했는데 크롬으로 돌아옴)
+function handoffView(google) {
+  return `<section class="ob"><div class="obmid"><div class="ring">${FACE}</div><h1>${google ? '다른 창으로 돌아왔어요' : '로그인을 마쳤어요'}</h1><p>${google ? '로그인을 처음 누른 창(카카오톡 등)으로 돌아가서 다시 시도해 주세요.' : '이 창은 닫고, 로그인을 처음 누른 창(카카오톡 등)으로 돌아가면 이어져요.'}<br>기록은 처음 쓰던 창에 그대로 있어요.</p></div><div class="socs"><button class="soc plain" data-act="handoffnew">이 창에서 새로 시작하기</button></div></section>`;
 }

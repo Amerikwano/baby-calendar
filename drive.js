@@ -12,6 +12,7 @@
   function readReturn(hash, saved, now) {
     const q = new URLSearchParams(String(hash).replace(/^#/, ''));
     if (!q.get('state') || !(q.get('access_token') || q.get('error'))) return null;
+    if (!saved && q.get('access_token')) return { error: '로그인을 시작한 창이 아니에요. 처음 쓰던 창에서 다시 시도해 주세요.', handoff: true };
     if (!saved || saved.state !== q.get('state') || now - saved.t > 15 * 60000) return { error: '로그인을 확인하지 못했어요. 다시 시도해 주세요.' };
     if (q.get('error')) return { error: q.get('error') === 'access_denied' ? '로그인을 취소했어요. 로그인하지 않아도 계속 쓸 수 있어요.' : '구글 로그인에 실패했어요. 다시 시도해 주세요.' };
     if (!(q.get('scope') || '').split(' ').includes(SCOPE)) return { error: '드라이브 권한이 빠졌어요. 다시 로그인하면서 체크해 주세요.' };
@@ -29,7 +30,7 @@
     history.replaceState(null, '', location.pathname + location.search); // 주소에 토큰을 남기지 않는다
     put(localStorage, 'baby-oauth', null);
     if (r.token) { put(sessionStorage, 'baby-token', r); folder = null; }
-    return r.error ? { error: r.error } : { ok: true };
+    return r.error ? { error: r.error, handoff: r.handoff } : { ok: true };
   }
   const token = () => { const t = get(sessionStorage, 'baby-token'); return t && t.until > Date.now() ? t.token : ''; };
   const account = () => get(localStorage, 'baby-google');

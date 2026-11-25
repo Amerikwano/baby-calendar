@@ -91,7 +91,7 @@ function home() {
   const strip = !k.born && today() >= k.birth ? `<div class="notice hot"><b>예정일이 되었어요. 아기가 태어났나요?</b><div class="row"><button class="btn main" data-act="born">생일 넣기</button></div></div>`
     : first ? `<button class="strip" data-act="vaxnow">${icon('shield')}<span><b>지금 받을 것 ${n}개</b><em>${esc(first.title)}${n > 1 ? ' 외' : ''}</em></span>${icon('right', 's')}</button>` : '';
   const ev = a.events.map(e => `<button class="strip" data-act="event" data-id="${e.id}">${icon('cal')}<span><b>${esc(e.title)}</b><em>${e.date === today() ? '오늘' : '내일'}${e.time ? ' ' + Care.clock(e.time) : ''}</em></span>${icon('right', 's')}</button>`).join('');
-  return quickRow(k) + (k.born ? '' : hero()) + `<div class="stack">${strip}${ev}${missionStrip(k)}</div>` + (k.born ? '' : mission()) + `<section class="logs">${timeline(k)}</section>` + loginCard();
+  return inAppCard() + quickRow(k) + (k.born ? '' : hero()) + `<div class="stack">${strip}${ev}${missionStrip(k)}</div>` + (k.born ? '' : mission()) + `<section class="logs">${timeline(k)}</section>` + loginCard();
 }
 
 /* ── 기록 창 ── */

@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.9.6';
+const APP_VERSION = '0.9.7';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -59,6 +59,7 @@ async function api(url, opt) {
   return j;
 }
 let chain = Promise.resolve(true);
+let handoff = ''; // 로그인이 다른 창에서 끝나 이 창으로 온 경우
 // 저장은 순서대로 한 번씩. 실패하면 화면에 알리고 false를 준다.
 function save(change) {
   return chain = chain.then(async () => {
@@ -371,7 +372,7 @@ function syncAI() {
 function render() {
   if (!ready) return;
   $('#top').hidden = $('nav').hidden = !started; document.body.classList.toggle('on', started);
-  if (!started) { $('#main').innerHTML = onboard(); return; }
+  if (!started) { $('#main').innerHTML = handoff ? handoffView(handoff === 'google') : onboard(); return; }
   $('#top').innerHTML = topBar(); $('nav').innerHTML = navBar();
   const q = $('#main .pill'), qx = q ? q.scrollLeft : 0, mt = $('#main .mtabs'), mx = mt ? mt.scrollLeft : 0;
   const opened = [...document.querySelectorAll('#main details[open]')].map(x => x.dataset.key || 'all');
@@ -701,7 +702,7 @@ function loginCard() {
   if (!canLogin() || account()) return '';
   try { if (Date.now() - Number(localStorage.getItem('baby-login-later') || 0) < 7 * 86400000) return ''; } catch { }
   const n = allPhotos().length;
-  return `<section class="acct"><div><b>${n ? `사진 ${n}장을 안전하게 보관하세요` : '로그인하고 사진을 안전하게 보관하세요'}</b><p class="sub">구글로 로그인하면 사진을 내 구글 드라이브에 올리고, 휴대폰을 바꿔도 다시 가져올 수 있어요. 로그인하지 않아도 다른 기능은 모두 쓸 수 있어요.</p></div><div class="socs">${socialBtns()}</div><button class="btn" data-act="loginlater">나중에</button></section>`;
+  return `<section class="acct"><div><b>${n ? `사진 ${n}장을 안전하게 보관하세요` : '로그인하고 사진을 안전하게 보관하세요'}</b><p class="sub">기록은 지금 쓰는 이 브라우저에 저장돼요. 구글로 로그인하면 사진을 내 구글 드라이브에 올려 두고, 휴대폰을 바꿔도 다시 가져올 수 있어요.</p></div><div class="socs">${socialBtns()}</div><button class="btn" data-act="loginlater">나중에</button></section>`;
 }
 function driveBar() {
   if (!canDrive()) return '';
@@ -777,6 +778,8 @@ async function moreActs(act, b, id) {
   else if (act === 'kidedit') kidDlg(id);
   else if (act === 'addkid') addKidDlg();
   else if (act === 'grow') { tab = 'grow'; render(); scrollTo(0, 0); }
+  else if (act === 'external') location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(location.origin + location.pathname);
+  else if (act === 'handoffnew') { handoff = ''; render(); }
   else if (act === 'obstep') { ob.step = d.s; render(); scrollTo(0, 0); }
   else if (act === 'obpick') { ob.born = d.b === '1'; ob.step = 'form'; ob.photo = {}; render(); scrollTo(0, 0); }
   else if (act === 'obphoto') pickAvatar(bl => { ob.photo[d.i] = bl; const s = document.querySelector(`[data-kidbox="${d.i}"] .av`); if (s) s.innerHTML = `<img src="${URL.createObjectURL(bl)}" alt="">`; });
@@ -967,9 +970,11 @@ async function load() { const s = await api('/api/state'); rev = s.rev; db = Obj
     // 내 컴퓨터에서 npm start로 켰을 때만 서버가 있다.
     local = !(['localhost', '127.0.0.1'].includes(location.hostname) && await fetch('/api/status').then(r => r.ok && (r.headers.get('content-type') || '').includes('json')).catch(() => false));
     ai = local ? Boolean(aiBase() && conf.code) : (await api('/api/status')).ai;
-    const soc = local ? Social.finish() : null, back = local && GOOGLE_ID && !soc ? Drive.finish() : null;
+    let soc = local ? Social.finish() : null, back = local && GOOGLE_ID && !soc ? Drive.finish() : null;
+    if (soc && soc.handoff || back && back.handoff) handoff = soc ? 'social' : 'google';
     await load();
-    if (soc) { toast(soc.error || `${Social.NAME[soc.acct.provider]}로 로그인했어요`); }
+    if (handoff) { if (started) { toast((soc || back).error); handoff = ''; } soc = soc || {}; back = null; }
+    else if (soc) { toast(soc.error || `${Social.NAME[soc.acct.provider]}로 로그인했어요`); }
     if (back) afterLogin(back); else if (!soc && !location.search.includes('alerts')) setTimeout(askLocationOnce, 1500);
     if (started && K().photo) { const u = local ? await Local.photoUrl(K().photo, true).catch(() => '') : `photos/${K().photo}/thumb`; if (u) $('#splashFace').innerHTML = `<img src="${u}" alt="">`; }
     if (local && !back && Drive.token() && !Drive.account()) Drive.me().then(() => { if (!dlg.open) { if (!started) ob.step = ''; render(); } }).catch(() => { });

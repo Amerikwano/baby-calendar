@@ -105,3 +105,11 @@ test('밀어서 탭 옮기기: 순서와 판정', () => {
   assert.deepEqual(['home', 'cal', 'more', 'tips', 'vax'].map(t => W.next(t, -1)), ['', 'home', 'money', 'grow', 'more']); assert.equal(W.next('vax', 1), '');
   assert.deepEqual([W.judge(-120, 10, 200), W.judge(120, 10, 200), W.judge(-40, 0, 100), W.judge(-100, 80, 200), W.judge(-200, 5, 1500)], [1, -1, 0, 0, 0]);
 });
+test('앱 안 브라우저와 다른 창으로 돌아온 로그인', () => {
+  assert.equal(L.inApp('Mozilla/5.0 (iPhone) KAKAOTALK 10.4.0'), 'kakao');
+  assert.equal(L.inApp('Mozilla/5.0 (Linux; Android 14; SM-S921N Build/UP1A; wv) AppleWebKit Chrome/120 Mobile NAVER(inapp; search; 2000)'), 'other');
+  assert.equal(L.inApp('Mozilla/5.0 (Linux; Android 14; SM-S921N) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36'), '');
+  assert.equal(L.inApp('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1'), '');
+  assert.ok(L.readReturn(`#social=kakao&state=${S32}&id=abc`, null, 2000).handoff);
+  const D = require('./drive.js'); assert.ok(D.readReturn('#state=abc&access_token=T', null, 2000).handoff); assert.ok(!D.readReturn('#state=abc&access_token=T', { state: 'zzz', t: 1000 }, 2000).handoff);
+});
