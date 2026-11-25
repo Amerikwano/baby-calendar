@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.8.0';
+const APP_VERSION = '0.8.1';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -386,7 +386,7 @@ function itemDlg(id, kid) {
 }
 function eventDlg(id) {
   const e = db.events.find(x => x.id === id) || { title: '', date: tab === 'cal' ? sel : today(), time: '', memo: '', kid: tab === 'cal' ? '' : K().id };
-  openDlg(`<form data-form="event" data-id="${id || ''}"><h2>${id ? '일정 고치기' : '일정 추가'}</h2><label class="f">제목<input name="title" required maxlength="80" value="${esc(e.title)}" placeholder="예: 백일 사진 예약"></label>${whoField(e.kid)}<div class="two"><label class="f">날짜<input type="date" name="date" required value="${e.date}"></label><label class="f">시간 (선택)<input type="time" name="time" value="${e.time || ''}"></label></div><label class="f">메모<textarea name="memo" maxlength="1000" style="min-height:80px">${esc(e.memo)}</textarea></label>${acts(id && ['event', id, '일정 지우기'])}</form>`);
+  openDlg(`<form data-form="event" data-id="${id || ''}"><h2>${id ? '일정 고치기' : '일정 추가'}</h2><label class="f">제목<input name="title" required maxlength="80" value="${esc(e.title)}" placeholder="예: 백일 사진 예약"></label>${whoField(e.kid)}<div class="two"><label class="f">날짜<input type="date" name="date" required value="${e.date}"></label><label class="f">시간 (선택)<input type="time" name="time" value="${e.time || ''}"></label></div><div class="sexf"><span>알림 (여러 개 고를 수 있어요)</span><div class="opts rem">${[['d1', '하루 전'], ['d0', '당일 아침'], ['h1', '1시간 전'], ['m10', '10분 전'], ['m0', '정시']].map(([r, t]) => `<label><input type="checkbox" name="rem" value="${r}" ${(e.rem || Notice.REM).includes(r) ? 'checked' : ''}><span>${t}</span></label>`).join('')}</div><span class="sub">1시간 전·10분 전·정시는 시간을 넣었을 때 울려요.</span></div><label class="f">메모<textarea name="memo" maxlength="1000" style="min-height:80px">${esc(e.memo)}</textarea></label>${acts(id && ['event', id, '일정 지우기'])}</form>`);
 }
 let draft = []; // 일기 창에서 고른 사진 id
 const draftGrid = () => draft.map(id => `<button type="button" data-act="undraft" data-id="${id}" aria-label="일기에서 사진 빼기"><img ${pic(id, 1)} alt=""><span class="x">빼기</span></button>`).join('');
@@ -872,7 +872,7 @@ document.addEventListener('submit', async ev => {
   const f = ev.target, v = Object.fromEntries(new FormData(f)), id = f.dataset.id, kind = f.dataset.form;
   let ok = false;
   if (kind === 'item') ok = await save(d => { const r = (d.kids.find(k => k.id === f.dataset.kid) || d.kids[0]).records; if (v.appt || v.done) r[id] = { appt: v.appt || null, done: v.done || null }; else delete r[id]; });
-  if (kind === 'event') ok = await save(d => { const e = d.events.find(x => x.id === id), n = { title: v.title.trim(), date: v.date, time: v.time, memo: v.memo, kid: v.kid != null ? v.kid : e ? e.kid : K().id }; if (e) Object.assign(e, n); else d.events.push(Object.assign({ id: uid() }, n)); });
+  if (kind === 'event') ok = await save(d => { const e = d.events.find(x => x.id === id), n = { title: v.title.trim(), date: v.date, time: v.time, memo: v.memo, rem: new FormData(f).getAll('rem'), kid: v.kid != null ? v.kid : e ? e.kid : K().id }; if (e) Object.assign(e, n); else d.events.push(Object.assign({ id: uid() }, n)); });
   if (kind === 'diary') {
     if (!v.body.trim() && !draft.length) return toast('내용을 쓰거나 사진을 넣어 주세요');
     ok = await save(d => { const e = d.diary.find(x => x.id === id), n = { date: v.date, body: v.body.trim(), photos: [...draft], kid: v.kid != null ? v.kid : e ? e.kid : K().id }; if (e) Object.assign(e, n); else d.diary.push(Object.assign({ id: uid() }, n)); d.photos.forEach(p => { if (draft.includes(p.id)) { p.date = v.date; if (v.kid != null) p.kid = v.kid; } }); });
@@ -897,7 +897,7 @@ document.addEventListener('submit', async ev => {
     }
   }
   if (kind === 'none') return;
-  if (kind === 'quick') { if (!v.title.trim()) return toast('일정을 적어 주세요'); if (await save(d => d.events.push({ id: uid(), title: v.title.trim(), date: sel, time: '', memo: '', kid: '' }))) toast('일정을 추가했어요'); return; }
+  if (kind === 'quick') { if (!v.title.trim()) return toast('일정을 적어 주세요'); if (await save(d => d.events.push({ id: uid(), title: v.title.trim(), date: sel, time: '', memo: '', kid: '' }))) toast(push.state === 'ask' && PUSH_URL ? '추가했어요. 종 모양에서 알림을 켜면 휴대폰으로 알려드려요.' : '일정을 추가했어요'); return; }
   if (kind === 'crop') { const ok = f.querySelector('[value=ok]'); ok.disabled = true; await saveFace(v.date); ok.disabled = false; return; }
   if (kind === 'avatar') { const bl = await new Promise(x => $('#cropc').toBlob(x, 'image/jpeg', .9)), fn = crop.done; dlg.close(); if (bl) fn(bl); return; }
   if (kind === 'log') ok = await saveLog(f, v);
@@ -920,7 +920,7 @@ document.addEventListener('submit', async ev => {
     if (local && v.aiCode != null) saveAI(v.aiCode.trim());
     ok = await save(d => Object.assign(d, { leads: new FormData(f).getAll('lead').map(Number), hour: Number(v.hour) }));
   }
-  if (ok) { dlg.close(); toast('저장했어요'); syncAI(); render(); }
+  if (ok) { dlg.close(); toast(kind === 'event' && push.state === 'ask' && PUSH_URL ? '저장했어요. 종 모양에서 알림을 켜면 휴대폰으로 알려드려요.' : '저장했어요'); syncAI(); render(); }
 });
 async function download() {
   if (!await save(d => { d.exports++; })) return;

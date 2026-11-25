@@ -1,6 +1,7 @@
 /* 알림 만들기: 등록한 날부터 오늘 날짜에 맞는 알림만 고른다. 앱과 서비스 워커(알림)에서 같이 쓴다. 화면과 무관하다. */
 (function (root) {
   'use strict';
+  const REM = ['d1', 'd0', 'h1']; // 일정 알림의 기본값: 하루 전, 당일 아침, 1시간 전
   const pad = n => String(n).padStart(2, '0');
   // S: schedule.js. 시기가 지난 것과 마친 것은 만들지 않는다.
   function build(db, S, today) {
@@ -28,11 +29,19 @@
         [7, 1].forEach(n => { const d = S.addDays(limit, -n); if (d > start) put(sub, 'last' + n, d, `${it.title} ${n}일 남았어요`, `${limit.slice(5).replace('-', '/')}까지 받아 주세요`, limit, ref); });
       });
     });
-    const kid = id => db.kids.find(k => k.id === id) || null, first = db.kids.reduce((a, k) => (k.since || today) < a ? k.since || today : a, today);
+    const kid = id => db.kids.find(k => k.id === id) || null;
+    // 내 일정: 고른 때마다 알린다. 시각이 없으면 하루 전과 당일 아침만.
     (db.events || []).forEach(e => {
-      if (e.done || e.date < today) return; const k = kid(e.kid), ref = { type: 'event', id: e.id }, when = e.time ? ` ${e.time}` : '';
-      const d1 = S.addDays(e.date, -1); if (d1 >= first) add(k, 'e:' + e.id, 'e1', d1, hour, `내일 ${e.title}`, `${e.date.slice(5).replace('-', '/')}${when}`, e.date, ref);
-      add(k, 'e:' + e.id, 'e0', e.date, e.time && e.time < hour ? '07:00' < e.time ? '07:00' : '00:00' : hour, `오늘 ${e.title}`, e.time || '', e.date, ref);
+      if (e.done || e.date < today) return;
+      const k = kid(e.kid), rem = e.rem || REM, day = `${e.date.slice(5).replace('-', '/')}${e.time ? ' ' + e.time : ''}`;
+      const put = (kind, date, time, title, body) => add(k, 'e:' + e.id, kind, date, time, title, body, e.date, { type: 'event', id: e.id });
+      if (rem.includes('d1')) put('e1', S.addDays(e.date, -1), hour, `내일 ${e.title}`, day);
+      if (rem.includes('d0')) { const t = !e.time || e.time > hour ? hour : e.time > '07:00' ? '07:00' : ''; if (t) put('e0', e.date, t, `오늘 ${e.title}`, e.time || e.memo || ''); }
+      if (e.time) [['h1', 60, '1시간 뒤'], ['m10', 10, '10분 뒤'], ['m0', 0, '지금']].forEach(([r, m, w]) => {
+        if (!rem.includes(r)) return;
+        const [h, n] = e.time.split(':').map(Number), x = h * 60 + n - m, y = (x + 1440) % 1440;
+        put(r, x < 0 ? S.addDays(e.date, -1) : e.date, `${pad(Math.floor(y / 60))}:${pad(y % 60)}`, `${w} ${e.title}`, e.time);
+      });
     });
     (db.logs || []).forEach(l => { if (!l.done && l.date >= today) add(kid(l.kid), 'l:' + l.id, 'l', l.date, l.time || hour, 'LOG', l.memo || '', l.date, { type: 'log', id: l.id, log: l.type }); });
     return out.sort((a, b) => at(a) < at(b) ? -1 : at(a) > at(b) ? 1 : a.id < b.id ? -1 : 1);
@@ -56,6 +65,6 @@
   const LOG = { diaper: '기저귀', bottle: '젖병수유', breast: '모유수유', sleep: '수면', food: '이유식', hospital: '병원', bath: '목욕', play: '놀이', med: '약', temp: '체온', kick: '태동', weight: '체중', memo: '메모' };
   const logName = t => LOG[t] || '기록';
   const title = n => n.ref.type === 'log' ? n.title.replace('LOG', `${logName(n.ref.log)} 시간이에요`) : n.title;
-  const out = { build, active, wakes, message, logName, title, at };
+  const out = { REM, build, active, wakes, message, logName, title, at };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Notice = out;
 })(this);

@@ -46,7 +46,7 @@ function pushCard() {
   if (!PUSH_URL || !local || push.state === 'none') return '';
   if (push.state === 'home') return `<div class="notice"><b>휴대폰으로 알림 받기</b><p class="sub">아이폰은 공유 단추에서 '홈 화면에 추가'한 앱에서 알림을 켤 수 있어요.</p></div>`;
   if (push.state === 'denied') return `<div class="notice"><b>알림이 꺼져 있어요</b><p class="sub">휴대폰 설정에서 이 앱의 알림을 켠 뒤 앱을 다시 열어 주세요.</p></div>`;
-  if (push.state === 'on') return `<div class="notice"><b>휴대폰 알림이 켜져 있어요</b><p class="sub">매일 ${db.hour}시에 그날 맞는 일정만 알려요. 시각과 미리 알림은 설정에서 바꿀 수 있어요.</p><div class="row"><button type="button" class="btn" data-act="pushtest">시험 알림 보내기</button><button type="button" class="btn" data-act="pushoff">끄기</button></div></div>`;
+  if (push.state === 'on') return `<div class="notice"><b>휴대폰 알림이 켜져 있어요</b><p class="sub">접종·검진·예약과 달력의 모든 일정을 알려요. 아침 알림은 ${db.hour}시이고 설정에서 바꿀 수 있어요.</p><div class="row"><button type="button" class="btn" data-act="pushtest">시험 알림 보내기</button><button type="button" class="btn" data-act="pushoff">끄기</button></div></div>`;
   return `<div class="notice"><b>휴대폰으로 알림 받기</b><p class="sub">앱을 닫아 두어도 알려드려요. 알림 서버에는 기기 주소와 알릴 시각만 맡기고, 아기 정보는 보내지 않아요.</p><div class="row"><button type="button" class="btn main" data-act="pushon">알림 켜기</button></div></div>`;
 }
 function alertsDlg() {

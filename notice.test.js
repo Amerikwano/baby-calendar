@@ -27,7 +27,7 @@ test('지금 보여 줄 것: 울린 것만, 같은 일은 하나, 최근 것부�
 test('출산 예정, 일정, 예정 기록', () => {
   const w = N.build(mk({ born: false, birth: '2027-02-10', since: '2027-01-20' }), S, '2027-01-20'); assert.deepEqual(w.map(n => n.date), ['2027-02-03', '2027-02-09', '2027-02-10']);
   const l = N.build(mk({}, { events: [{ id: 'a', title: '백일 사진', date: '2027-01-05', time: '14:00', kid: '' }, { id: 'b', title: '지난', date: '2027-01-01', kid: '' }, { id: 'c', title: '끝', date: '2027-01-05', kid: '', done: true }], logs: [{ id: 'l', kid: 'k1', type: 'bottle', date: '2027-01-03', time: '13:30', done: false }, { id: 'm', kid: 'k1', type: 'bottle', date: '2027-01-03', time: '13:30', done: true }] }), S, '2027-01-03');
-  assert.deepEqual(l.filter(n => /^(e|l):/.test(n.subject)).map(N.at), ['2027-01-03T13:30', '2027-01-04T09:00', '2027-01-05T09:00']);
+  assert.deepEqual(l.filter(n => /^(e|l):/.test(n.subject)).map(N.at), ['2027-01-03T13:30', '2027-01-04T09:00', '2027-01-05T09:00', '2027-01-05T13:00']);
   const at = t => N.active(l, t).some(n => n.subject === 'l:l'); assert.deepEqual([at('2027-01-03T13:29'), at('2027-01-03T13:30'), at('2027-01-03T14:31')], [false, true, false]);
   C.BORN.concat(C.WAIT).forEach(t => assert.notEqual(N.logName(t), '기록', t));
 });
@@ -46,4 +46,11 @@ test('알림 서버: 주소·시각 검사와 서명', async () => {
   let seen; const s = await P.send(k, 'https://web.push.apple.com/Qx', 'https://a/', now, async (u, o) => { seen = [u, o]; return { status: 201 }; }); assert.equal(s, 201); assert.equal(seen[1].body, undefined);
   const [, t, pub] = seen[1].headers.authorization.match(/^vapid t=([^,]+), k=(.+)$/), [h, b, sig] = t.split('.'); assert.equal(pub, k.pub); assert.deepEqual(JSON.parse(Buffer.from(b, 'base64url')), { aud: 'https://web.push.apple.com', exp: now / 1000 + 43200, sub: 'https://a/' });
   const key = await crypto.subtle.importKey('raw', Buffer.from(pub, 'base64url'), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']); assert.ok(await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, key, Buffer.from(sig, 'base64url'), new TextEncoder().encode(`${h}.${b}`)));
+});
+test('내 일정은 고른 때마다 알린다', () => {
+  const ev = o => N.build(mk({}, { events: [Object.assign({ id: 'a', title: 'x', date: '2027-01-05', time: '', kid: '' }, o)] }), S, '2027-01-02').filter(n => n.subject === 'e:a').map(n => N.at(n) + ' ' + n.title);
+  assert.deepEqual(ev({}), ['2027-01-04T09:00 내일 x', '2027-01-05T09:00 오늘 x']);
+  assert.deepEqual(ev({ time: '14:05', rem: ['h1', 'm10', 'm0'] }), ['2027-01-05T13:05 1시간 뒤 x', '2027-01-05T13:55 10분 뒤 x', '2027-01-05T14:05 지금 x']);
+  assert.deepEqual(ev({ time: '00:30', rem: ['d0', 'h1'] }), ['2027-01-04T23:30 1시간 뒤 x']); assert.deepEqual(ev({ time: '08:00', rem: ['d0'] }), ['2027-01-05T07:00 오늘 x']);
+  assert.deepEqual(ev({ rem: [] }), []); assert.deepEqual(ev({ done: true }), []);
 });
