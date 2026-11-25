@@ -55,7 +55,7 @@ function alerts(k) {
   return { late, open: k.born ? open : [], next: its.filter(i => st(i) === 'next').slice(0, 5), miss: logsOf(k).filter(l => l.date === t && Care.state(l, nowText()) === 'miss'), events: Family.forKid(db.events, k.id).filter(e => !e.done && e.date >= t && e.date <= S.addDays(t, 1)) };
 }
 function topBar() {
-  const k = K(), a = alerts(k), hot = a.late.length || a.miss.length || a.events.length || !k.born && today() >= k.birth;
+  const k = K(), hot = bellNew() || !k.born && today() >= k.birth;
   return `<div><button class="me" data-act="kids" aria-label="${esc(k.name)}, 아이 고르기">${face(k)}<span><b>${esc(k.name)}${icon('baby', k.sex || 'unk')}${k.sex ? `<span class="vh">${Family.SEX[k.sex]}아이</span>` : ''}${many() ? icon('down', 's') : ''}</b><em>${ageLine(k)}</em></span></button><button class="sq" data-act="report" aria-label="하루 요약">${icon('pie')}</button><button class="sq" data-act="alerts" aria-label="알림${hot ? ', 확인할 것이 있어요' : ''}">${icon('bell')}${hot ? '<i></i>' : ''}</button></div>`;
 }
 function navBar() {
@@ -87,9 +87,9 @@ function missionStrip(k) {
   return `<div class="strip mis"><button class="fc ${f ? 'on' : ''}" ${f ? `data-act="face" data-id="${f.id}" aria-label="오늘 찍은 얼굴 사진"` : `data-act="faceadd" data-d="${t}" aria-label="앨범에서 얼굴 사진 고르기"`}>${f ? `<img ${pic(f.id, 1)} alt="">` : icon('cam')}</button><button class="tx" data-tab="grow"><b>${f ? `${n}일차 사진을 찍었어요` : `${n}일차 얼굴 사진 찍기`}</b><em>오늘의 미션.${nextDay(k)}</em></button>${f ? icon('right', 's') : `<button class="btn" data-act="faceadd" data-d="${t}" data-cam="1">찍기</button>`}</div>`;
 }
 function home() {
-  const k = K(), a = alerts(k), n = a.late.length + a.open.length, first = a.late[0] || a.open[0];
+  const k = K(), a = alerts(k), n = a.open.length, first = a.open[0];
   const strip = !k.born && today() >= k.birth ? `<div class="notice hot"><b>예정일이 되었어요. 아기가 태어났나요?</b><div class="row"><button class="btn main" data-act="born">생일 넣기</button></div></div>`
-    : first ? `<button class="strip ${a.late.length ? 'hot' : ''}" data-act="alerts">${icon('shield')}<span><b>${a.late.length ? '시기가 지난 일정' : '지금 받을 것'} ${a.late.length || n}개</b><em>${esc(first.title)}${n > 1 ? ' 외' : ''}</em></span>${icon('right', 's')}</button>` : '';
+    : first ? `<button class="strip" data-act="vaxnow">${icon('shield')}<span><b>지금 받을 것 ${n}개</b><em>${esc(first.title)}${n > 1 ? ' 외' : ''}</em></span>${icon('right', 's')}</button>` : '';
   const ev = a.events.map(e => `<button class="strip" data-act="event" data-id="${e.id}">${icon('cal')}<span><b>${esc(e.title)}</b><em>${e.date === today() ? '오늘' : '내일'}${e.time ? ' ' + Care.clock(e.time) : ''}</em></span>${icon('right', 's')}</button>`).join('');
   return quickRow(k) + (k.born ? '' : hero()) + `<div class="stack">${strip}${ev}${missionStrip(k)}</div>` + (k.born ? '' : mission()) + `<section class="logs">${timeline(k)}</section>` + loginCard();
 }
@@ -122,18 +122,17 @@ function reportDlg(d) {
   openDlg(`<form data-form="none"><h2>${m}월 ${x}일 하루 요약</h2><div class="row between"><button type="button" class="btn" data-act="report" data-d="${S.addDays(day, -1)}">전날</button><span class="sub">${esc(k.name)} ${dayLabel(k, day)}</span><button type="button" class="btn" data-act="report" data-d="${S.addDays(day, 1)}" ${day >= today() ? 'disabled' : ''}>다음 날</button></div>
   ${r.total ? `<div class="rgrid">${k.born ? cell('bottle', '수유', r.feeds + '회', r.ml ? `젖병 ${r.ml}ml` : '') + cell('diaper', '기저귀', r.diaper + '회', r.diaper ? `소변 ${r.pee} 대변 ${r.poo}` : '') + cell('sleep', '수면', r.sleep ? Care.hm(r.sleep) : '-') + cell('food', '이유식', r.food + '회') + (r.temp ? cell('temp', '최고 체온', r.temp + '℃') : '') : typesFor(k).map(t => cell(t, Care.TYPES[t].name, logsOf(k).filter(l => l.date === day && l.type === t && l.done).length + '회')).join('')}</div>` : '<p class="empty">이날은 기록이 없어요.</p>'}</form>`);
 }
-function alertsDlg() {
-  const k = K(), a = alerts(k), sec = (t, l) => l.length ? `<section class="stack"><h3>${t}</h3><div class="list">${l.join('')}</div></section>` : '';
-  openDlg(`<form data-form="none"><h2>${esc(k.name)} 알림</h2>${sec('놓친 기록', a.miss.map(logRow))}${sec('내 일정', a.events.map(evRow))}${sec('시기가 지난 일정', a.late.slice(0, 8).map(itemRow))}${sec('지금 받을 것', a.open.slice(0, 8).map(itemRow))}${sec(k.born ? '다음 일정' : '태어나면 바로 챙길 것', a.next.map(itemRow))}<p class="sub">휴대폰 알림은 더보기에서 캘린더 파일을 받아 캘린더 앱에 넣으면 울려요.</p></form>`);
-}
 const kidsDlg = () => openDlg(`<form data-form="none"><h2>아이</h2><div class="list">${db.kids.map(k => `<div class="kidrow"><button type="button" data-act="pickkid" data-id="${k.id}" ${k.id === K().id ? 'aria-current="true"' : ''}>${face(k)}<span><b>${esc(k.name)}</b><em>${k.sex ? Family.SEX[k.sex] + ', ' : k.born ? '' : '성별 모름, '}${ageLine(k)}</em></span></button><button type="button" class="btn" data-act="kidedit" data-id="${k.id}">고치기</button></div>`).join('')}</div><button type="button" class="btn" data-act="addkid">쌍둥이·형제 더하기</button></form>`);
 
 /* ── 더보기 ── */
 function more() {
   const it = (i, t, s, at) => `<button class="menu" ${at}><span class="lic">${icon(i)}</span><span><b>${t}</b><em>${s}</em></span>${icon('right', 's')}</button>`;
   return accountCard() + `<section class="menus"><h3>아기</h3>${it('heart', '성장 앨범', '매일 얼굴 사진과 성장 영상', 'data-tab="grow"')}${it('shield', '접종·검진', '전체 일정과 완료 기록', 'data-tab="vax"')}${it('hospital', '인근 병원', '가까운 소아청소년과와 보건소', 'data-act="hospitals"')}</section>
-  <section class="menus"><h3>정보</h3>${it('tips', '육아 팁', '개월 수에 맞는 육아법', 'data-tab="tips"')}${it('gift', '혜택', '우리 지역과 전국 지원', 'data-tab="money"')}${it('bell', '휴대폰 알림', '캘린더 파일 받기', 'data-act="ics"')}</section>
+  <section class="menus"><h3>정보</h3>${it('tips', '육아 팁', '개월 수에 맞는 육아법', 'data-tab="tips"')}${it('gift', '혜택', '우리 지역과 전국 지원', 'data-tab="money"')}${it('bell', '캘린더에 넣기', '일정을 캘린더 파일로 받기', 'data-act="ics"')}</section>
   <section class="menus"><h3>앱</h3>${it('gear', '설정', '아이 정보, 지역, 백업', 'data-act="settings"')}</section><p class="sub">질병관리청 표준예방접종일정표(2026) 기준이에요. 실제 접종은 병원 안내를 먼저 따르세요. 버전 ${APP_VERSION}</p>`;
 }
 const backRow = (t, to) => `<div class="backrow"><button data-tab="${to || 'more'}" aria-label="뒤로">${icon('left')}</button><h2>${t}</h2></div>`;
-const vax = () => { const all = items(); return backRow('접종·검진') + `<div class="list">${all.map(itemRow).join('')}</div>`; };
+function vax() {
+  const a = alerts(K()), sec = (t, l) => l.length ? `<section class="stack"><h2>${t}</h2><div class="list">${l.map(itemRow).join('')}</div></section>` : '';
+  return backRow('접종·검진') + sec('지금 받을 것', a.open) + sec(K().born ? '다음 일정' : '태어나면 바로 챙길 것', a.next) + sec('시기가 지난 일정', a.late) + sec('전체', items());
+}

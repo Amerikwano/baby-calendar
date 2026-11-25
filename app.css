@@ -157,3 +157,6 @@ main.stack>.stack:empty{display:none}
 /* 안드로이드도 빈 날짜·시각 칸에 글자를 보여 주지 않는다 */
 html.android input.blank{position:relative}html.android input.blank::before{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--sub);content:'날짜 선택';pointer-events:none}html.android input.blank[type=time]::before{content:'시각 선택'}html.android input.blank::-webkit-datetime-edit{opacity:0}
 .sexf.err .opts span{border-color:#df6f69;background:var(--stamp-soft)}.errm{color:var(--stamp);font-weight:700}
+.bellrow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;text-align:left;width:100%;padding:12px 0;border-bottom:1px solid var(--line)}.bellrow b{display:block}.bellrow em{display:block;font-style:normal;color:var(--sub);font-size:14px}.bellrow small{color:var(--sub);font-size:13px}
+.notice .btn:not(.main){background:var(--card)}
+.gvimg{aspect-ratio:1;max-height:60dvh;border-radius:22px;overflow:hidden;background:var(--soft);width:100%;max-width:480px;margin:auto}dialog.wide .gvimg img{width:100%;height:100%;max-height:none;object-fit:cover;border-radius:0}.gvbar{display:flex;gap:8px;justify-content:center}.gvbar .btn.main{min-width:140px}.mid{text-align:center}

@@ -21,6 +21,9 @@
     const s = t.objectStore('kv');
     s.get('state').onsuccess = e => { const cur = e.target.result || { rev: 0 }; if (cur.rev !== rev) return ret(null); s.put({ rev: rev + 1, data }, 'state'); ret(rev + 1); };
   });
+  // 알림을 띄운 기록처럼 작은 값
+  const getKV = k => tx(['kv'], 'readonly', (t, ret) => { t.objectStore('kv').get(k).onsuccess = e => ret(e.target.result === undefined ? null : e.target.result); });
+  const setKV = (k, v) => tx(['kv'], 'readwrite', t => { t.objectStore('kv').put(v, k); });
   const getPhoto = id => tx(['photos'], 'readonly', (t, ret) => { t.objectStore('photos').get(id).onsuccess = e => ret(e.target.result || null); });
   const putPhoto = (id, rec) => tx(['photos'], 'readwrite', t => { t.objectStore('photos').put(rec, id); });
   const delPhoto = id => tx(['photos'], 'readwrite', t => { t.objectStore('photos').delete(id); });
@@ -117,6 +120,6 @@
     });
     urls.clear();
   }
-  const out = { api, photoUrl, photoBlob, backup, restore, zip, unzip };
+  const out = { api, getKV, setKV, photoUrl, photoBlob, backup, restore, zip, unzip };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Local = out;
 })(this);

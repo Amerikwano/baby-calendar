@@ -39,3 +39,6 @@ npm run ai:code   # 12자 이상의 접근 코드 입력
 `auth/`는 로그인을 확인하는 Cloudflare Worker입니다. 카카오·네이버 개발자 앱의 ID를 `auth/wrangler.jsonc`에, 비밀 값은 Cloudflare 대시보드에 넣고 배포한 뒤 `login.js`의 `AUTH`를 채우면 켜집니다. 사용자 정보를 저장하지 않고 이름만 앱에 돌려줍니다.
 
 글꼴은 나눔스퀘어라운드(네이버, SIL OFL 1.1)입니다.
+
+## 휴대폰 알림
+`push/`는 Cloudflare Worker(무료 범위) 알림 서버입니다. 기기로 보내는 주소와 알릴 시각만 저장하고 내용 없는 알림을 보냅니다. 글은 `sw.js`가 기기에 저장된 내용으로 만듭니다(`notice.js`). 배포: `npx wrangler deploy -c push/wrangler.jsonc`

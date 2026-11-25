@@ -1,0 +1,10 @@
+{
+  "name": "baby-notebook-push",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "observability": { "enabled": false },
+  "vars": { "APP_ORIGIN": "https://amerikwano.github.io", "SUBJECT": "https://amerikwano.github.io/baby-calendar/" },
+  "durable_objects": { "bindings": [{ "name": "BELL", "class_name": "Bell" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Bell"] }]
+}

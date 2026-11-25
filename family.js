@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const KID = ['name', 'birth', 'time', 'born', 'order', 'options', 'records'];
-  const newKid = (id, v) => Object.assign({ id, name: '아기', birth: '', time: '', born: false, sex: '', photo: '', order: 1, options: {}, records: {} }, v);
+  const newKid = (id, v) => Object.assign({ id, name: '아기', birth: '', time: '', born: false, sex: '', photo: '', since: '', order: 1, options: {}, records: {} }, v);
   // 한 명만 있던 때의 내용(name, birth가 바깥에 있음)을 아이 목록으로 바꾼다.
   function migrate(data) {
     if (!data) return data;

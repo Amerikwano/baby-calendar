@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.7.5';
+const APP_VERSION = '0.8.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -64,7 +64,7 @@ function save(change) {
   return chain = chain.then(async () => {
     const before = JSON.stringify(db);
     change(db);
-    try { rev = (await api('/api/state', { method: 'PUT', body: JSON.stringify({ rev, data: db }) })).rev; render(); return true; }
+    try { rev = (await api('/api/state', { method: 'PUT', body: JSON.stringify({ rev, data: db }) })).rev; render(); pushLater(); return true; }
     catch (e) {
       db = JSON.parse(before);
       if (e.status === 409) { const s = await api('/api/state').catch(() => null); if (s) { rev = s.rev; db = Object.assign(fresh(), Family.migrate(s.data)); } toast('다른 창에서 바뀐 내용을 불러왔어요. 다시 저장해 주세요.'); }
@@ -403,7 +403,7 @@ function settingsDlg() {
   openDlg(`<form data-form="settings"><h2>설정</h2>
   <fieldset><legend>아이</legend><div class="list">${db.kids.map(k => `<button type="button" class="item" data-act="kidedit" data-id="${k.id}" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${esc(k.name)}</b><span class="when">${kd(k.birth, true)}${k.time ? ' ' + Family.timeText(k.time) : ''} ${k.born ? '출생' : '예정'}</span></span><span class="chip">고치기</span></button>`).join('')}</div><button type="button" class="btn" data-act="addkid">쌍둥이·형제 더하기</button></fieldset>
   <div class="f"><span style="font-weight:600;font-size:13.5px">지역</span><div class="row" style="margin-top:5px"><span>${esc((db.sido + " " + db.sigungu).trim() || "아직 안 정했어요")}</span><button type="button" class="btn" data-act="region">바꾸기</button></div></div>
-  <fieldset><legend>캘린더 알림 (당일 알림은 항상 포함)</legend><div class="row">${[14, 7, 3, 1].map(n => `<label class="ck"><input type="checkbox" name="lead" value="${n}" ${db.leads.includes(n) ? 'checked' : ''}>${n}일 전</label>`).join('')}</div><label class="f">알림 시각<select name="hour">${[7, 8, 9, 10, 12, 18, 20].map(h => `<option value="${h}" ${db.hour === h ? 'selected' : ''}>${h}시</option>`).join('')}</select></label></fieldset>
+  <fieldset><legend>알림 (당일 알림은 항상 포함)</legend><div class="row">${[14, 7, 3, 1].map(n => `<label class="ck"><input type="checkbox" name="lead" value="${n}" ${db.leads.includes(n) ? 'checked' : ''}>${n}일 전</label>`).join('')}</div><label class="f">알림 시각<select name="hour">${[7, 8, 9, 10, 12, 18, 20].map(h => `<option value="${h}" ${db.hour === h ? 'selected' : ''}>${h}시</option>`).join('')}</select></label></fieldset>
   ${local ? `${AI_URL ? `<fieldset><legend>AI 연결</legend><label class="f">접근 코드<input name="aiCode" id="aiCode" type="password" autocomplete="off" maxlength="100" value="${esc(conf.code)}"></label><p class="sub">이 기기에만 저장되고 백업 파일에는 들어가지 않아요.</p></fieldset>` : ''}<fieldset><legend>백업</legend><p class="sub">일기와 사진은 이 기기에 저장돼요. 휴대폰을 바꾸거나 브라우저 기록을 지우기 전에 꼭 백업하세요. 아이폰에서는 '파일에 저장'을 골라 iCloud Drive에 둘 수 있어요.</p><div class="row"><button type="button" class="btn" data-act="backup">백업 파일 만들기</button><button type="button" class="btn" data-act="restore">백업 되돌리기</button></div></fieldset>` : ''}${acts()}<p class="sub">버전 ${APP_VERSION}</p></form>`);
 }
 function kidDlg(id) {
@@ -475,7 +475,7 @@ function mission() {
   if (!k.born) return `<section class="notice"><b>매일 얼굴 사진 미션</b><p class="sub">태어난 날부터 1일차, 2일차 얼굴 사진을 하루 한 장씩 모아요. 나중에 성장 앨범 영상으로 만들 수 있어요.</p></section>`;
   const n = dayNo(k, t); if (n < 1) return '';
   const f = facesOf(k).find(x => x.date === t), cnt = facesOf(k).length;
-  return `<section class="hero"><div class="mission">${f ? `<button class="face on" data-act="face" data-id="${f.id}" aria-label="오늘 찍은 얼굴 사진"><img ${pic(f.id, 1)} alt="${n}일차 얼굴 사진"></button>` : `<button class="face" data-act="faceadd" data-d="${t}">${n}일차</button>`}<div class="stack" style="gap:6px"><h3>오늘의 미션</h3><h2>${f ? `${n}일차 사진을 찍었어요` : `${n}일차 얼굴 사진 찍기`}</h2><p class="sub">지금까지 ${cnt}장 모았어요.${nextDay(k)}</p></div></div><div class="row">${f ? '' : `<button class="btn main" data-act="faceadd" data-d="${t}" data-cam="1">사진 찍기</button><button class="btn" data-act="faceadd" data-d="${t}">앨범에서 고르기</button>`}<button class="btn" data-act="grow">성장 앨범 보기</button></div></section>`;
+  return `<section class="hero"><div class="mission">${f ? `<button class="face on" data-act="face" data-id="${f.id}" aria-label="오늘 찍은 얼굴 사진"><img ${pic(f.id, 1)} alt="${n}일차 얼굴 사진"></button>` : `<button class="face" data-act="faceadd" data-d="${t}">${n}일차</button>`}<div class="stack" style="gap:6px"><h3>오늘의 미션</h3><h2>${f ? `${n}일차 사진을 찍었어요` : `${n}일차 얼굴 사진 찍기`}</h2><p class="sub">지금까지 ${cnt}장 모았어요.${nextDay(k)}</p></div></div><div class="row">${f ? '' : `<button class="btn main" data-act="faceadd" data-d="${t}" data-cam="1">사진 찍기</button><button class="btn" data-act="faceadd" data-d="${t}">앨범에서 고르기</button>`}${tab === 'grow' ? (cnt ? '<button class="btn" data-act="growview">성장 앨범 보기</button>' : '') : '<button class="btn" data-act="grow">성장 앨범 보기</button>'}</div></section>`;
 }
 function growth() {
   const k = K(), t = today();
@@ -486,6 +486,27 @@ function growth() {
   const cells = fs.map(f => ({ d: f.date, f })).concat(miss.map(d => ({ d }))).sort((a, b) => a.d < b.d ? 1 : -1);
   return mission() + driveBar() + `<section class="stack"><div class="row between"><h2>성장 앨범 ${fs.length}장</h2><button class="btn main" data-act="video" ${fs.length < 2 ? 'disabled' : ''}>성장 영상 만들기</button></div><p class="sub">${fs.length < 2 ? '얼굴 사진이 두 장부터 영상을 만들 수 있어요. ' : ''}여기 사진은 사진첩과 따로 저장돼요. 빈칸을 누르면 지난 날짜 사진도 넣을 수 있어요.</p>
     <div class="grid">${cells.map(c => c.f ? `<button data-act="face" data-id="${c.f.id}" aria-label="${dayNo(k, c.d)}일차 사진"><img ${pic(c.f.id, 1)} alt="${dayNo(k, c.d)}일차 얼굴 사진"><span class="d">${dayNo(k, c.d)}일차</span></button>` : `<button class="miss" data-act="faceadd" data-d="${c.d}" aria-label="${dayNo(k, c.d)}일차 사진 넣기">${dayNo(k, c.d)}일차<br>넣기</button>`).join('')}</div><div class="row"><button class="btn" data-act="faceadd">다른 날짜 사진 넣기</button></div></section>`;
+}
+// 얼굴 사진을 날짜 순서로 한 장씩 넘겨 본다.
+let gv = null;
+function growView() {
+  const k = K(), fs = facesOf(k); if (!fs.length) return;
+  gv = { k, fs, i: fs.length - 1, url: '', timer: 0 };
+  openDlg(`<form data-form="none"><h2 id="gvt"></h2><div class="gvimg"><img id="gvi" alt=""></div><p class="sub mid" id="gvn" aria-live="polite"></p><div class="gvbar"><button type="button" class="btn" data-act="gv" data-n="-1">이전</button><button type="button" class="btn main" data-act="gvplay" id="gvp">처음부터 재생</button><button type="button" class="btn" data-act="gv" data-n="1">다음</button></div></form>`, true);
+  growShow();
+}
+async function growShow() {
+  const g = gv, f = g.fs[g.i], b = await photoBlob(f.id); if (gv !== g || g.fs[g.i] !== f || !$('#gvi')) return;
+  const old = g.url; g.url = b ? URL.createObjectURL(b) : ''; $('#gvi').src = g.url; if (old) setTimeout(() => URL.revokeObjectURL(old), 1000);
+  $('#gvt').textContent = `${g.k.name} ${dayNo(g.k, f.date)}일차`; $('#gvn').textContent = `${kd(f.date, true)}, ${g.i + 1}/${g.fs.length}`;
+  dlg.querySelectorAll('[data-act=gv]').forEach(x => { x.disabled = x.dataset.n === '-1' ? g.i === 0 : g.i === g.fs.length - 1; });
+}
+function growStop() { if (gv && gv.timer) { clearInterval(gv.timer); gv.timer = 0; if ($('#gvp')) $('#gvp').textContent = '처음부터 재생'; } }
+function growStep(n) { growStop(); gv.i = Math.max(0, Math.min(gv.fs.length - 1, gv.i + n)); growShow(); }
+function growPlay() {
+  if (gv.timer) return growStop();
+  gv.i = 0; growShow(); $('#gvp').textContent = '멈추기';
+  gv.timer = setInterval(() => { if (!$('#gvi') || !dlg.open) { clearInterval(gv.timer); gv.timer = 0; return; } if (gv.i >= gv.fs.length - 1) return growStop(); gv.i++; growShow(); }, 900);
 }
 function pickFace(date, cam) {
   pickFiles({ capture: cam ? 'environment' : '' }, async ([f]) => cropDlg(f, date || await exifDate(f) || new Date(f.lastModified).toLocaleDateString('sv-SE'), !date));
@@ -752,6 +773,13 @@ async function moreActs(act, b, id) {
   else if (act === 'pickkid') { dlg.close(); if (id !== db.cur) { await save(x => { x.cur = id; }); albView = 'col'; syncAI(); } }
   else if (act === 'report') reportDlg(d.d);
   else if (act === 'alerts') alertsDlg();
+  else if (act === 'vaxnow') { tab = 'vax'; render(); scrollTo(0, 0); }
+  else if (act === 'growview') growView();
+  else if (act === 'gv') growStep(Number(d.n));
+  else if (act === 'gvplay') growPlay();
+  else if (act === 'pushon') { b.disabled = true; b.textContent = '켜는 중'; try { await pushOn(); toast('알림을 켰어요'); } catch (e) { toast(e.message); } if (dlg.open) alertsDlg(); }
+  else if (act === 'pushoff') { b.disabled = true; await pushOff(); toast('알림을 껐어요'); if (dlg.open) alertsDlg(); }
+  else if (act === 'pushtest') { b.disabled = true; try { await Local.setKV('test', Date.now()); const r = await pushCall('/test', { endpoint: push.sub.endpoint }); if (r.status >= 200 && r.status < 300) toast('보냈어요. 잠시 뒤 휴대폰에 알림이 떠요.'); else throw new Error(`알림을 보내지 못했어요 (${r.status}). 껐다가 다시 켜 주세요.`); } catch (e) { toast(e.message); } b.disabled = false; }
   else if (act === 'log') logDlg(d.t);
   else if (act === 'plan') logDlg(d.t, null, true);
   else if (act === 'planlog') planDlg();
@@ -859,13 +887,13 @@ document.addEventListener('submit', async ev => {
     if (kind === 'start') {
       const ids = []; try { for (const x of list) ids.push(ob.photo[x.row] ? await saveAvatarBlob(ob.photo[x.row]) : ''); } catch (e) { return toast(e.message); }
       started = true;
-      ok = await save(d => { d.kids = list.map((x, i) => Family.newKid('k' + (i + 1), { name: blankName(list, x, i), born: x.born, birth: x.birth, time: x.time, sex: x.sex, photo: ids[i], options: Object.assign({}, S.DEFAULT_OPTIONS) })); d.cur = 'k1'; Family.rank(d.kids); });
+      ok = await save(d => { d.kids = list.map((x, i) => Family.newKid('k' + (i + 1), { name: blankName(list, x, i), born: x.born, birth: x.birth, time: x.time, sex: x.sex, since: today(), photo: ids[i], options: Object.assign({}, S.DEFAULT_OPTIONS) })); d.cur = 'k1'; Family.rank(d.kids); });
       if (!ok) { started = false; render(); return; }
       tab = 'home'; scrollTo(0, 0); await showSplash(`${db.kids[0].name} 수첩을 준비하고 있어요`, db.kids[0].photo);
       setTimeout(askLocationOnce, 300);
     } else {
       const nid = uid();
-      ok = await save(d => { d.kids.push(Family.newKid(nid, Object.assign({}, { born: list[0].born, birth: list[0].birth, time: list[0].time, sex: list[0].sex }, { name: list[0].name || '아기 ' + (d.kids.length + 1), options: Object.assign({}, S.DEFAULT_OPTIONS) }))); d.cur = nid; Family.rank(d.kids); });
+      ok = await save(d => { d.kids.push(Family.newKid(nid, Object.assign({}, { born: list[0].born, birth: list[0].birth, time: list[0].time, sex: list[0].sex, since: today() }, { name: list[0].name || '아기 ' + (d.kids.length + 1), options: Object.assign({}, S.DEFAULT_OPTIONS) }))); d.cur = nid; Family.rank(d.kids); });
     }
   }
   if (kind === 'none') return;
@@ -902,7 +930,10 @@ async function download() {
   toast(`일정 ${count}개를 담았어요`);
 }
 function saveFile(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000); }
-async function load() { const s = await api('/api/state'); rev = s.rev; db = Object.assign(fresh(), Family.migrate(s.data) || {}); ready = true; started = Boolean(s.data); const r = Regions.find(db.sido); if (db.sido && r) db.sido = r.name; render(); }
+async function load() { const s = await api('/api/state'); rev = s.rev; db = Object.assign(fresh(), Family.migrate(s.data) || {}); ready = true; started = Boolean(s.data); const r = Regions.find(db.sido); if (db.sido && r) db.sido = r.name; render();
+  // 예전에 등록한 아이는 이 기능을 처음 켠 날부터 알린다.
+  if (started && db.kids.some(k => !k.since)) await save(d => d.kids.forEach(k => { if (!k.since) k.since = today(); }));
+}
 (async () => {
   try {
     // 내 컴퓨터에서 npm start로 켰을 때만 서버가 있다.
@@ -911,10 +942,12 @@ async function load() { const s = await api('/api/state'); rev = s.rev; db = Obj
     const soc = local ? Social.finish() : null, back = local && GOOGLE_ID && !soc ? Drive.finish() : null;
     await load();
     if (soc) { toast(soc.error || `${Social.NAME[soc.acct.provider]}로 로그인했어요`); }
-    if (back) afterLogin(back); else if (!soc) setTimeout(askLocationOnce, 1500);
+    if (back) afterLogin(back); else if (!soc && !location.search.includes('alerts')) setTimeout(askLocationOnce, 1500);
     if (started && K().photo) { const u = local ? await Local.photoUrl(K().photo, true).catch(() => '') : `photos/${K().photo}/thumb`; if (u) $('#splashFace').innerHTML = `<img src="${u}" alt="">`; }
     hideSplash();
+    const bell = new URLSearchParams(location.search).has('alerts'); if (bell) history.replaceState(null, '', location.pathname);
+    if (bell && started) setTimeout(alertsDlg, 1500);
     if (local && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
-    if (local && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+    if (local && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(pushInit).catch(() => {});
   } catch (e) { hideSplash(0); $('#main').innerHTML = `<div class="notice hot"><b>수첩을 열지 못했어요</b><p>${esc(e.message)}</p></div>`; }
 })();
