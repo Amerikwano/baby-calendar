@@ -88,7 +88,7 @@
   }
   async function backup() {
     const s = await getState(), files = [{ name: 'state.json', data: new TextEncoder().encode(JSON.stringify(s.data)) }];
-    for (const p of s.data ? (s.data.photos || []).concat((s.data.faces || []).map(f => Object.assign({ face: 1 }, f))) : []) {
+    for (const p of s.data ? (s.data.photos || []).concat((s.data.faces || []).map(f => Object.assign({ face: 1 }, f)), (s.data.kids || []).filter(k => k.photo).map(k => ({ id: k.photo, date: '프로필' }))) : []) {
       const r = await getPhoto(p.id); if (!r) continue;
       const ext = (r.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
       files.push({ name: `photos/${p.face ? '얼굴_' : ''}${p.date}_${p.id}.${ext}`, data: new Uint8Array(r.data) });

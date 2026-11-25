@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const KID = ['name', 'birth', 'time', 'born', 'order', 'options', 'records'];
-  const newKid = (id, v) => Object.assign({ id, name: '아기', birth: '', time: '', born: false, order: 1, options: {}, records: {} }, v);
+  const newKid = (id, v) => Object.assign({ id, name: '아기', birth: '', time: '', born: false, photo: '', order: 1, options: {}, records: {} }, v);
   // 한 명만 있던 때의 내용(name, birth가 바깥에 있음)을 아이 목록으로 바꾼다.
   function migrate(data) {
     if (!data) return data;
@@ -14,7 +14,7 @@
     KID.forEach(k => delete d[k]);
     if (!d.kids.some(k => k.id === d.cur)) d.cur = d.kids[0].id;
     const first = d.kids[0].id;
-    ['events', 'diary', 'photos', 'faces'].forEach(n => { d[n] = (d[n] || []).map(x => x.kid === undefined ? Object.assign({}, x, { kid: first }) : x); });
+    ['events', 'diary', 'photos', 'faces', 'logs'].forEach(n => { d[n] = (d[n] || []).map(x => x.kid === undefined ? Object.assign({}, x, { kid: first }) : x); });
     return d;
   }
   // 생일이 빠른 순서로 몇째인지 다시 매긴다(쌍둥이는 넣은 순서).
@@ -27,6 +27,7 @@
     ['events', 'diary', 'photos'].forEach(n => d[n].forEach(x => { if (x.kid === id) x.kid = ''; }));
     d.faces.filter(f => f.kid === id).forEach(f => d.photos.push(Object.assign({}, f, { kid: '', caption: '' })));
     d.faces = d.faces.filter(f => f.kid !== id);
+    d.logs = d.logs.filter(l => l.kid !== id);
     return true;
   }
   const forKid = (list, id) => list.filter(x => !x.kid || x.kid === id);

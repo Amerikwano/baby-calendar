@@ -1,0 +1,40 @@
+/* 이 앱에서 쓰는 선 그림. 모두 직접 그린 24x24 그림이다. */
+(function (root) {
+  'use strict';
+  const P = {
+    home: '<path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',
+    cal: '<rect x="4" y="5.5" width="16" height="15" rx="3"/><path d="M4 10.5h16M8.5 3v4M15.5 3v4M9 15l2 2 4-4"/>',
+    diary: '<rect x="6" y="3.5" width="13" height="17" rx="2.5"/><path d="M6 8H4M6 12H4M6 16H4M10 8h5M10 12h5"/>',
+    album: '<rect x="3.5" y="7.5" width="14" height="12" rx="2.5"/><path d="M7 7.5V6a2 2 0 0 1 2-2h9.5a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-1M4 17l4-4 3 3 2-2 4 4"/><circle cx="13" cy="11.5" r="1.2"/>',
+    more: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+    pie: '<path d="M11 4a8 8 0 1 0 9 9h-9z"/><path d="M14.5 3.5a7 7 0 0 1 6 6h-6z"/>',
+    bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5h4"/>',
+    diaper: '<path d="M3.5 6.5h17v4a8 8 0 0 1-6 7.5h-5a8 8 0 0 1-6-7.5z"/><path d="M3.5 10.5c3 0 5.5 2.5 6 7M20.5 10.5c-3 0-5.5 2.5-6 7"/>',
+    bottle: '<path d="M9 8.5h6l1 3V19a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-7.5zM8.5 8.5h7M10 8.5C10 6 10.5 5.5 12 3c1.5 2.5 2 3 2 5.5M8 13h3M8 16.5h3"/>',
+    breast: '<path d="M12 20c-5-3.5-8-6.5-8-10a4.3 4.3 0 0 1 8-2 4.3 4.3 0 0 1 8 2c0 3.5-3 6.5-8 10z"/><path d="M12 11.5v4M10 13.5h4"/>',
+    sleep: '<path d="M19 14.5A7.5 7.5 0 1 1 10 4.5a6 6 0 0 0 9 10z"/><path d="M15 4h4l-4 4h4"/>',
+    food: '<path d="M3.5 11.5h17a8.5 8.5 0 0 1-5 7.5h-7a8.5 8.5 0 0 1-5-7.5zM13 11.5l5-7.5M8 8c-1-1.5 1-2 0-3.5M11 8c-1-1.5 1-2 0-3.5"/>',
+    hospital: '<path d="M3.5 11.5L12 4.5l8.5 7M6 10v10h12V10"/><path d="M12 11.5v5M9.5 14h5"/>',
+    bath: '<path d="M3 12h18v1.5a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5zM6 12V6.5a2.5 2.5 0 0 1 5 0M7.5 18.5L7 21M16.5 18.5l.5 2.5"/>',
+    play: '<circle cx="9.5" cy="9.5" r="5.5"/><circle cx="16" cy="16" r="4.5"/><circle cx="9.5" cy="9.5" r="1.5"/>',
+    med: '<rect x="2.5" y="8.5" width="19" height="7" rx="3.5" transform="rotate(-40 12 12)"/><path d="M9.5 8.5l5.5 6.5"/>',
+    temp: '<path d="M10 13.5V6a2 2 0 0 1 4 0v7.5a4 4 0 1 1-4 0zM12 9v7"/>',
+    kick: '<path d="M8 3.5c1 4-1 6.5 0 9 .8 2 4 2 6 3 2.5 1.2 4.5 2 4.5 4H9c-3 0-4.5-2-4.5-5"/><path d="M15 6l1.5-1.5M17 9l2-.5"/>',
+    weight: '<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 9.5a5.5 5.5 0 0 1 8 0l-2 2.5h-4z"/>',
+    memo: '<path d="M6 3.5h9l4 4v13H6zM15 3.5v4h4M9 12h7M9 16h7"/>',
+    tips: '<path d="M9 17.5c0-2.5-3-3.5-3-7.5a6 6 0 0 1 12 0c0 4-3 5-3 7.5zM9.5 20.5h5"/>',
+    gift: '<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M3 7h18v3H3zM12 7v13M12 7C9 7 7.5 5.5 8.5 4S12 4.5 12 7c0-2.5 2.5-4.5 3.5-3S15 7 12 7z"/>',
+    shield: '<path d="M12 3.5l7 2.5v5.5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2.5 2.5L15.5 10"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.2 2.2M16.2 16.2l2.2 2.2M18.4 5.6l-2.2 2.2M7.8 16.2l-2.2 2.2"/>',
+    cam: '<rect x="3" y="7" width="18" height="13" rx="3"/><path d="M8.5 7l1.5-3h4l1.5 3"/><circle cx="12" cy="13.5" r="3.5"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>', down: '<path d="M6 9.5l6 6 6-6"/>', right: '<path d="M9.5 6l6 6-6 6"/>', left: '<path d="M14.5 6l-6 6 6 6"/>',
+    grid: '<rect x="4" y="4" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="2"/>',
+    heart: '<path d="M12 20c-5-3.5-8.5-7-8.5-10.5a4.6 4.6 0 0 1 8.5-2.4 4.6 4.6 0 0 1 8.5 2.4C20.5 13 17 16.5 12 20z"/>',
+    user: '<circle cx="12" cy="8.5" r="4"/><path d="M4.5 20c.8-4 3.7-6 7.5-6s6.7 2 7.5 6"/>',
+    baby: '<circle cx="12" cy="12.5" r="8"/><path d="M12 4.5c-.8-2 1.5-3 2.5-1.5M9.5 15.5c1.5 1.5 3.5 1.5 5 0"/><path d="M9 12h.01M15 12h.01" stroke-width="2.6"/>',
+    belly: '<path d="M10 3.5c-2 2.5-3 5-2.5 7.5-1.5 1.5-2 3-2 5 0 3 2.5 4.5 6 4.5M13 3.5c0 2.5 1 4 2.5 5.5 2.5 2 4 4.5 4 6.5 0 3-3 5-8 5"/><path d="M13.5 17.5c-1.8-1-2.8-2-2.8-3.2a1.5 1.5 0 0 1 2.8-.8 1.5 1.5 0 0 1 2.8.8c0 1.2-1 2.2-2.8 3.2z"/>',
+  };
+  const icon = (n, c) => `<svg class="ic ${c || ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || ''}</svg>`;
+  root.icon = icon;
+  if (typeof module !== 'undefined' && module.exports) module.exports = { icon, names: Object.keys(P) };
+})(typeof window !== 'undefined' ? window : globalThis);

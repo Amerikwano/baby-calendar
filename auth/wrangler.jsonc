@@ -1,0 +1,8 @@
+{
+  "name": "baby-notebook-auth",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-11-01",
+  "observability": { "enabled": false },
+  // 아래 ID는 공개해도 되는 값이다. 비밀 값(KAKAO_SECRET, NAVER_SECRET)은 대시보드에서만 넣는다.
+  "vars": { "APP_URL": "https://amerikwano.github.io/baby-calendar/", "KAKAO_ID": "", "NAVER_ID": "" }
+}

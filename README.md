@@ -34,3 +34,8 @@ npm run ai:code   # 12자 이상의 접근 코드 입력
 
 ## 구글 로그인
 `index.html`의 `GOOGLE_ID`에 OAuth 클라이언트 ID를 넣으면 로그인과 드라이브 올리기가 켜집니다. 권한은 `drive.file`만 씁니다.
+
+## 카카오·네이버 로그인 (준비됨, 꺼져 있음)
+`auth/`는 로그인을 확인하는 Cloudflare Worker입니다. 카카오·네이버 개발자 앱의 ID를 `auth/wrangler.jsonc`에, 비밀 값은 Cloudflare 대시보드에 넣고 배포한 뒤 `login.js`의 `AUTH`를 채우면 켜집니다. 사용자 정보를 저장하지 않고 이름만 앱에 돌려줍니다.
+
+글꼴은 나눔스퀘어라운드(네이버, SIL OFL 1.1)입니다.
