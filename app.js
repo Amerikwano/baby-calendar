@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.9.1';
+const APP_VERSION = '0.9.2';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -475,7 +475,7 @@ function mission() {
   if (!k.born) return `<section class="notice"><b>매일 얼굴 사진 미션</b><p class="sub">태어난 날부터 1일차, 2일차 얼굴 사진을 하루 한 장씩 모아요. 나중에 성장 앨범 영상으로 만들 수 있어요.</p></section>`;
   const n = dayNo(k, t); if (n < 1) return '';
   const f = facesOf(k).find(x => x.date === t), cnt = facesOf(k).length;
-  return `<section class="hero"><div class="mission">${f ? `<button class="face on" data-act="face" data-id="${f.id}" aria-label="오늘 찍은 얼굴 사진"><img ${pic(f.id, 1)} alt="${n}일차 얼굴 사진"></button>` : `<button class="face" data-act="faceadd" data-d="${t}">${n}일차</button>`}<div class="stack" style="gap:6px"><h3>오늘의 미션</h3><h2>${f ? `${n}일차 사진을 찍었어요` : `${n}일차 얼굴 사진 찍기`}</h2><p class="sub">지금까지 ${cnt}장 모았어요.${nextDay(k)}</p></div></div><div class="row">${f ? '' : `<button class="btn main" data-act="faceadd" data-d="${t}" data-cam="1">사진 찍기</button><button class="btn" data-act="faceadd" data-d="${t}">앨범에서 고르기</button>`}${tab === 'grow' ? (cnt ? '<button class="btn" data-act="growview">성장 앨범 보기</button>' : '') : '<button class="btn" data-act="grow">성장 앨범 보기</button>'}</div></section>`;
+  return `<section class="hero"><div class="mission">${f ? `<button class="face on" data-act="face" data-id="${f.id}" aria-label="오늘 찍은 얼굴 사진"><img ${pic(f.id, 1)} alt="${n}일차 얼굴 사진"></button>` : `<button class="face" data-act="faceask" data-d="${t}" aria-label="${n}일차 사진 넣기">${icon('cam')}</button>`}<div class="stack" style="gap:6px"><h3>오늘의 미션</h3><h2>${f ? `${n}일차 사진을 찍었어요` : `${n}일차 얼굴 사진 찍기`}</h2><p class="sub">지금까지 ${cnt}장 모았어요.${nextDay(k)}</p></div></div><div class="row">${f ? '' : `<button class="btn main" data-act="faceadd" data-d="${t}" data-cam="1">사진 찍기</button><button class="btn" data-act="faceadd" data-d="${t}">앨범에서 고르기</button>`}${tab === 'grow' ? (cnt ? '<button class="btn" data-act="growview">성장 앨범 보기</button>' : '') : '<button class="btn" data-act="grow">성장 앨범 보기</button>'}</div></section>`;
 }
 function growth() {
   const k = K(), t = today();
@@ -485,7 +485,7 @@ function growth() {
   const miss = Array.from({ length: Math.min(14, n) }, (_, i) => S.addDays(t, -i)).filter(d => d >= k.birth && !has.has(d));
   const cells = fs.map(f => ({ d: f.date, f })).concat(miss.map(d => ({ d }))).sort((a, b) => a.d < b.d ? 1 : -1);
   return mission() + driveBar() + `<section class="stack"><div class="row between"><h2>성장 앨범 ${fs.length}장</h2><button class="btn main" data-act="video" ${fs.length < 2 ? 'disabled' : ''}>성장 영상 만들기</button></div><p class="sub">${fs.length < 2 ? '얼굴 사진이 두 장부터 영상을 만들 수 있어요. ' : ''}여기 사진은 사진첩과 따로 저장돼요. 빈칸을 누르면 지난 날짜 사진도 넣을 수 있어요.</p>
-    <div class="grid">${cells.map(c => c.f ? `<button data-act="face" data-id="${c.f.id}" aria-label="${dayNo(k, c.d)}일차 사진"><img ${pic(c.f.id, 1)} alt="${dayNo(k, c.d)}일차 얼굴 사진"><span class="d">${dayNo(k, c.d)}일차</span></button>` : `<button class="miss" data-act="faceadd" data-d="${c.d}" aria-label="${dayNo(k, c.d)}일차 사진 넣기">${dayNo(k, c.d)}일차<br>넣기</button>`).join('')}</div><div class="row"><button class="btn" data-act="faceadd">다른 날짜 사진 넣기</button></div></section>`;
+    <div class="grid">${cells.map(c => c.f ? `<button data-act="face" data-id="${c.f.id}" aria-label="${dayNo(k, c.d)}일차 사진"><img ${pic(c.f.id, 1)} alt="${dayNo(k, c.d)}일차 얼굴 사진"><span class="d">${dayNo(k, c.d)}일차</span></button>` : `<button class="miss" data-act="faceask" data-d="${c.d}" aria-label="${dayNo(k, c.d)}일차 사진 넣기">${dayNo(k, c.d)}일차<br>넣기</button>`).join('')}</div><div class="row"><button class="btn" data-act="faceadd">다른 날짜 사진 넣기</button></div></section>${n > 0 ? `<button class="fab" data-act="faceadd" data-d="${t}" data-cam="1">${icon('cam')}${has.has(t) ? '오늘 다시 찍기' : '오늘 사진 찍기'}</button>` : ''}`;
 }
 // 얼굴 사진을 날짜 순서로 한 장씩 넘겨 본다.
 let gv = null;
@@ -508,6 +508,10 @@ function growPlay() {
   gv.i = 0; growShow(); $('#gvp').textContent = '멈추기';
   gv.timer = setInterval(() => { if (!$('#gvi') || !dlg.open) { clearInterval(gv.timer); gv.timer = 0; return; } if (gv.i >= gv.fs.length - 1) return growStop(); gv.i++; growShow(); }, 900);
 }
+// 찍을지 고를지 묻는 창
+const shootBtns = (cam, pick) => `<div class="picks two2"><button type="button" ${cam}>${icon('cam', 'xl')}<b>사진 찍기</b></button><button type="button" ${pick}>${icon('album', 'xl')}<b>앨범에서 고르기</b></button></div>`;
+const addDlg = () => openDlg(`<form data-form="none"><h2>사진 추가</h2>${shootBtns('data-act="albcam"', 'data-act="albpick"')}<p class="sub">여기서 찍은 사진은 아기앨범에 오늘 날짜로 들어가요. 휴대폰 사진첩에도 두려면 사진을 열고 내보내기를 눌러 주세요.</p></form>`);
+const faceAsk = d => openDlg(`<form data-form="none"><h2>${esc(K().name)} ${dayNo(K(), d)}일차</h2>${shootBtns(`data-act="faceadd" data-d="${d}" data-cam="1"`, `data-act="faceadd" data-d="${d}"`)}</form>`);
 function pickFace(date, cam) {
   pickFiles({ capture: cam ? 'environment' : '' }, async ([f]) => cropDlg(f, date || await exifDate(f) || new Date(f.lastModified).toLocaleDateString('sv-SE'), !date));
 }
@@ -550,7 +554,7 @@ async function saveFace(date) {
 }
 function faceDlg(id) {
   const f = db.faces.find(x => x.id === id); if (!f) return; const k = kidOf(f.kid);
-  openDlg(`<form data-form="face" data-id="${id}"><h2>${esc(k.name)} ${dayNo(k, f.date)}일차</h2><img ${pic(id)} alt="${dayNo(k, f.date)}일차 얼굴 사진"><label class="f">날짜<input type="date" name="date" required min="${k.birth}" max="${today()}" value="${f.date}"></label><div class="row"><button type="button" class="btn" data-act="faceadd" data-d="${f.date}">다시 찍기</button><button type="button" class="btn" data-act="sharephoto" data-id="${id}">내보내기</button></div>${acts(['face', id, '사진 지우기'])}</form>`, true);
+  openDlg(`<form data-form="face" data-id="${id}"><h2>${esc(k.name)} ${dayNo(k, f.date)}일차</h2><img ${pic(id)} alt="${dayNo(k, f.date)}일차 얼굴 사진"><label class="f">날짜<input type="date" name="date" required min="${k.birth}" max="${today()}" value="${f.date}"></label><div class="row"><button type="button" class="btn" data-act="faceask" data-d="${f.date}">사진 바꾸기</button><button type="button" class="btn" data-act="sharephoto" data-id="${id}">내보내기</button></div>${acts(['face', id, '사진 지우기'])}</form>`, true);
 }
 const photoBlob = id => local ? Local.photoBlob(id) : fetch('photos/' + id).then(r => r.ok ? r.blob() : null);
 
@@ -795,6 +799,7 @@ async function moreActs(act, b, id) {
   else if (act === 'sharek') shareDlg();
   else if (act === 'sendkakao') sendKakao();
   else if (act === 'sharelink') shareLink();
+  else if (act === 'faceask') faceAsk(d.d);
   else if (act === 'faceadd') pickFace(d.d || '', Boolean(d.cam));
   else if (act === 'face') faceDlg(id);
   else if (act === 'video') videoDlg();
@@ -847,7 +852,9 @@ document.addEventListener('click', async ev => {
     if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = '지금 내용을 지우고 되돌리기'; return; }
     pickFiles({ accept: '.zip,application/zip' }, async ([zip]) => { try { await Local.restore(zip); await load(); dlg.close(); toast('백업을 되돌렸어요'); } catch (e) { toast(e.message || '되돌리지 못했어요'); } });
   }
-  else if (act === 'addphotos') { if (dlg.open) dlg.close(); pickFiles({ multiple: true }, fs => upload(fs)); }
+  else if (act === 'addphotos') addDlg();
+  else if (act === 'albcam') { if (dlg.open) dlg.close(); pickFiles({ capture: 'environment' }, fs => upload(fs, today())); }
+  else if (act === 'albpick') { if (dlg.open) dlg.close(); pickFiles({ multiple: true }, fs => upload(fs)); }
   else if (act === 'undraft') { draft = draft.filter(x => x !== id); $('#dgrid').innerHTML = draftGrid(); }
   else if (act === 'adddue') { const k = b.dataset; if (await save(d => d.events.push({ id: uid(), title: k.title, date: k.date, time: '', memo: '혜택 신청 마감일', from: k.key, kid: K().id }))) toast('달력에 추가했어요'); }
   else if (act === 'del') {

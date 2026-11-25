@@ -164,3 +164,5 @@ html.android input.blank{position:relative}html.android input.blank::before{posi
 .ob .errm{color:var(--stamp)}
 .obback{position:sticky;top:0;z-index:3;width:calc(100% + 24px);justify-items:start;padding-left:12px;background:var(--bg)}
 .shcard{display:grid;gap:4px;background:var(--bg);border-radius:22px;overflow:hidden;padding-bottom:14px;max-width:280px;width:100%;margin:auto}.shcard img{width:100%;aspect-ratio:1.5;object-fit:cover}.shcard b,.shcard span{padding:0 16px}.shcard b{margin-top:8px}.shcard span{color:var(--sub);font-size:14px}.shcard em{font-style:normal;text-align:center;margin:8px 16px 0;padding:8px;border-radius:12px;background:var(--soft);font-size:14px}.soc:disabled{opacity:.5}
+.picks.two2{flex:none}.picks.two2 button{padding:22px 8px;background:var(--bg);box-shadow:none}.picks.two2 .ic{width:52px;height:52px}.picks.two2 b{font-size:16px}
+body:has(.fab) #toast{bottom:calc(152px + env(safe-area-inset-bottom,0px))}

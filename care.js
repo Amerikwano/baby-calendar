@@ -84,7 +84,7 @@ function timeline(k) {
 function missionStrip(k) {
   const t = today(), n = dayNo(k, t); if (!k.born || n < 1) return '';
   const f = facesOf(k).find(x => x.date === t);
-  return `<div class="strip mis"><button class="fc ${f ? 'on' : ''}" ${f ? `data-act="face" data-id="${f.id}" aria-label="오늘 찍은 얼굴 사진"` : `data-act="faceadd" data-d="${t}" aria-label="앨범에서 얼굴 사진 고르기"`}>${f ? `<img ${pic(f.id, 1)} alt="">` : icon('cam')}</button><button class="tx" data-tab="grow"><b>${f ? `${n}일차 사진을 찍었어요` : `${n}일차 얼굴 사진 찍기`}</b><em>오늘의 미션.${nextDay(k)}</em></button>${f ? icon('right', 's') : `<button class="btn" data-act="faceadd" data-d="${t}" data-cam="1">찍기</button>`}</div>`;
+  return `<div class="strip mis"><button class="fc ${f ? 'on' : ''}" ${f ? `data-act="face" data-id="${f.id}" aria-label="오늘 찍은 얼굴 사진"` : `data-act="faceask" data-d="${t}" aria-label="얼굴 사진 넣기"`}>${f ? `<img ${pic(f.id, 1)} alt="">` : icon('cam')}</button><button class="tx" data-tab="grow"><b>${f ? `${n}일차 사진을 찍었어요` : `${n}일차 얼굴 사진 찍기`}</b><em>오늘의 미션.${nextDay(k)}</em></button>${f ? icon('right', 's') : `<button class="btn" data-act="faceadd" data-d="${t}" data-cam="1">찍기</button>`}</div>`;
 }
 function home() {
   const k = K(), a = alerts(k), n = a.open.length, first = a.open[0];
