@@ -4,5 +4,5 @@
   "compatibility_date": "2026-11-01",
   "observability": { "enabled": false },
   // 아래 ID는 공개해도 되는 값이다. 비밀 값(KAKAO_SECRET, NAVER_SECRET)은 대시보드에서만 넣는다.
-  "vars": { "APP_URL": "https://amerikwano.github.io/baby-calendar/", "KAKAO_ID": "dbaf6eae2b6ebce06e1db8adc88cc968", "NAVER_ID": "" }
+  "vars": { "APP_URL": "https://amerikwano.github.io/baby-calendar/", "KAKAO_ID": "dbaf6eae2b6ebce06e1db8adc88cc968", "NAVER_ID": "M7FffgLlNq8i3UFOYk9W" }
 }
