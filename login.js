@@ -8,22 +8,45 @@
   function readReturn(hash, saved, now) {
     const q = new URLSearchParams(String(hash).replace(/^#/, '')), p = q.get('social');
     if (!p) return null;
+    if (NAME[p] && !saved && q.get('id')) return { error: '로그인이 끝났어요. 처음 누른 앱으로 돌아가면 이어져요.' };
     if (!NAME[p] || !saved || saved.p !== p || saved.state !== q.get('state') || now - saved.t > 15 * 60000) return { error: '로그인을 확인하지 못했어요. 다시 시도해 주세요.' };
     if (q.get('error')) return { error: q.get('error') === 'cancel' ? '로그인을 취소했어요. 로그인하지 않아도 계속 쓸 수 있어요.' : `${NAME[p]} 로그인에 실패했어요. 다시 시도해 주세요.` };
     const id = q.get('id') || ''; if (!/^[\w-]{1,80}$/.test(id)) return { error: '로그인을 확인하지 못했어요. 다시 시도해 주세요.' };
     return { acct: { provider: p, id, name: (q.get('name') || '').slice(0, 40) } };
   }
-  function begin(base, p) {
-    const state = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
-    put('baby-soc', { p, state, t: Date.now() }); location.assign(`${base}/login/${p}?state=${state}`);
+  const hex = u => Array.from(new Uint8Array(u), b => b.toString(16).padStart(2, '0')).join('');
+  async function begin(base, p) {
+    const state = hex(crypto.getRandomValues(new Uint8Array(16))), v = hex(crypto.getRandomValues(new Uint8Array(32))), c = hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v)));
+    put('baby-soc', { p, state, v, t: Date.now() }); location.assign(`${base}/login/${p}?state=${state}&c=${c}`);
+  }
+  const ask = (base, s) => fetch(base + '/result', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ state: s.state, v: s.v }), signal: AbortSignal.timeout(8000) }).then(r => r.json());
+  // 로그인이 다른 창에서 끝났을 때 서버에 맡겨진 결과를 가져온다.
+  function readResult(j, saved) {
+    if (j.stage === 'done' && j.provider === saved.p && /^[\w-]{1,80}$/.test(j.id || '')) return { acct: { provider: j.provider, id: j.id, name: String(j.name || '').slice(0, 40) } };
+    if (j.stage === 'fail') return { error: j.error === 'cancel' ? '로그인을 취소했어요. 로그인하지 않아도 계속 쓸 수 있어요.' : `${NAME[saved.p]} 로그인에 실패했어요. 다시 시도해 주세요.` };
+    return null;
+  }
+  let asking = false;
+  async function resume(base) {
+    const s = get('baby-soc'); if (asking || !s || !s.v || Date.now() - s.t > 10 * 60000) return null;
+    asking = true;
+    try {
+      for (let i = 0; i < 5; i++) {
+        const j = await ask(base, s).catch(() => ({})), now = get('baby-soc'); if (!now || now.state !== s.state) return null;
+        const r = readResult(j, s); if (r) { put('baby-soc', null); if (r.acct) put('baby-acct', r.acct); return r; }
+        if (j.stage === 'none') return null;
+        await new Promise(x => setTimeout(x, 1500));
+      }
+    } finally { asking = false; }
+    return null;
   }
   function finish() {
-    const r = readReturn(location.hash, get('baby-soc'), Date.now()); if (!r) return null;
+    const s = get('baby-soc'), r = readReturn(location.hash, s, Date.now()); if (!r) return null;
     history.replaceState(null, '', location.pathname + location.search); put('baby-soc', null);
-    if (r.acct) put('baby-acct', r.acct);
+    if (r.acct) { put('baby-acct', r.acct); if (s && s.v && typeof AUTH !== 'undefined') ask(AUTH.url, s).catch(() => { }); } // 맡겨 둔 결과를 지운다
     return r;
   }
-  const out = { NAME, readReturn, begin, finish, account: () => get('baby-acct'), logout: () => put('baby-acct', null) };
+  const out = { NAME, readReturn, readResult, begin, finish, resume, account: () => get('baby-acct'), logout: () => put('baby-acct', null) };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Social = out;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -40,6 +63,15 @@ const NAVER_MARK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff
 function account() { const s = Social.account(), g = Drive.account(); return s ? { p: s.provider, name: s.name || Social.NAME[s.provider] + ' 계정' } : g ? { p: 'google', name: g.email || g.name } : null; }
 const socialBtns = () => `${AUTH.url && AUTH.kakao ? `<button type="button" class="soc kakao" data-act="social" data-p="kakao">${KAKAO_MARK}카카오로 시작하기</button>` : ''}${AUTH.url && AUTH.naver ? `<button type="button" class="soc naver" data-act="social" data-p="naver">${NAVER_MARK}네이버로 시작하기</button>` : ''}${GOOGLE_ID ? `<button type="button" class="soc google" data-act="login">${G_LOGO}Google로 시작하기</button>` : ''}`;
 const canLogin = () => Boolean(local && (GOOGLE_ID || AUTH.url && (AUTH.kakao || AUTH.naver)));
+// 로그인하러 갔다가 앱으로 돌아왔을 때 결과를 이어받는다.
+async function resumeSocial() {
+  const r = await Social.resume(AUTH.url); if (!r) return false;
+  toast(r.error || `${Social.NAME[r.acct.provider]}로 로그인했어요`); if (!started) ob.step = ''; if (!dlg.open) render(); return true;
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && ready) resumeSocial(); });
+  window.addEventListener('pageshow', e => { if (e.persisted && ready) resumeSocial(); });
+}
 function accountCard() {
   if (!canLogin()) return '';
   const a = account(), g = Drive.account();

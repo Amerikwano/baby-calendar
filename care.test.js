@@ -61,3 +61,22 @@ test('로그인 서버는 준비 여부만 알려 준다', async () => {
   const { handle } = await import('./auth/src/index.mjs'), r = await handle(new Request('https://a.test/ready'), { APP_URL: 'https://app.test/x/', KAKAO_ID: 'a', KAKAO_SECRET: 'b' });
   assert.deepEqual(await r.json(), { kakao: true, naver: false }); assert.equal(r.headers.get('access-control-allow-origin'), 'https://app.test');
 });
+test('로그인 결과 이어받기: 시작한 앱만, 한 번만, 실패가 성공을 덮지 않는다', async () => {
+  const { handle } = await import('./auth/src/index.mjs'), { Box } = await import('./auth/src/box.mjs'), crypto2 = require('node:crypto');
+  const boxes = new Map(), mk = () => { const m = new Map(); return new Box({ get: async k => m.get(k), put: async (k, v) => { m.set(k, v); }, deleteAll: async () => m.clear(), setAlarm: async () => { } }); };
+  const desk = s => boxes.get(s) || boxes.set(s, mk()).get(s), env = { APP_URL: 'https://app.test/x/', NAVER_ID: 'n', NAVER_SECRET: 's' }, v = 'c'.repeat(64), c = crypto2.createHash('sha256').update(v).digest('hex');
+  let uses = 0; const get = async u => /token/.test(u) ? new Response(JSON.stringify(uses++ ? { error: 'invalid_request' } : { access_token: 'T' })) : new Response(JSON.stringify({ response: { id: 'n7', nickname: '콩' } }));
+  const g = u => handle(new Request('https://a.test' + u), env, get, desk), ask = async (st, vv) => (await handle(new Request('https://a.test/result', { method: 'POST', body: JSON.stringify({ state: st, v: vv }) }), env, get, desk)).json();
+  assert.equal((await g(`/login/naver?state=${S32}&c=${c}`)).status, 302); assert.equal((await ask(S32, v)).stage, 'wait'); assert.equal((await ask(S32, 'd'.repeat(64))).stage, 'none');
+  const one = (await g(`/callback/naver?code=C&state=${S32}`)).headers.get('location'), two = (await g(`/callback/naver?code=C&state=${S32}`)).headers.get('location'); assert.match(one, /id=/); assert.equal(two, one);
+  const j = await ask(S32, v); assert.deepEqual([j.stage, j.provider, j.name], ['done', 'naver', '콩']); assert.equal((await ask(S32, v)).stage, 'none');
+  assert.deepEqual(L.readResult(j, { p: 'naver' }).acct.name, '콩'); assert.equal(L.readResult(j, { p: 'kakao' }), null); assert.ok(L.readResult({ stage: 'fail' }, { p: 'kakao' }).error); assert.equal(L.readResult({ stage: 'wait' }, { p: 'kakao' }), null);
+  const S2 = 'e'.repeat(32); await g(`/login/naver?state=${S2}&c=${c}`); await g(`/callback/naver?error=access_denied&state=${S2}`); assert.deepEqual(await ask(S2, v), { stage: 'fail', error: 'cancel' });
+  const S3 = 'f'.repeat(32); await g(`/login/naver?state=${S3}`); uses = 0; await g(`/callback/naver?code=C&state=${S3}`); assert.equal((await ask(S3, v)).stage, 'none');
+});
+test('맡아 두는 곳이 고장 나도 로그인은 된다', async () => {
+  const { handle } = await import('./auth/src/index.mjs'), bad = () => new Proxy({}, { get: () => async () => { throw new Error('x'); } }), env = { APP_URL: 'https://app.test/x/', KAKAO_ID: 'n', KAKAO_SECRET: 's' };
+  const get = async u => new Response(JSON.stringify(/token/.test(u) ? { access_token: 'T' } : { id: 7 }));
+  assert.equal((await handle(new Request(`https://a.test/login/kakao?state=${S32}&c=${'a'.repeat(64)}`), env, get, bad)).status, 302);
+  assert.match((await handle(new Request(`https://a.test/callback/kakao?code=C&state=${S32}`), env, get, bad)).headers.get('location'), /id=[0-9a-f]{32}/);
+});
