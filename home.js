@@ -107,7 +107,10 @@ function famPull() {
   if (!bound || !started) return famQ;
   return famRun(async () => {
     const base = await famBase(), r = await famCall(bound, 'state' + (base ? '?have=' + base.rev : ''));
-    famMembers = r.members || famMembers; famSeen(r);
+    famMembers = r.members || famMembers;
+    if (r.me && r.me.role === 'viewer' && bound.role !== 'viewer') { famDemoted(r); return; }
+    if (r.me && r.me.role !== bound.role) { bound.role = r.me.role; jput('baby-home', bound); }
+    famSeen(r);
     if (!r.same) {
       const mine = Fam.shared(db);
       if (!base || Fam.same(mine, base.data)) await famApply(r.data); else await famApply(Fam.merge(base.data, mine, r.data));
@@ -128,6 +131,13 @@ async function famPushNow() {
 }
 // 저장할 때마다 잠깐 기다렸다 올린다.
 function famLater() { if (!bound || famBusy || bound.role === 'viewer') return; clearTimeout(famT); famT = setTimeout(() => famRun(famPushNow), 1500); }
+// 처음 만든 사람이 나를 보기만으로 바꿨으면, 이 기기 수첩은 그대로 두고 그 집은 놀러가기로 옮긴다.
+function famDemoted(r) {
+  const h = Object.assign({}, bound, { role: 'viewer', nick: r.me.nick, name: r.name });
+  bound = null; jput('baby-home', null);
+  visits = visits.filter(v => v.id !== h.id).concat([h]); jput('baby-visits', visits);
+  toast(`${h.name}은 이제 보기만 할 수 있어요. 놀러가기에서 볼 수 있어요. 이 기기 기록은 그대로예요.`); render();
+}
 function famLost() { toast('가족 수첩에서 빠졌어요. 기록은 이 기기에 그대로 있어요.'); bound = null; jput('baby-home', null); render(); }
 let famMembers = [];
 // 서버가 알려 준 승인 대기와 안 쓴 초대. 처음 보는 승인 대기는 바로 물어본다.
@@ -260,7 +270,7 @@ function familyDlg() {
   const edit = bound.role !== 'viewer', when = at => new Date(at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' });
   const pend = edit && famPending.length ? `<h3>승인을 기다려요</h3><div class="list">${famPending.map(p => `<div class="hosp"><span class="row" style="flex-wrap:nowrap">${kface(p.kimg, p.kname)}<span><b>${esc(p.nick)}</b><span class="sub">${esc(p.kname)} · ${ROLE[p.role]}</span></span></span><button type="button" class="btn main" data-act="approveask" data-rid="${esc(p.rid)}">확인</button></div>`).join('')}</div>` : '';
   const inv = edit && famInvites.length ? `<h3>아직 안 쓴 초대 링크</h3><div class="list">${famInvites.map(i => `<div class="hosp"><span><b>${ROLE[i.role]} 초대</b><span class="sub">${when(i.at)}에 보냄 · 3일 동안 쓸 수 있어요</span></span><button type="button" class="btn danger" data-act="uninvite" data-id="${esc(i.id)}">취소</button></div>`).join('')}</div>` : '';
-  openDlg(`<form data-form="none"><h2>${esc(bound.name || '가족 수첩')}</h2>${pend}<div class="list">${list.map(m => `<div class="hosp"><span class="row" style="flex-wrap:nowrap">${m.kname !== undefined ? kface(m.kimg, m.nick) : `<span class="nick">${esc(m.nick.slice(0, 1))}</span>`}<span><b>${esc(m.nick)}${m.id === bound.mid ? ' (나)' : ''}</b><span class="sub">${ROLE[m.role]}${m.kname ? ' · ' + esc(m.kname) : ''}</span></span></span>${bound.role === 'owner' && m.role !== 'owner' ? `<button type="button" class="btn danger" data-act="kick" data-id="${esc(m.id)}">빼기</button>` : ''}</div>`).join('') || '<p class="sub">불러오는 중</p>'}</div>${inv}${bound.linked ? '' : `<p class="sub">카카오로 로그인해 두면 휴대폰을 바꿔도 같은 카카오로 이 가족 수첩에 다시 들어올 수 있어요.</p>${myTok() ? '' : `<button type="button" class="soc kakao" data-act="social" data-p="kakao">${KAKAO_MARK}카카오로 로그인</button>`}`}${bound.role !== 'owner' ? '<button type="button" class="btn danger" data-act="famleave">가족 수첩에서 나가기</button>' : ''}</form>`);
+  openDlg(`<form data-form="none"><h2>${esc(bound.name || '가족 수첩')}</h2>${pend}<div class="list">${list.map(m => `<div class="hosp"><span class="row" style="flex-wrap:nowrap">${m.kname !== undefined ? kface(m.kimg, m.nick) : `<span class="nick">${esc(m.nick.slice(0, 1))}</span>`}<span><b>${esc(m.nick)}${m.id === bound.mid ? ' (나)' : ''}</b><span class="sub">${ROLE[m.role]}${m.kname ? ' · ' + esc(m.kname) : ''}</span></span></span>${bound.role === 'owner' && m.role !== 'owner' ? `<span class="row" style="flex-wrap:nowrap;gap:6px"><button type="button" class="btn" data-act="famrole" data-id="${esc(m.id)}" data-role="${m.role === 'viewer' ? 'editor' : 'viewer'}">${m.role === 'viewer' ? '함께 쓰기로' : '보기만으로'}</button><button type="button" class="btn danger" data-act="kick" data-id="${esc(m.id)}">빼기</button></span>` : ''}</div>`).join('') || '<p class="sub">불러오는 중</p>'}</div>${inv}${bound.linked ? '' : `<p class="sub">카카오로 로그인해 두면 휴대폰을 바꿔도 같은 카카오로 이 가족 수첩에 다시 들어올 수 있어요.</p>${myTok() ? '' : `<button type="button" class="soc kakao" data-act="social" data-p="kakao">${KAKAO_MARK}카카오로 로그인</button>`}`}${bound.role !== 'owner' ? '<button type="button" class="btn danger" data-act="famleave">가족 수첩에서 나가기</button>' : ''}</form>`);
   if (!list.length) famPull().then(() => { if (dlg.open && dlg.querySelector('[data-act=kick],.list .sub')) familyDlg(); });
 }
 
@@ -375,6 +385,12 @@ async function openVisit(id) {
     if (!vis || vis.id !== id) return;
     vis.data = s.data; vis.talk = t; vis.name = s.name;
     if (s.me && s.me.nick) { vis.nick = v.nick = s.me.nick; } // 이 집에서 쓰는 내 별명
+    if (s.me && s.me.role !== 'viewer') { // 처음 만든 사람이 나를 함께 쓰기로 바꿨다
+      if (!bound && confirm(`${s.name} 수첩을 함께 쓸 수 있게 됐어요. 이 기기에서 함께 쓸까요?${started ? '\n지금 이 기기 기록은 따로 보관해 둬요.' : ''}`)) {
+        visits = visits.filter(x => x.id !== id); jput('baby-visits', visits); vis = null; tab = 'home';
+        return famEnter({ id, token: v.token, role: s.me.role, mid: v.mid, name: s.name, linked: v.linked }, s.me.nick);
+      }
+    }
     if (s.me && Fam.parentNick(s.me.nick) && !dlg.open) setTimeout(() => vnickDlg(true), 300); // 예전 버전에서 엄마·아빠로 덮인 별명은 바꿔 달라고 한다
     if (s.me && !s.me.linked && myTok()) famCall(v, 'link', { body: { tok: myTok() } }).catch(() => { });
     const k = (s.data.kids || [])[0] || {}; Object.assign(v, { name: s.name, kid: { name: k.name, photo: k.photo, born: k.born, birth: k.birth } }); jput('baby-visits', visits);
@@ -456,6 +472,11 @@ async function famActs(act, b) {
   else if (act === 'sendinvite') sendInvite(d.role, Boolean(d.other));
   else if (act === 'nick') nickDlg();
   else if (act === 'family') familyDlg();
+  else if (act === 'famrole') {
+    const m = famMembers.find(x => x.id === d.id); if (!m) return true;
+    if (!confirm(d.role === 'editor' ? `${m.nick}님이 이 수첩을 같이 보고 고칠 수 있게 할까요?` : `${m.nick}님은 일기와 앨범만 보고 댓글을 달 수 있게 할까요?`)) return true;
+    try { famMembers = (await famCall(bound, 'role', { body: { id: d.id, role: d.role } })).members; familyDlg(); toast('역할을 바꿨어요. 그분이 앱을 열면 바뀌어요.'); } catch (e) { toast(e.message); }
+  }
   else if (act === 'kick') { if (confirm('이 사람을 가족 수첩에서 뺄까요? 다른 기기에서도 함께 빠져요.')) { try { famMembers = (await famCall(bound, 'kick', { body: { id: d.id } })).members; familyDlg(); } catch (e) { toast(e.message); } } }
   else if (act === 'famleave') { if (confirm('가족 수첩에서 나갈까요? 기록은 이 기기에 남지만 더는 함께 맞춰지지 않아요.')) { await famCall(bound, 'leave', { body: {} }).catch(() => { }); bound = null; jput('baby-home', null); dlg.close(); render(); toast('가족 수첩에서 나왔어요'); } }
   else if (act === 'visits') { if (dlg.open) dlg.close(); if (!started || SUB.includes(tab)) { vis = null; tab = 'visits'; render(); scrollTo(0, 0); } else { vis = null; enterSub('visits'); } }

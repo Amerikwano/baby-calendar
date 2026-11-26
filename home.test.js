@@ -105,6 +105,13 @@ test('가족 수첩 서버', async () => {
   assert.equal((await call(H + '/unnote', { method: 'POST', token: dad.token, body: { id: c1.id } })).status, 403);
   t = (await call(H + '/unnote', { method: 'POST', token: gma.token, body: { id: c1.id } })).body; assert.equal(t.notes.length, 0); // 댓글을 지우면 달린 대댓글도
   t = (await call(H + '/like', { method: 'POST', token: gma.token, body: { target: 'd:d1', on: false } })).body; assert.equal(t.likes['d:d1'], undefined);
+  // 처음 만든 사람만 역할을 바꾼다. 엄마·아빠 별명인 사람은 보기만으로 못 바꾼다.
+  assert.equal((await call(H + '/role', { method: 'POST', token: dad.token, body: { id: gma.id, role: 'editor' } })).status, 403);
+  assert.equal((await call(H + '/role', { method: 'POST', token: own, body: { id: gma.id, role: 'editor' } })).body.members.find(m => m.id === gma.id).role, 'editor');
+  assert.equal((await call(H + '/state', { token: gma.token })).body.data.events.length, 1); // 이제 전체 기록을 본다
+  await call(H + '/role', { method: 'POST', token: own, body: { id: gma.id, role: 'viewer' } });
+  assert.equal((await call(H + '/role', { method: 'POST', token: own, body: { id: dad.id, role: 'viewer' } })).body.error, 'parent');
+  assert.equal((await call(H + '/role', { method: 'POST', token: own, body: { id: made.id, role: 'viewer' } })).status, 404);
   // 거절하면 기다리던 사람은 못 들어오고 그 링크도 끝난다
   const inv3 = (await call(H + '/invite', { method: 'POST', token: own, body: { role: 'viewer' } })).body.code;
   assert.equal((await call(H + '/state', { token: own })).body.invites.length, 1);

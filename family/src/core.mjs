@@ -249,6 +249,18 @@ export class HomeCore {
     const m = await this.s.get('m:' + me.h); m.nick = b.nick.trim(); await this.s.put('m:' + me.h, m); return [200, { nick: m.nick }];
   }
   async leave(me) { if (me.role === 'owner') return [400, { error: 'owner' }]; await this.dropMember(me.h); return [200, Object.assign({ ok: true }, me.k ? { _unlink: { k: me.k } } : {})]; }
+  // 처음 만든 사람이 가족의 역할(함께 쓰기·보기만)을 바꾼다.
+  async setRole(me, b) {
+    if (me.role !== 'owner') return [403, { error: 'role' }];
+    if (!b || !['editor', 'viewer'].includes(b.role)) return [400, { error: 'role' }];
+    for (const [k, m] of await this.s.list({ prefix: 'm:' })) {
+      if (m.id !== b.id || m.role === 'owner') continue;
+      if (b.role === 'viewer' && parentNick(m.nick)) return [400, { error: 'parent' }];
+      m.role = b.role; await this.s.put(k, m); const meta = await this.meta();
+      return [200, Object.assign({ members: await this.members(true) }, m.k ? { _link: { k: m.k, role: m.role, name: meta.name } } : {})];
+    }
+    return [404, { error: 'member' }];
+  }
   async kick(me, b) {
     if (me.role !== 'owner') return [403, { error: 'role' }];
     for (const [k, m] of await this.s.list({ prefix: 'm:' })) if (b && m.id === b.id && m.role !== 'owner') { await this.dropMember(k.slice(2)); return [200, Object.assign({ members: await this.members(true) }, m.k ? { _unlink: { k: m.k } } : {})]; }
@@ -284,6 +296,7 @@ export class HomeCore {
       if (what === 'push' && m === 'POST') return this.setPush(me, await body());
       if (what === 'leave' && m === 'POST') return this.leave(me);
       if (what === 'kick' && m === 'POST') return this.kick(me, await body());
+      if (what === 'role' && m === 'POST') return this.setRole(me, await body());
       return [404, { error: 'path' }];
     } catch (e) { if (typeof e === 'number') return [e, { error: 'body' }]; throw e; }
   }
