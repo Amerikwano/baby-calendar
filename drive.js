@@ -84,6 +84,20 @@
   }
   const download = id => call(`/files/${encodeURIComponent(id)}?alt=media`).then(r => r.blob());
   const trash = id => json('/files/' + encodeURIComponent(id), { trashed: true }, 'PATCH');
-  const out = { login, finish, token, account, me, logout, list, upload, download, trash, loginUrl, readReturn, multipart };
+  // 수첩 기록(JSON 하나). 같은 구글 계정이면 어느 브라우저에서든 같은 파일을 본다.
+  async function stateMeta() {
+    const q = "trashed=false and appProperties has { key='bn' and value='state' }";
+    const f = (await json('/files?' + new URLSearchParams({ q, fields: 'files(id,modifiedTime)', orderBy: 'modifiedTime desc', pageSize: 1 }))).files[0];
+    return f ? { id: f.id, at: f.modifiedTime } : null;
+  }
+  const readState = id => call(`/files/${encodeURIComponent(id)}?alt=media`).then(r => r.json());
+  async function writeState(data, id) {
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    const m = multipart(id ? {} : { name: '수첩 기록.json', parents: [await ensureFolder()], appProperties: { bn: 'state' } }, blob);
+    const url = 'https://www.googleapis.com/upload/drive/v3/files' + (id ? '/' + encodeURIComponent(id) : '') + '?uploadType=multipart&fields=id,modifiedTime';
+    const j = await (await call(url, { method: id ? 'PATCH' : 'POST', headers: { 'content-type': m.type }, body: m.body })).json();
+    return { id: j.id, at: j.modifiedTime };
+  }
+  const out = { login, finish, token, account, me, logout, list, upload, download, trash, loginUrl, readReturn, multipart, stateMeta, readState, writeState };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Drive = out;
 })(this);

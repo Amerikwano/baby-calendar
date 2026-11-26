@@ -77,8 +77,8 @@ if (typeof document !== 'undefined') {
 function accountCard() {
   if (!canLogin()) return '';
   const a = account(), g = Drive.account();
-  if (!a) return `<section class="acct"><div><b>로그인하고 시작해 보세요</b><p class="sub">기록은 지금 쓰는 이 브라우저에 저장돼요. 구글로 로그인하면 사진을 내 구글 드라이브에 올려 둘 수 있어요.</p></div><div class="socs">${socialBtns()}</div></section>`;
-  return `<section class="acct"><div class="row between"><div><b>${esc(a.name)}</b><p class="sub">${Social.NAME[a.p]}로 로그인했어요</p></div><button class="btn" data-act="logout">로그아웃</button></div>${canDrive() ? `<div class="row between"><span class="sub">구글 드라이브 ${g ? `연결됨 (${esc(g.email || g.name)})` : '연결 안 됨'}</span><button class="btn" data-act="${g ? 'drive' : 'login'}">${g ? '사진 관리' : '연결하기'}</button></div>` : ''}</section>`;
+  if (!a) return `<section class="acct"><div><b>로그인하고 시작해 보세요</b><p class="sub">구글로 로그인하면 기록과 사진을 내 구글 드라이브에 보관해서, 다른 브라우저나 새 휴대폰에서도 이어서 쓸 수 있어요.</p></div><div class="socs">${socialBtns()}</div></section>`;
+  return `<section class="acct"><div class="row between"><div><b>${esc(a.name)}</b><p class="sub">${Social.NAME[a.p]}로 로그인했어요</p></div><button class="btn" data-act="logout">로그아웃</button></div>${canDrive() ? `<div class="row between"><span class="sub">구글 드라이브 ${g ? `연결됨 (${esc(g.email || g.name)})` : '연결 안 됨'}</span><button class="btn" data-act="${g ? 'drive' : 'login'}">${g ? '사진 관리' : '연결하기'}</button></div>${syncRow()}` : ''}</section>`;
 }
 // 앱 안 브라우저에서 열었을 때 알림. 카카오톡은 바깥 브라우저로 바로 열 수 있다.
 const IN_APP = typeof Social !== 'undefined' && typeof navigator !== 'undefined' ? Social.inApp(navigator.userAgent) : '';

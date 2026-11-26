@@ -129,6 +129,9 @@
     });
     urls.clear();
   }
-  const out = { api, getKV, setKV, photoUrl, photoBlob, blobCrc, backup, restore, zip, unzip };
+  // 드라이브에서 받아 온 사진·동영상을 원래 번호 그대로 넣는다.
+  const has = id => getPhoto(id).then(r => Boolean(r && r.data));
+  async function keep(id, blob) { const type = blob.type || 'image/jpeg'; await putPhoto(id, { type, data: type.startsWith('video/') ? blob : await blob.arrayBuffer() }); urls.delete(id); urls.delete(id + 't'); }
+  const out = { has, keep, api, getKV, setKV, photoUrl, photoBlob, blobCrc, backup, restore, zip, unzip };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Local = out;
 })(this);

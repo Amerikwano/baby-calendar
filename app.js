@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.9.7';
+const APP_VERSION = '0.9.8';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -65,7 +65,7 @@ function save(change) {
   return chain = chain.then(async () => {
     const before = JSON.stringify(db);
     change(db);
-    try { rev = (await api('/api/state', { method: 'PUT', body: JSON.stringify({ rev, data: db }) })).rev; render(); pushLater(); return true; }
+    try { rev = (await api('/api/state', { method: 'PUT', body: JSON.stringify({ rev, data: db }) })).rev; render(); pushLater(); syncLater(); return true; }
     catch (e) {
       db = JSON.parse(before);
       if (e.status === 409) { const s = await api('/api/state').catch(() => null); if (s) { rev = s.rev; db = Object.assign(fresh(), Family.migrate(s.data)); } toast('다른 창에서 바뀐 내용을 불러왔어요. 다시 저장해 주세요.'); }
@@ -692,7 +692,7 @@ const canDrive = () => Boolean(local && GOOGLE_ID);
 const allPhotos = () => db.photos.map(p => Object.assign({ kind: 'album' }, p)).concat(db.faces.map(p => Object.assign({ kind: 'face' }, p)));
 const pid = p => p.drive || p.id;
 let skip = new Set(); try { skip = new Set(JSON.parse(localStorage.getItem('baby-drive-skip') || '[]')); } catch { } // 드라이브에서 일부러 뺀 사진은 다시 올리지 않는다
-const waiting = () => allPhotos().filter(p => !sent.has(pid(p)) && !skip.has(pid(p)));
+const waiting = () => drivePhotos().filter(p => !sent.has(pid(p)) && !skip.has(pid(p)));
 let autoUp = false; try { autoUp = localStorage.getItem('baby-drive-auto') === '1'; } catch { }
 const autoBox = () => `<label class="ck"><input type="checkbox" id="autoUp" ${autoUp ? 'checked' : ''}>로그인한 동안 새로 넣는 사진도 자동으로 올리기</label>`;
 document.addEventListener('change', ev => { if (ev.target.id === 'autoUp') { autoUp = ev.target.checked; try { localStorage.setItem('baby-drive-auto', autoUp ? '1' : '0'); } catch { } } });
@@ -702,7 +702,7 @@ function loginCard() {
   if (!canLogin() || account()) return '';
   try { if (Date.now() - Number(localStorage.getItem('baby-login-later') || 0) < 7 * 86400000) return ''; } catch { }
   const n = allPhotos().length;
-  return `<section class="acct"><div><b>${n ? `사진 ${n}장을 안전하게 보관하세요` : '로그인하고 사진을 안전하게 보관하세요'}</b><p class="sub">기록은 지금 쓰는 이 브라우저에 저장돼요. 구글로 로그인하면 사진을 내 구글 드라이브에 올려 두고, 휴대폰을 바꿔도 다시 가져올 수 있어요.</p></div><div class="socs">${socialBtns()}</div><button class="btn" data-act="loginlater">나중에</button></section>`;
+  return `<section class="acct"><div><b>${n ? `사진 ${n}장을 안전하게 보관하세요` : '로그인하고 기록을 안전하게 보관하세요'}</b><p class="sub">구글로 로그인하면 기록과 사진을 내 구글 드라이브에 보관해서, 다른 브라우저나 새 휴대폰에서도 이어서 쓸 수 있어요. 로그인하지 않으면 기록은 이 브라우저에만 남아요.</p></div><div class="socs">${socialBtns()}</div><button class="btn" data-act="loginlater">나중에</button></section>`;
 }
 function driveBar() {
   if (!canDrive()) return '';
@@ -713,8 +713,8 @@ function driveBar() {
 }
 async function afterLogin(r) {
   if (r.error) { toast(r.error); return; }
-  if (!started) { try { await Drive.me(); } catch (e) { toast(e.message); } ob.step = ''; render(); return; }
-  try { await Drive.me(); toast('로그인했어요'); await syncSent(); render(); const n = waiting().length; openDlg(`<form data-form="none"><h2>${n ? `사진 ${n}장을 드라이브에 올릴까요?` : '구글 드라이브를 쓸 준비가 됐어요'}</h2><p class="sub">${esc(Drive.account().email)}의 드라이브에 '우리 아기 수첩' 폴더를 만들어 담아요. 나만 볼 수 있어요.</p>${autoBox()}<div class="row">${n ? '<button type="button" class="btn main" data-act="upload">올리기</button>' : ''}${n ? '<button type="button" class="btn" data-act="close">나중에</button>' : ''}</div></form>`); } catch (e) { toast(e.message); render(); }
+  if (!started) { try { await Drive.me(); await syncNow(); } catch (e) { toast(e.message); } ob.step = ''; render(); return; }
+  try { await Drive.me(); toast('로그인했어요'); const how = await syncNow().catch(e => { toast(e.message); return ''; }); await syncSent(); render(); if (how === 'ask' || how === 'down' || dlg.open) return; const n = waiting().length; openDlg(`<form data-form="none"><h2>${n ? `사진 ${n}장을 드라이브에 올릴까요?` : '구글 드라이브를 쓸 준비가 됐어요'}</h2><p class="sub">${esc(Drive.account().email)}의 드라이브 '우리 아기 수첩' 폴더에 기록과 사진을 담아요. 나만 볼 수 있어요. 기록은 이미 맞춰 두었어요.</p>${autoBox()}<div class="row">${n ? '<button type="button" class="btn main" data-act="upload">올리기</button>' : ''}${n ? '<button type="button" class="btn" data-act="close">나중에</button>' : ''}</div></form>`); } catch (e) { toast(e.message); render(); }
 }
 async function syncSent() { const files = await Drive.list(); sent = new Set(files.map(f => f.appProperties && f.appProperties.pid).filter(Boolean)); keepSent(); return files; }
 const extOf = b => Media.ext(b.type);
@@ -732,7 +732,7 @@ async function uploadAll() {
       try {
         const b = await photoBlob(p.id); if (!b) { bad++; continue; }
         const k = kidOf(p.kid);
-        await Drive.upload(b, `${p.kind === 'face' ? `얼굴_${dayNo(k, p.date)}일차_` : ''}${p.date}_${p.id.slice(0, 6)}.${extOf(b)}`, { pid: pid(p), kind: p.kind, kid: p.kid || '', date: p.date });
+        await Drive.upload(b, `${p.kind === 'face' ? `얼굴_${dayNo(k, p.date)}일차_` : p.kind === 'profile' ? `프로필_${k.name}_` : ''}${p.date}_${p.id.slice(0, 6)}.${extOf(b)}`, { pid: pid(p), kind: p.kind, kid: p.kid || '', date: p.date });
         sent.add(pid(p)); keepSent(); job.done++; paint();
       } catch (e) { if (e.login || e.full || !e.status) throw e; bad++; }
     }
@@ -749,14 +749,14 @@ async function driveDlg() {
   openDlg('<form data-form="none"><h2>드라이브 사진 관리</h2><p class="sub">불러오는 중</p></form>');
   try { driveFiles = await syncSent(); } catch (e) { if (dlg.open) dlg.close(); return toast(e.message); }
   if (!dlg.open) return;
-  const here = new Map(allPhotos().map(p => [pid(p), p]));
+  const here = new Map(drivePhotos().map(p => [pid(p), p]));
   driveFiles.sort((a, b) => (a.appProperties.date || '') < (b.appProperties.date || '') ? 1 : -1);
-  const only = driveFiles.filter(f => !here.has(f.appProperties.pid)), n = waiting().length;
+  const only = driveFiles.filter(f => !here.has(f.appProperties.pid) && f.appProperties.kind !== 'profile'), n = waiting().length;
   openDlg(`<form data-form="none"><div class="row between"><h2>드라이브 사진 관리</h2></div><p class="sub">${esc(who.email || who.name || '')}, 내 드라이브의 '우리 아기 수첩' 폴더에 ${driveFiles.length}장</p><div class="row">${n ? `<button type="button" class="btn main" data-act="upload">안 올린 ${n}장 올리기</button>` : ''}${only.length ? `<button type="button" class="btn" data-act="pull">드라이브에만 있는 ${only.length}장 가져오기</button>` : ''}</div>${autoBox()}
     ${driveFiles.length ? `<div class="list">${driveFiles.map(f => { const p = here.get(f.appProperties.pid); return `<div class="hosp"><span class="row" style="flex-wrap:nowrap">${p ? `<img ${pic(p.id, 1)} alt="" width="52" height="52" style="object-fit:cover;border-radius:8px;flex:none">` : ''}<span style="min-width:0"><b>${esc(f.name)}</b><span class="sub">${p ? '이 기기에도 있어요' : '드라이브에만 있어요'}${f.size ? `, ${(f.size / 1048576).toFixed(1)}MB` : ''}</span></span></span><button type="button" class="btn danger" data-act="drivedel" data-id="${esc(f.id)}">빼기</button></div>`; }).join('')}</div>` : '<p class="empty">아직 올린 사진이 없어요.</p>'}<p class="sub">빼기를 누르면 구글 드라이브 휴지통으로 옮겨요. 이 기기의 사진은 그대로예요.</p></form>`);
 }
 async function pull() {
-  const here = new Set(allPhotos().map(pid)), list = driveFiles.filter(f => !here.has(f.appProperties.pid)); let n = 0;
+  const here = new Set(drivePhotos().map(pid)), list = driveFiles.filter(f => !here.has(f.appProperties.pid) && f.appProperties.kind !== 'profile'); let n = 0;
   for (const f of list) {
     try {
       const a = f.appProperties, b = await Drive.download(f.id), r = await storeMedia(b);
@@ -827,7 +827,7 @@ async function moreActs(act, b, id) {
   else if (act === 'map') showMap(Number(d.i));
   else if (act === 'login') Drive.login(GOOGLE_ID);
   else if (act === 'loginlater') { try { localStorage.setItem('baby-login-later', Date.now()); } catch { } render(); }
-  else if (act === 'logout') { Social.logout(); await Drive.logout(); sent = new Set(); keepSent(); dlg.close(); render(); toast('로그아웃했어요. 사진은 이 기기에 그대로 있어요.'); }
+  else if (act === 'logout') { Social.logout(); await Drive.logout(); sent = new Set(); keepSent(); setSync(null); dlg.close(); render(); toast('로그아웃했어요. 기록과 사진은 이 기기에 그대로 있어요.'); }
   else if (act === 'upload') { if (dlg.open) dlg.close(); uploadAll(); }
   else if (act === 'upstop') job.stop = true;
   else if (act === 'drive') driveDlg();
@@ -848,6 +848,7 @@ document.addEventListener('click', async ev => {
   const { act, id } = b.dataset;
   if (act === 'close') (b.closest('dialog') || dlg).close();
   else if (await moreActs(act, b, id)) return;
+  else if (await syncActs(act)) return;
   else if (act === 'settings') settingsDlg();
   else if (act === 'born') bornDlg();
   else if (act === 'locate') locate();
@@ -977,6 +978,7 @@ async function load() { const s = await api('/api/state'); rev = s.rev; db = Obj
     else if (soc) { toast(soc.error || `${Social.NAME[soc.acct.provider]}로 로그인했어요`); }
     if (back) afterLogin(back); else if (!soc && !location.search.includes('alerts')) setTimeout(askLocationOnce, 1500);
     if (started && K().photo) { const u = local ? await Local.photoUrl(K().photo, true).catch(() => '') : `photos/${K().photo}/thumb`; if (u) $('#splashFace').innerHTML = `<img src="${u}" alt="">`; }
+    if (local && !back && Drive.token() && Drive.account()) syncNow().catch(() => { });
     if (local && !back && Drive.token() && !Drive.account()) Drive.me().then(() => { if (!dlg.open) { if (!started) ob.step = ''; render(); } }).catch(() => { });
     hideSplash(); if (local) { checkAuth(); if (!soc) resumeSocial(); }
     const bell = new URLSearchParams(location.search).has('alerts'); if (bell) history.replaceState(null, '', location.pathname);

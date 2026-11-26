@@ -49,3 +49,12 @@ test('구글 로그인: 내가 시작한 로그인만 받는다', async () => {
   const u = new URL(D.loginUrl('ID', 'https://a/b/', 'st')); assert.deepEqual([u.searchParams.get('scope'), u.searchParams.get('redirect_uri'), u.searchParams.get('response_type')], ['https://www.googleapis.com/auth/drive.file', 'https://a/b/', 'token']);
   const m = D.multipart({ name: '가.jpg' }, new Blob(['BIN'], { type: 'image/jpeg' })), t = await m.body.text(); assert.ok(t.includes('"name":"가.jpg"') && t.includes('BIN') && t.endsWith('--'));
 });
+test('드라이브 기록 파일: 처음은 새로 만들고, 다음은 그 파일을 고친다', async () => {
+  const D = require('./drive.js'), calls = [], realFetch = global.fetch;
+  global.sessionStorage = { getItem: () => JSON.stringify({ token: 'T', until: Date.now() + 1e6 }), setItem() { }, removeItem() { } };
+  global.fetch = async (u, o) => { calls.push([u, o && o.method || 'GET']); return new Response(JSON.stringify(/files\?q|files\?/.test(u) && !/upload/.test(u) ? { files: /state/.test(decodeURIComponent(u)) ? [{ id: 'S', modifiedTime: 't1' }] : [{ id: 'F' }] } : { id: 'S', modifiedTime: 't2' }), { status: 200 }); };
+  assert.deepEqual(await D.stateMeta(), { id: 'S', at: 't1' });
+  assert.deepEqual(await D.writeState({ v: 1 }, 'S'), { id: 'S', at: 't2' }); assert.match(calls.at(-1)[0], /upload\/drive\/v3\/files\/S\?uploadType=multipart/); assert.equal(calls.at(-1)[1], 'PATCH');
+  await D.writeState({ v: 1 }, null); assert.equal(calls.at(-1)[1], 'POST'); assert.match(calls.at(-1)[0], /files\?uploadType=multipart/);
+  delete global.sessionStorage; global.fetch = realFetch;
+});
