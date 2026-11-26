@@ -220,3 +220,5 @@ html:has(#viewer[open]),body:has(#viewer[open]){background:#120d0b}
 .todayd{margin:-6px 0 -4px 4px;font-size:16px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
 .ob.join .apptip{margin-top:6px;text-align:left}
 .backrow .vnick{margin-left:auto;min-height:36px;padding:0 14px;font-size:14px}
+/* 아이폰: 밀어서 뒤로 간 뒤 고정된 위쪽 막대와 옆으로 미는 줄이 그려지지 않는 일을 막는다 */
+header,.pill{transform:translateZ(0);-webkit-backface-visibility:hidden;backface-visibility:hidden}

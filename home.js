@@ -202,12 +202,12 @@ async function remotePic(h, id, thumb, keep) {
 }
 // 화면에 그릴 사진 주소. 놀러 간 집이면 그 집, 아니면 이 기기, 없으면 가족 수첩 서버.
 async function picUrl(id, thumb) {
-  if (vis && tab === 'visit') return remotePic(vis, id, thumb);
+  if (vis && vw && vw.kind === 'visit') return remotePic(vis, id, thumb); // 놀러 간 집 사진은 사진 보기에서만(화면의 그 집 사진은 data-vp로 따로 받는다)
   const u = await Local.photoUrl(id, thumb).catch(() => ''); if (u || !bound) return u;
   return remotePic(bound, id, thumb, true);
 }
 async function picBlob(id) {
-  if (vis && tab === 'visit') { const u = await remotePic(vis, id); return u ? fetch(u).then(r => r.blob()) : null; }
+  if (vis && vw && vw.kind === 'visit') { const u = await remotePic(vis, id); return u ? fetch(u).then(r => r.blob()) : null; }
   const b = await Local.photoBlob(id).catch(() => null); if (b || !bound) return b;
   const u = await remotePic(bound, id, false, true); return u ? fetch(u).then(r => r.blob()) : null;
 }

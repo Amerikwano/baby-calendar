@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.11.11';
+const APP_VERSION = '0.11.12';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -875,7 +875,12 @@ window.addEventListener('popstate', () => {
 });
 // 아이폰은 밀어서 뒤로 간 뒤 위쪽 막대(고정)와 옆으로 미는 줄을 그리지 않고 비워 둘 때가 있다. 화면을 한 번 통째로 다시 그리게 한다.
 function repaint() { const h = document.documentElement, y = scrollY; h.style.display = 'none'; void h.offsetHeight; h.style.display = ''; scrollTo(0, y); }
-function repaintSoon() { if (!/iPhone|iPad|iPod/.test(navigator.userAgent)) return; requestAnimationFrame(repaint); setTimeout(repaint, 450); }
+// 밀어서 뒤로 가는 움직임이 끝난 뒤에도 한 번 더, 위쪽 막대와 기록 단추 줄을 새로 만들어 그린다.
+function repaintSoon() {
+  if (!/iPhone|iPad|iPod/.test(navigator.userAgent)) return;
+  requestAnimationFrame(repaint); setTimeout(repaint, 450);
+  setTimeout(() => { if (!ready || !started || join || dlg.open) return; const y = scrollY; $('#top').innerHTML = topBar(); const q = document.querySelector('#main .quick'); if (q && typeof quickRow === 'function') q.outerHTML = quickRow(K()); repaint(); scrollTo(0, y); }, 900);
+}
 document.addEventListener('visibilitychange', () => { if (!document.hidden) repaintSoon(); });
 // 화면의 뒤로 단추
 function navBack(fallback) { if (navStack.length && navStack[navStack.length - 1].kind === 'sub') history.back(); else fallback(); }
