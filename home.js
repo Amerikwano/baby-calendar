@@ -346,7 +346,7 @@ async function openVisit(id) {
   } catch (e) { if (e.status === 401) { visits = visits.filter(x => x.id !== id); jput('baby-visits', visits); vis = null; tab = started ? 'visits' : 'home'; render(); } toast(e.message); }
 }
 function visitView() {
-  const d = vis.data, head = `<div class="backrow"><button data-act="visits" aria-label="뒤로">${icon('left')}</button><h2>${esc(vis.name)}</h2></div>`;
+  const d = vis.data, head = `<div class="backrow"><button data-act="visitback" aria-label="뒤로">${icon('left')}</button><h2>${esc(vis.name)}</h2></div>`;
   if (!d) return head + '<p class="empty">불러오는 중이에요</p>';
   const kids = d.kids || [], k = kids[0] || {};
   const age = k.born ? `태어난 지 ${S.diffDays(k.birth, today()) + 1}일` : `만나기까지 D-${S.diffDays(today(), k.birth)}`;
@@ -405,8 +405,9 @@ async function famActs(act, b) {
   else if (act === 'family') familyDlg();
   else if (act === 'kick') { if (confirm('이 사람을 가족 수첩에서 뺄까요? 다른 기기에서도 함께 빠져요.')) { try { famMembers = (await famCall(bound, 'kick', { body: { id: d.id } })).members; familyDlg(); } catch (e) { toast(e.message); } } }
   else if (act === 'famleave') { if (confirm('가족 수첩에서 나갈까요? 기록은 이 기기에 남지만 더는 함께 맞춰지지 않아요.')) { await famCall(bound, 'leave', { body: {} }).catch(() => { }); bound = null; jput('baby-home', null); dlg.close(); render(); toast('가족 수첩에서 나왔어요'); } }
-  else if (act === 'visits') { vis = null; if (dlg.open) dlg.close(); if (tab === 'visit' || !started) { tab = 'visits'; render(); scrollTo(0, 0); } else enterSub('visits'); }
-  else if (act === 'visit') openVisit(d.id);
+  else if (act === 'visits') { if (dlg.open) dlg.close(); if (!started || SUB.includes(tab)) { vis = null; tab = 'visits'; render(); scrollTo(0, 0); } else { vis = null; enterSub('visits'); } }
+  else if (act === 'visitback') navBack(() => { vis = null; tab = 'visits'; render(); scrollTo(0, 0); });
+  else if (act === 'visit') { if (tab === 'visits') enterSub('visit', () => openVisit(d.id)); else openVisit(d.id); }
   else if (act === 'vview') { vis.view = d.v; render(); }
   else if (act === 'vphoto') { const list = () => [...(vis.data.photos || [])].sort((a, b) => a.date < b.date ? 1 : -1); viewPhoto('visit', d.id, list); }
   else if (act === 'joinno') { join = null; render(); }

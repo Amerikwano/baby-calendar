@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.11.4';
+const APP_VERSION = '0.11.5';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -854,13 +854,50 @@ async function moreActs(act, b, id) {
 }
 
 /* ── 동작 ── */
-// 다른 화면 안에서 여는 화면(접종·검진, 놀러가기). 뒤로 누르면 연 곳과 그 위치로 돌아간다.
-const SUB = ['vax', 'visits']; let subFrom = null;
-function enterSub(t) { if (!SUB.includes(tab)) subFrom = { tab, y: scrollY }; tab = t; render(); scrollTo(0, 0); }
+/* ── 뒤로 가기 ──
+   다른 화면 안에서 여는 화면(접종·검진, 놀러가기, 놀러 간 집)과 열린 창을 브라우저 기록에 하나씩 쌓는다.
+   그래서 화면의 뒤로 단추, 갤럭시의 뒤로 버튼, 아이폰 사파리의 밀어서 뒤로 가기가 모두 같은 일을 한다:
+   열린 창을 닫거나, 들어온 화면과 그때 보던 위치로 돌아간다. */
+const SUB = ['vax', 'visits', 'visit']; let subFrom = null;
+const navStack = []; let navSkip = 0;
+function navPush(kind, undo) {
+  // 방금 닫힌 창의 기록이 아직 남아 있으면 그 자리를 쓴다(뒤로를 한 번 더 눌러야 하는 일이 없게)
+  const top = navStack[navStack.length - 1];
+  if (top && top.kind === 'dlg' && !openDlgs().length) { navStack[navStack.length - 1] = { kind, undo }; return; }
+  navStack.push({ kind, undo }); history.pushState({ baby: navStack.length }, '');
+}
+// 기록에서 맨 위의 것들을 조용히 뺀다(창을 단추로 닫았을 때, 아래 메뉴로 다른 곳에 갈 때)
+function navDrop(...kinds) { let n = 0; while (navStack.length && kinds.includes(navStack[navStack.length - 1].kind)) { navStack.pop(); n++; } if (n) { navSkip++; history.go(-n); } }
+window.addEventListener('popstate', () => {
+  if (navSkip) { navSkip--; return; }
+  const top = navStack.pop(); if (top) top.undo();
+});
+// 화면의 뒤로 단추
+function navBack(fallback) { if (navStack.length && navStack[navStack.length - 1].kind === 'sub') history.back(); else fallback(); }
+// 창(사진 보기 포함)이 열리면 기록에 하나, 다 닫히면 뺀다.
+const openDlgs = () => [...document.querySelectorAll('dialog[open]')].filter(d => d.id !== 'busy');
+if (typeof HTMLDialogElement !== 'undefined') {
+  const show = HTMLDialogElement.prototype.showModal;
+  HTMLDialogElement.prototype.showModal = function () {
+    show.call(this); if (this.id === 'busy') return;
+    if (!this.navHooked) { this.navHooked = true; this.addEventListener('close', () => setTimeout(() => { if (!openDlgs().length) navDrop('dlg'); }, 0)); }
+    if (!navStack.length || navStack[navStack.length - 1].kind !== 'dlg') navPush('dlg', navDlgBack);
+  };
+}
+function navDlgBack() { const d = openDlgs().pop(); if (!d) return; d.close(); setTimeout(() => { if (openDlgs().length) navPush('dlg', navDlgBack); }, 0); }
+function enterSub(t, then) {
+  const from = { tab, y: scrollY, vis };
+  if (!SUB.includes(tab)) subFrom = from;
+  navPush('sub', () => { if (dlg.open) dlg.close(); vis = from.vis; tab = from.tab; if (!SUB.includes(tab)) subFrom = null; if (tab === 'visit' && vis) render(); else render(); scrollTo(0, from.y); });
+  tab = t; if (then) then(); else { render(); scrollTo(0, 0); }
+}
 function goTab(t, back) {
+  if (back && navStack.length && navStack[navStack.length - 1].kind === 'sub') return history.back();
   if (SUB.includes(t) && !SUB.includes(tab)) { if (dlg.open) dlg.close(); return enterSub(t); }
+  // 아래 메뉴로 다른 곳에 가면 열린 창과 쌓아 둔 하위 화면은 버린다
+  openDlgs().forEach(d => d.close()); navDrop('dlg', 'sub');
   const y = back && subFrom && subFrom.tab === t ? subFrom.y : 0; if (!SUB.includes(t)) subFrom = null;
-  tab = t; if (dlg.open) dlg.close(); syncAI(); render(); scrollTo(0, y);
+  tab = t; syncAI(); render(); scrollTo(0, y);
 }
 document.addEventListener('click', async ev => {
   const nt = ev.target.closest('[data-tab]');

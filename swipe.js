@@ -29,8 +29,28 @@ if (typeof document !== 'undefined') {
   document.addEventListener('touchend', e => {
     if (!s) return; const t = e.changedTouches[0], dir = Swipe.judge(t.clientX - s.x, t.clientY - s.y, e.timeStamp - s.t); s = null;
     if (!dir || typing() || skip(e.target)) return;
+    if (dir < 0 && navStack.length && navStack[navStack.length - 1].kind === 'sub') { history.back(); return; } // 하위 화면에서 오른쪽으로 밀면 뒤로
     const to = Swipe.next(tab, dir); if (!to) return;
     goTab(to);
     const m = document.querySelector('#main'); m.classList.add(dir > 0 ? 'in-r' : 'in-l'); setTimeout(() => m.classList.remove('in-r', 'in-l'), 260);
   }, { passive: true });
+  // 홈 화면에 추가한 앱(아이폰)은 사파리처럼 밀어서 뒤로 가기가 없어서, 왼쪽 가장자리에서 오른쪽으로 밀면 뒤로 간다.
+  const STANDALONE = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+  let edge = null;
+  document.addEventListener('touchstart', e => {
+    const t = e.touches[0]; edge = null;
+    if (!STANDALONE || !/iPhone|iPad|iPod/.test(navigator.userAgent) || e.touches.length > 1 || t.clientX > 24 || !navStack.length) return;
+    edge = { x: t.clientX, y: t.clientY, el: openDlgs().pop() || document.querySelector('#main') };
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (!edge) return; const t = e.touches[0], dx = t.clientX - edge.x, dy = Math.abs(t.clientY - edge.y);
+    if (dy > 40 && dy > dx) { edge.el.style.transform = ''; edge = null; return; }
+    if (dx > 0) { edge.el.style.transition = 'none'; edge.el.style.transform = `translateX(${Math.min(dx, innerWidth) * .6}px)`; }
+  }, { passive: true });
+  const edgeEnd = e => {
+    if (!edge) return; const el = edge.el, t = e.changedTouches && e.changedTouches[0], go = t && t.clientX - edge.x > 80; edge = null;
+    el.style.transition = 'transform .18s'; el.style.transform = ''; setTimeout(() => { el.style.transition = ''; }, 200);
+    if (go) history.back();
+  };
+  document.addEventListener('touchend', edgeEnd, { passive: true }); document.addEventListener('touchcancel', edgeEnd, { passive: true });
 }
