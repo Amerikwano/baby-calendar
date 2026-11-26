@@ -34,6 +34,9 @@ export function endpointOk(e) {
   let u; try { u = new URL(e); } catch { return false; }
   return u.protocol === 'https:' && !u.port && !u.username && (['fcm.googleapis.com', 'updates.push.services.mozilla.com'].includes(u.hostname) || /^[a-z0-9-]+\.push\.apple\.com$/.test(u.hostname) || /^[a-z0-9.-]+\.notify\.windows\.com$/.test(u.hostname));
 }
+// 엄마·아빠(영어 포함)는 아기 부모님만 쓰는 별명이라, 보기만 초대받은 사람은 쓸 수 없다.
+const parentNick = s => { const t = String(s || '').toLowerCase().replace(/[\s._\-\u200b-\u200d\u3164\ufeff]+/g, ''); return /엄마|아빠/.test(t.replace(/(큰|작은)(엄마|아빠)/g, '')) || !/^grand/.test(t) && /(mom|mommy|mum|mummy|mother|mama|momma|dad|daddy|father|papa)$/.test(t); };
+export { parentNick };
 const nickOk = s => typeof s === 'string' && s.trim().length >= 1 && s.trim().length <= 12;
 const idOk = s => typeof s === 'string' && /^[0-9a-f]{24}$/.test(s);
 const targetOk = s => typeof s === 'string' && /^[pd]:[\w-]{1,40}$/.test(s);
@@ -123,6 +126,7 @@ export class HomeCore {
     const i = await this.peekInvite(code); if (!i) return [404, { error: 'invite' }];
     if (i.used && i.used !== w.k) return [410, { error: 'used' }];
     if (!nickOk(nick)) return [400, { error: 'nick' }];
+    if (i.role === 'viewer' && parentNick(nick)) return [400, { error: 'parent' }];
     if ((await this.members()).length + (await this.pendings()).length >= MAX_MEMBERS) return [503, { error: 'full' }];
     const rid = w.k.slice(0, 16), ticket = rand(24), meta = await this.meta();
     const was = await this.s.get('pend:' + rid); // 같은 사람이 다시 열면 기다리던 것을 이어 간다
@@ -241,6 +245,7 @@ export class HomeCore {
   }
   async rename(me, b) {
     if (!b || !nickOk(b.nick)) return [400, { error: 'nick' }];
+    if (me.role === 'viewer' && parentNick(b.nick)) return [400, { error: 'parent' }];
     const m = await this.s.get('m:' + me.h); m.nick = b.nick.trim(); await this.s.put('m:' + me.h, m); return [200, { nick: m.nick }];
   }
   async leave(me) { if (me.role === 'owner') return [400, { error: 'owner' }]; await this.dropMember(me.h); return [200, Object.assign({ ok: true }, me.k ? { _unlink: { k: me.k } } : {})]; }

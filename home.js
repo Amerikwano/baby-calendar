@@ -30,8 +30,10 @@
     return tops.map(n => ({ n, replies: mine.filter(r => r.parent === n.id) }));
   }
   const count = (talk, t) => ({ likes: ((talk && talk.likes[t]) || []).length, notes: talk ? talk.notes.filter(n => n.target === t).length : 0 });
+// 엄마·아빠(영어 포함)는 아기 부모님만 쓰는 별명이라, 보기만 초대받은 사람은 쓸 수 없다.
+const parentNick = s => { const t = String(s || '').toLowerCase().replace(/[\s._\-\u200b-\u200d\u3164\ufeff]+/g, ''); return /엄마|아빠/.test(t.replace(/(큰|작은)(엄마|아빠)/g, '')) || !/^grand/.test(t) && /(mom|mommy|mum|mummy|mother|mama|momma|dad|daddy|father|papa)$/.test(t); };
   const parseJoin = s => { const m = /^([0-9a-f]{24})\.([0-9a-f]{24})$/.exec(s || ''); return m ? { home: m[1], code: m[2] } : null; };
-  const out = { ARR, DEVICE, shared, merge, same, target, thread, count, parseJoin };
+  const out = { ARR, DEVICE, shared, merge, same, target, thread, count, parseJoin, parentNick };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Fam = out;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -77,7 +79,7 @@ let waits = jget('baby-waits') || [];
 let famPending = [], famInvites = [];
 // 가족 수첩 서버에 보낼 로그인 확인표(카카오·네이버 로그인 서버가 서명함, 7일)
 const myTok = () => { const a = typeof Social !== 'undefined' && Social.account(); return a && a.tok && Date.now() - (a.tokAt || 0) < 6.5 * 86400000 ? a.tok : ''; };
-const famErr = s => s === 401 ? '초대가 끝났거나 가족 목록에서 빠졌어요.' : s === 404 ? '초대 링크가 끝났어요. 새 링크를 받아 주세요.' : s === 410 ? '이 초대 링크는 이미 다른 사람이 썼어요. 초대한 분께 새 링크를 받아 주세요.' : s === 413 || s === 507 ? '가족 수첩 저장 공간이 가득 찼어요.' : '가족 수첩 서버와 연결하지 못했어요. 잠시 뒤 다시 해 주세요.';
+const famErr = s => s === 401 ? '초대가 끝났거나 가족 목록에서 빠졌어요.' : s === 404 ? '초대 링크가 끝났어요. 새 링크를 받아 주세요.' : s === 410 ? '이 초대 링크는 이미 다른 사람이 썼어요. 초대한 분께 새 링크를 받아 주세요.' : s === 'parent' ? '엄마·아빠는 아기 부모님만 쓸 수 있어요. 할머니, 이모, 삼촌처럼 다른 별명을 지어 주세요.' : s === 413 || s === 507 ? '가족 수첩 저장 공간이 가득 찼어요.' : '가족 수첩 서버와 연결하지 못했어요. 잠시 뒤 다시 해 주세요.';
 async function famCall(h, path, opt = {}) {
   const headers = {}; if (h && h.token) headers.authorization = 'Bearer ' + h.token;
   if (opt.body && !(opt.body instanceof Blob)) headers['content-type'] = 'application/json';
@@ -86,7 +88,7 @@ async function famCall(h, path, opt = {}) {
   catch { throw Object.assign(new Error(famErr(0)), { status: 0 }); }
   if (opt.raw && r.ok) return r;
   const j = await r.json().catch(() => ({}));
-  if (!r.ok && !(r.status === 409 && opt.conflict)) throw Object.assign(new Error(famErr(r.status)), { status: r.status, body: j });
+  if (!r.ok && !(r.status === 409 && opt.conflict)) throw Object.assign(new Error(famErr(j.error === 'parent' ? 'parent' : r.status)), { status: r.status, body: j });
   return Object.assign(j, { status: r.status });
 }
 
@@ -250,7 +252,7 @@ async function saveNick(f) {
   const n = readNick(f); if (!n) return toast('별명을 골라 주세요');
   jput('baby-me', { nick: n }); dlg.close();
   if (bound) await famCall(bound, 'me', { body: { nick: n } }).catch(() => { });
-  for (const v of visits) await famCall(v, 'me', { body: { nick: n } }).catch(() => { });
+  // 놀러 가는 집의 별명(할머니, 이모 …)은 그 집에서 정한 대로 둔다.
   toast('별명을 저장했어요'); render(); const t = nickThen; nickThen = null; if (t) t();
 }
 function familyDlg() {
@@ -282,10 +284,11 @@ function joinView() {
   const appTip = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(navigator.standalone === true) ? `<div class="notice apptip"><b>홈 화면에 아기 수첩 앱이 있나요?</b><p class="sub">앱에서 보려면 링크를 복사하고, 앱의 더보기 → <b>초대 링크로 들어가기</b>에 붙여 넣어요. 여기서 들어가도 앱에서 같은 카카오로 로그인하면 보여요.</p><button type="button" class="btn" data-act="copyjoin">초대 링크 복사</button></div>` : '';
   if (!tok) return `<section class="ob join"><div class="obmid"><div class="ring">${FACE}</div><h1>${esc(join.name)}${edit ? ' 수첩에<br>함께 기록해요' : '에<br>놀러 오세요'}</h1><p>${join.by ? esc(join.by) + '가 ' : ''}초대했어요.<br>초대받은 사람이 맞는지 확인하려고 카카오로 로그인해요.</p><p class="sub">${join.by ? esc(join.by) + '가' : '초대한 분이'} 내 카카오 이름과 사진을 보고 승인하면 들어가요. 카카오 이름과 사진은 이 가족 수첩에서 함께 쓰는 가족에게만 보여요.</p></div><div class="stack"><button type="button" class="soc kakao" data-act="joinlogin" data-p="kakao">${KAKAO_MARK}카카오로 로그인하고 들어가기</button>${AUTH.naver ? `<button type="button" class="soc naver" data-act="joinlogin" data-p="naver">${NAVER_MARK}네이버로 로그인하고 들어가기</button>` : ''}<button type="button" class="soc plain" data-act="joinno">다음에 할게요</button>${appTip}</div></section>`;
   const me = `<p class="sub">${esc(a.name || Social.NAME[a.provider] + ' 계정')}(${Social.NAME[a.provider]})로 확인했어요.</p>`;
-  return `<form class="ob join" data-form="join"><div class="obmid"><div class="ring">${FACE}</div><h1>${esc(join.name)}${edit ? ' 수첩에<br>함께 기록해요' : '에<br>놀러 오세요'}</h1><p>${join.by ? esc(join.by) + '가 ' : ''}${edit ? '초대했어요. 같은 기록을 같이 보고 고칠 수 있어요.' : '초대했어요. 아기 일기와 사진을 보고 댓글을 달 수 있어요.'}</p></div><div class="stack"><b>${edit ? '나는 아기의' : '가족에게 보일 별명'}</b>${edit ? nickPick(myNick()) : '<input name="nickx" maxlength="12" placeholder="예: 할머니, 이모, 삼촌" autocomplete="off" required>'}${me}${edit && started ? '<p class="sub">이 기기에 쓰던 기록 대신 초대받은 수첩을 써요. 지금 기록은 따로 보관해 둬요.</p>' : ''}<button class="soc kakao" style="background:var(--ink);color:#fff">${edit ? '함께 쓰기 요청' : '놀러 가기 요청'}</button><button type="button" class="soc plain" data-act="joinno">다음에 할게요</button></div></form>`;
+  return `<form class="ob join" data-form="join"><div class="obmid"><div class="ring">${FACE}</div><h1>${esc(join.name)}${edit ? ' 수첩에<br>함께 기록해요' : '에<br>놀러 오세요'}</h1><p>${join.by ? esc(join.by) + '가 ' : ''}${edit ? '초대했어요. 같은 기록을 같이 보고 고칠 수 있어요.' : '초대했어요. 아기 일기와 사진을 보고 댓글을 달 수 있어요.'}</p></div><div class="stack"><b>${edit ? '나는 아기의' : '가족에게 보일 별명'}</b>${edit ? nickPick(myNick()) : '<input name="nickx" maxlength="12" placeholder="예: 할머니, 이모, 삼촌" autocomplete="off" required><p class="sub">엄마·아빠는 아기 부모님만 쓸 수 있어요.</p>'}${me}${edit && started ? '<p class="sub">이 기기에 쓰던 기록 대신 초대받은 수첩을 써요. 지금 기록은 따로 보관해 둬요.</p>' : ''}<button class="soc kakao" style="background:var(--ink);color:#fff">${edit ? '함께 쓰기 요청' : '놀러 가기 요청'}</button><button type="button" class="soc plain" data-act="joinno">다음에 할게요</button></div></form>`;
 }
 async function doJoin(f) {
   const nick = readNick(f); if (!nick) return toast(join.role === 'editor' ? '나는 아기의 누구인지 골라 주세요' : '별명을 써 주세요');
+  if (join.role === 'viewer' && Fam.parentNick(nick)) return toast('엄마·아빠는 아기 부모님만 쓸 수 있어요. 할머니, 이모, 삼촌처럼 다른 별명을 지어 주세요.');
   const tok = myTok(); if (!tok) { render(); return; }
   busy('초대한 분에게 물어보는 중');
   try {

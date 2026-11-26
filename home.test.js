@@ -64,7 +64,11 @@ test('가족 수첩 서버', async () => {
   const late = await call(H + '/state', { method: 'PUT', token: own, body: { rev: 1, data: DATA } }); assert.equal(late.status, 409); assert.equal(late.body.data.sido, '부산'); assert.equal(late.body.rev, 2);
   // 열람 초대
   const vinv = (await call(H + '/invite', { method: 'POST', token: dad.token, body: { role: 'viewer' } })).body.code;
+  // 보기만 초대받은 사람은 엄마·아빠(영어 포함)로 들어올 수 없다
+  for (const bad of ['엄마', '콩이 아빠', '엄 마', '아　빠', 'M o m', 'd a d', '엄\u200b마', 'daddy']) assert.equal((await call(H + '/join', { method: 'POST', body: { c: vinv, nick: bad, tok: await who('gma', '김순자') } })).body.error, 'parent');
+  const F = require('./home.js'); assert.equal(F.parentNick('할머니'), false); assert.equal(F.parentNick('grandmom'), false); assert.equal(F.parentNick('외삼촌'), false); assert.equal(F.parentNick('큰엄마'), false); assert.equal(F.parentNick('작은아빠'), false); assert.equal(F.parentNick('오빠'), false);
   const gma = await enter(H, vinv, '할머니', await who('gma', '김순자'), dad.token); assert.equal(gma.role, 'viewer');
+  assert.equal((await call(H + '/me', { method: 'POST', token: gma.token, body: { nick: '아빠' } })).body.error, 'parent');
   // 함께 쓰는 가족에게만 카카오 이름이 보인다
   assert.equal((await call(H + '/state', { token: own })).body.members.find(m => m.nick === '할머니').kname, '김순자');
   assert.equal((await call(H + '/state', { token: gma.token })).body.members.find(m => m.nick === '할머니').kname, undefined);
