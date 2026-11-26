@@ -220,10 +220,10 @@ async function joinCheck() {
 }
 function joinView() {
   const edit = join.role === 'editor';
-  return `<form class="ob" data-form="join"><div class="obmid"><div class="ring">${FACE}</div><h1>${esc(join.name)}${edit ? ' 수첩에<br>함께 기록해요' : '에<br>놀러 오세요'}</h1><p>${join.by ? esc(join.by) + '가 ' : ''}${edit ? '초대했어요. 같은 기록을 같이 보고 고칠 수 있어요.' : '초대했어요. 아기 일기와 사진을 보고 댓글을 달 수 있어요.'}</p></div><div class="stack"><b>나는 아기의</b>${nickPick(edit ? myNick() : '', edit ? '' : '예: 할머니, 이모, 삼촌')}${edit && started ? '<p class="sub">이 기기에 쓰던 기록 대신 초대받은 수첩을 써요. 지금 기록은 따로 보관해 둬요.</p>' : ''}<button class="soc kakao" style="background:var(--ink);color:#fff">${edit ? '함께 쓰기 시작' : '놀러 가기'}</button><button type="button" class="soc plain" data-act="joinno">다음에 할게요</button></div></form>`;
+  return `<form class="ob" data-form="join"><div class="obmid"><div class="ring">${FACE}</div><h1>${esc(join.name)}${edit ? ' 수첩에<br>함께 기록해요' : '에<br>놀러 오세요'}</h1><p>${join.by ? esc(join.by) + '가 ' : ''}${edit ? '초대했어요. 같은 기록을 같이 보고 고칠 수 있어요.' : '초대했어요. 아기 일기와 사진을 보고 댓글을 달 수 있어요.'}</p></div><div class="stack"><b>${edit ? '나는 아기의' : '가족에게 보일 별명'}</b>${edit ? nickPick(myNick()) : '<input name="nickx" maxlength="12" placeholder="예: 할머니, 이모, 삼촌" autocomplete="off" required>'}${edit && started ? '<p class="sub">이 기기에 쓰던 기록 대신 초대받은 수첩을 써요. 지금 기록은 따로 보관해 둬요.</p>' : ''}<button class="soc kakao" style="background:var(--ink);color:#fff">${edit ? '함께 쓰기 시작' : '놀러 가기'}</button><button type="button" class="soc plain" data-act="joinno">다음에 할게요</button></div></form>`;
 }
 async function doJoin(f) {
-  const nick = readNick(f); if (!nick) return toast('나는 아기의 누구인지 골라 주세요');
+  const nick = readNick(f); if (!nick) return toast(join.role === 'editor' ? '나는 아기의 누구인지 골라 주세요' : '별명을 써 주세요');
   busy(join.role === 'editor' ? '수첩을 불러오는 중' : '놀러 가는 중');
   try {
     const r = await famCall({ id: join.home }, 'join', { body: { c: join.code, nick } }), h = { id: join.home, token: r.token, role: r.role, mid: r.id, name: r.name };
