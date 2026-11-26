@@ -106,7 +106,7 @@ function growCar(k) {
   setTimeout(() => { const c = document.querySelector('.growcar'); if (c) c.scrollLeft = carI * c.clientWidth; });
   return `<div class="growcar" aria-label="성장 앨범">${fs.map(f => `<button data-act="face" data-id="${f.id}"><img ${pic(f.id)} alt="${dayNo(k, f.date)}일차 얼굴 사진"><span class="d">${dayNo(k, f.date)}일차</span></button>`).join('')}</div>`;
 }
-(() => {
+if (typeof document !== 'undefined') (() => {
   let hold = 0;
   ['pointerdown', 'touchstart'].forEach(n => document.addEventListener(n, e => { if (e.target.closest && e.target.closest('.growcar')) hold = Date.now(); }, { passive: true, capture: true }));
   setInterval(() => {
