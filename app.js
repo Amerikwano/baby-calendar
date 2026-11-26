@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.11.18';
+const APP_VERSION = '0.11.19';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -492,7 +492,7 @@ function mission() {
   if (!k.born) return `<section class="notice"><b>매일 얼굴 사진 미션</b><p class="sub">태어난 날부터 1일차, 2일차 얼굴 사진을 하루 한 장씩 모아요. 나중에 성장 앨범 영상으로 만들 수 있어요.</p></section>`;
   const n = dayNo(k, t); if (n < 1) return '';
   const f = facesOf(k).find(x => x.date === t), cnt = facesOf(k).length;
-  return `<section class="hero"><div class="mission">${f ? `<button class="face on" data-act="face" data-id="${f.id}" aria-label="오늘 찍은 얼굴 사진"><img ${pic(f.id, 1)} alt="${n}일차 얼굴 사진"></button>` : `<button class="face" data-act="faceask" data-d="${t}" aria-label="${n}일차 사진 넣기">${icon('cam')}</button>`}<div class="stack" style="gap:6px"><h3>오늘의 미션</h3><h2>${f ? `${n}일차 사진을 찍었어요` : `${n}일차 얼굴 사진 찍기`}</h2><p class="sub">지금까지 ${cnt}장 모았어요.${nextDay(k)}</p></div></div><div class="row">${f ? '' : `<button class="btn main camb" data-act="faceadd" data-d="${t}" data-cam="1" aria-label="사진 찍기">${icon('cam')}</button><button class="btn" data-act="faceadd" data-d="${t}">앨범에서 고르기</button>`}${tab === 'grow' ? (cnt ? '<button class="btn" data-act="growview">성장 앨범 보기</button>' : '') : '<button class="btn" data-act="grow">성장 앨범 보기</button>'}</div></section>`;
+  return `<section class="hero"><div class="mission">${f ? `<button class="face on" data-act="face" data-id="${f.id}" aria-label="오늘 찍은 얼굴 사진"><img ${pic(f.id, 1)} alt="${n}일차 얼굴 사진"></button>` : `<button class="face" data-act="faceask" data-d="${t}" aria-label="${n}일차 사진 넣기">${icon('cam')}</button>`}<div class="stack" style="gap:6px"><h3>오늘의 미션</h3><h2>${f ? `${n}일차 사진을 찍었어요` : `${n}일차 얼굴 사진 찍기`}</h2><p class="sub">지금까지 ${cnt}장 모았어요.${nextDay(k)}</p></div></div><div class="row">${tab === 'grow' ? (cnt ? '<button class="btn" data-act="growview">성장 앨범 보기</button>' : '') : '<button class="btn" data-act="grow">성장 앨범 보기</button>'}</div></section>`;
 }
 function growth() {
   const k = K(), t = today();

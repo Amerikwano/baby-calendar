@@ -253,3 +253,4 @@ nav button[aria-current=page]{background:rgb(255 255 255/.22);box-shadow:inset 0
 /* 위쪽 단추 줄: + 와 메뉴, 사진 찍기 카메라 단추 */
 .albbtns{display:flex;gap:10px}.albhead .sq{width:46px;height:46px}
 .camb{min-width:60px;padding:0 18px}.camb svg{width:26px;height:26px}
+.hero .row:empty{display:none}
