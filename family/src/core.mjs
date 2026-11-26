@@ -28,6 +28,12 @@ export async function verifyWho(key, tok, now = Date.now()) {
   } catch { return null; }
 }
 export const whoKey = who => sha(`w:${who.p}:${who.id}`);
+// 휴대폰 알림 주소: 브라우저 회사의 알림 서버만 받는다.
+export function endpointOk(e) {
+  if (typeof e !== 'string' || e.length > 800) return false;
+  let u; try { u = new URL(e); } catch { return false; }
+  return u.protocol === 'https:' && !u.port && !u.username && (['fcm.googleapis.com', 'updates.push.services.mozilla.com'].includes(u.hostname) || /^[a-z0-9-]+\.push\.apple\.com$/.test(u.hostname) || /^[a-z0-9.-]+\.notify\.windows\.com$/.test(u.hostname));
+}
 const nickOk = s => typeof s === 'string' && s.trim().length >= 1 && s.trim().length <= 12;
 const idOk = s => typeof s === 'string' && /^[0-9a-f]{24}$/.test(s);
 const targetOk = s => typeof s === 'string' && /^[pd]:[\w-]{1,40}$/.test(s);
@@ -198,11 +204,12 @@ export class HomeCore {
   async talk() {
     const notes = [...(await this.s.list({ prefix: 'note:' })).values()], likes = {};
     for (const k of (await this.s.list({ prefix: 'like:' })).keys()) { const [t, who] = k.slice(5).split('|'); (likes[t] = likes[t] || []).push(who); }
-    return [200, { notes: notes.sort((a, b) => a.at - b.at), likes }];
+    const nicks = Object.fromEntries((await this.members()).map(m => [m.id, m.nick]));
+    return [200, { notes: notes.sort((a, b) => a.at - b.at), likes, nicks }];
   }
   async like(me, b) {
     if (!b || !targetOk(b.target)) return [400, { error: 'target' }];
-    const k = `like:${b.target}|${me.id}`; if (b.on) await this.s.put(k, 1); else await this.s.delete(k);
+    const k = `like:${b.target}|${me.id}`; if (b.on) { if (!await this.s.get(k)) await this.ping(me, true); await this.s.put(k, 1); } else await this.s.delete(k);
     return this.talk();
   }
   async note(me, b) {
@@ -211,13 +218,24 @@ export class HomeCore {
     let parent = '';
     if (b.parent) { const p = all.get('note:' + b.parent); if (!p || p.target !== b.target) return [400, { error: 'parent' }]; parent = p.parent || p.id; } // 대댓글의 대댓글은 같은 댓글 아래에 붙인다
     const n = { id: rand(8), target: b.target, parent, who: me.id, nick: me.nick, text: b.text.trim(), at: this.now };
-    await this.s.put('note:' + n.id, n); return this.talk();
+    await this.s.put('note:' + n.id, n); await this.ping(me, false); return this.talk();
   }
   async unnote(me, b) {
     const n = b && typeof b.id === 'string' && await this.s.get('note:' + b.id); if (!n) return [404, { error: 'note' }];
     if (n.who !== me.id && me.role !== 'owner') return [403, { error: 'role' }];
     const kids = [...(await this.s.list({ prefix: 'note:' })).values()].filter(x => x.parent === n.id).map(x => 'note:' + x.id);
     await this.s.delete(['note:' + n.id, ...kids]); return this.talk();
+  }
+  // 좋아요·댓글이 달리면 다른 가족의 휴대폰에 알린다(하트는 함께 쓰는 가족에게만). 잠시 모았다가 한 번에 보낸다.
+  async ping(me, editorsOnly) {
+    const to = [...(await this.s.list({ prefix: 'm:' })).values()].filter(m => m.push && m.id !== me.id && (!editorsOnly || EDIT.includes(m.role))).map(m => m.push);
+    if (!to.length) return;
+    const q = new Set((await this.s.get('pingq')) || []); to.forEach(e => q.add(e)); await this.s.put('pingq', [...q].slice(-60)); this.wantAlarm = true;
+  }
+  async takePings() { const q = (await this.s.get('pingq')) || []; await this.s.delete('pingq'); return q; }
+  async setPush(me, b) {
+    const e = b && b.endpoint; if (e && !endpointOk(e)) return [400, { error: 'endpoint' }];
+    const x = await this.s.get('m:' + me.h); if (e) x.push = e; else delete x.push; await this.s.put('m:' + me.h, x); return [200, { ok: true }];
   }
   async rename(me, b) {
     if (!b || !nickOk(b.nick)) return [400, { error: 'nick' }];
@@ -256,6 +274,7 @@ export class HomeCore {
       if (what === 'note' && m === 'POST') return this.note(me, await body());
       if (what === 'unnote' && m === 'POST') return this.unnote(me, await body());
       if (what === 'me' && m === 'POST') return this.rename(me, await body());
+      if (what === 'push' && m === 'POST') return this.setPush(me, await body());
       if (what === 'leave' && m === 'POST') return this.leave(me);
       if (what === 'kick' && m === 'POST') return this.kick(me, await body());
       return [404, { error: 'path' }];

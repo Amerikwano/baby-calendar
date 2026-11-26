@@ -5,6 +5,8 @@
   "workers_dev": true,
   "observability": { "enabled": false },
   "vars": { "APP_ORIGIN": "https://amerikwano.github.io" },
+  // 좋아요·댓글 알림은 알림 서버(push/)에 바로 부탁한다(밖에서는 부를 수 없는 연결).
+  "services": [{ "binding": "PUSH", "service": "baby-notebook-push", "entrypoint": "Pinger" }],
   "durable_objects": { "bindings": [{ "name": "HOME", "class_name": "Home" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Home"] }]
 }

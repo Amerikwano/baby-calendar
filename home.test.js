@@ -39,7 +39,7 @@ const KEY = 'test-key';
 const DATA = { v: 1, kids: [{ id: 'k1', name: '콩이', birth: '2026-06-01', born: true, photo: 'a'.repeat(24), options: {} }], events: [{ id: 'e1' }], diary: [{ id: 'd1', body: '첫날' }], photos: [], faces: [], logs: [{ id: 1 }], sido: '서울' };
 
 test('가족 수첩 서버', async () => {
-  const { call, tick, who, enter } = await server();
+  const { call, tick, who, enter, homes } = await server();
   const made = (await call('/new', { method: 'POST', body: { nick: '엄마', data: DATA, tok: await who('mom', '김엄마') } })).body;
   assert.equal(made.role, 'owner'); assert.equal(made.name, '콩이네'); assert.match(made.home, /^[0-9a-f]{24}$/);
   const H = `/h/${made.home}`, own = made.token;
@@ -78,9 +78,18 @@ test('가족 수첩 서버', async () => {
   assert.equal((await call(H + '/photo/' + 'a'.repeat(24), { method: 'PUT', token: own, raw: big, type: 'image/jpeg' })).status, 200);
   const got = await call(H + '/photo/' + 'a'.repeat(24), { token: gma.token }); assert.equal(got.type, 'image/jpeg'); assert.deepEqual(got.body, big);
   assert.equal((await call(H + '/photo/' + 'a'.repeat(24) + '?t=1', { token: gma.token })).status, 404);
+  // 휴대폰 알림 주소: 브라우저 회사 주소만 받는다. 좋아요·댓글이 달리면 다른 가족에게 알릴 목록에 넣는다(하트는 함께 쓰는 가족만).
+  assert.equal((await call(H + '/push', { method: 'POST', token: own, body: { endpoint: 'https://evil.test/x' } })).status, 400);
+  await call(H + '/push', { method: 'POST', token: own, body: { endpoint: 'https://fcm.googleapis.com/fcm/send/mom' } });
+  await call(H + '/push', { method: 'POST', token: gma.token, body: { endpoint: 'https://web.push.apple.com/gma' } });
+  const pq = () => homes.get(made.home).m.get('pingq') || [];
   // 좋아요, 댓글, 대댓글
   let t = (await call(H + '/like', { method: 'POST', token: gma.token, body: { target: 'd:d1', on: true } })).body; assert.equal(t.likes['d:d1'].length, 1);
+  assert.deepEqual(pq(), ['https://fcm.googleapis.com/fcm/send/mom']); homes.get(made.home).m.delete('pingq');
   t = (await call(H + '/note', { method: 'POST', token: gma.token, body: { target: 'd:d1', text: '예쁘다' } })).body; const c1 = t.notes[0];
+  assert.deepEqual(pq(), ['https://fcm.googleapis.com/fcm/send/mom']); assert.equal(t.nicks[c1.who], '할머니');
+  await call(H + '/like', { method: 'POST', token: own, body: { target: 'd:d1', on: true } }); assert.equal(pq().length, 1); // 할머니(보기만)에게는 하트 알림을 보내지 않는다
+  await call(H + '/like', { method: 'POST', token: own, body: { target: 'd:d1', on: false } });
   assert.equal(c1.nick, '할머니');
   tick(1000); t = (await call(H + '/note', { method: 'POST', token: own, body: { target: 'd:d1', parent: c1.id, text: '고마워요' } })).body; const r1 = t.notes[1]; assert.equal(r1.parent, c1.id);
   tick(1000); t = (await call(H + '/note', { method: 'POST', token: dad.token, body: { target: 'd:d1', parent: r1.id, text: '저도요' } })).body; assert.equal(t.notes[2].parent, c1.id);

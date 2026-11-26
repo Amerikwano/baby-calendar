@@ -38,7 +38,32 @@
 // 내 컴퓨터에서 시험할 때만 다른 서버를 쓸 수 있다.
 const FAMILY_URL = (typeof location !== 'undefined' && location.hostname === 'localhost' && localStorage.getItem('baby-family-url')) || 'https://baby-notebook-family.baby-calendar.workers.dev';
 const jget = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
-const jput = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch { } };
+const jput = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch { } if (k === 'baby-home' || k === 'baby-visits') setTimeout(famCredsSave); };
+// 휴대폰 알림이 오면 서비스 워커가 새 좋아요·댓글을 가족 수첩에서 받아 글을 만든다. 그때 쓸 열쇠를 기기 안(IndexedDB)에 둔다.
+function famCredsSave() {
+  const list = (bound ? [{ id: bound.id, token: bound.token, mid: bound.mid, name: bound.name, role: bound.role }] : []).concat(visits.map(v => ({ id: v.id, token: v.token, mid: v.mid, name: v.name, role: 'viewer' })));
+  Local.setKV('fam-creds', { url: FAMILY_URL, list }).catch(() => { }); famPushReg(); talkPrime(list);
+}
+// 알림에 예전 좋아요·댓글이 한꺼번에 뜨지 않게, 처음 한 번 지금까지의 것을 본 것으로 적어 둔다.
+async function talkPrime(list) {
+  const seen = new Set((await Local.getKV('talk-seen').catch(() => null)) || []), homes = new Set(jget('baby-talk-primed') || []); let changed = false;
+  for (const h of list) {
+    if (homes.has(h.id)) continue;
+    const t = await famCall(h, 'talk').catch(() => null); if (!t) continue;
+    (t.notes || []).forEach(n => seen.add('n:' + n.id)); Object.entries(t.likes || {}).forEach(([tg, who]) => who.forEach(m => seen.add('l:' + h.id + tg + '|' + m)));
+    homes.add(h.id); changed = true;
+  }
+  if (changed) { await Local.setKV('talk-seen', [...seen].slice(-4000)).catch(() => { }); jput('baby-talk-primed', [...homes]); }
+}
+// 휴대폰 알림을 켰으면, 내가 들어가 있는 가족 수첩마다 알림 주소를 알려 둔다(좋아요·댓글 알림용).
+async function famPushReg() {
+  if (typeof push === 'undefined') return;
+  const e = push.state === 'on' && push.sub ? push.sub.endpoint : '', homes = (bound ? [bound] : []).concat(visits), was = jget('baby-push-reg') || {};
+  const done = new Set(was.e === e ? was.homes || [] : []), todo = homes.filter(h => !done.has(h.id));
+  if (was.e && was.e !== e) for (const h of homes) await famCall(h, 'push', { body: { endpoint: e } }).catch(() => { });
+  for (const h of todo) if (e) { try { await famCall(h, 'push', { body: { endpoint: e } }); done.add(h.id); } catch { } }
+  localStorage.setItem('baby-push-reg', JSON.stringify({ e, homes: [...done].filter(id => homes.some(h => h.id === id)) }));
+}
 // 내 별명(엄마, 아빠, 이모 …). 댓글과 가족 목록에 보인다.
 const myNick = () => (jget('baby-me') || {}).nick || '';
 // 내 수첩이 가족 수첩이면 { id, token, role, mid, name }
@@ -336,7 +361,8 @@ async function famRestore() {
 /* ── 놀러가기 ── */
 const houseKid = v => (v.kid || {});
 function visitsView() {
-  return `${started ? backRow('놀러가기') : `<div class="obmid" style="padding-top:24px"><h1>놀러가기</h1><p>초대받은 집에 놀러 가 보세요</p></div>`}<div class="houses">${visits.map(v => `<button class="house" data-act="visit" data-id="${v.id}"><span class="roof"></span><span class="hface">${houseKid(v).photo ? `<img data-vp="${v.id}:${houseKid(v).photo}:t" alt="">` : FACE}</span><b>${esc(v.name)}</b><em>${esc(v.nick)}로 놀러 가요</em></button>`).join('')}</div>${visits.length ? '' : '<p class="empty">아직 초대받은 집이 없어요.<br>가족에게 보기만 초대를 받으면 여기에 집이 생겨요.</p>'}${started ? '' : '<button class="soc plain" data-act="mynote">내 아기 수첩 만들기</button>'}`;
+  const bellCard = visits.length && typeof pushCard === 'function' && push.state !== 'on' ? pushCard().replace('휴대폰으로 알림 받기', '새 댓글·좋아요 알림 받기') : '';
+  return `${started ? backRow('놀러가기') : `<div class="obmid" style="padding-top:24px"><h1>놀러가기</h1><p>초대받은 집에 놀러 가 보세요</p></div>`}${bellCard}<div class="houses">${visits.map(v => `<button class="house" data-act="visit" data-id="${v.id}"><span class="roof"></span><span class="hface">${houseKid(v).photo ? `<img data-vp="${v.id}:${houseKid(v).photo}:t" alt="">` : FACE}</span><b>${esc(v.name)}</b><em>${esc(v.nick)}로 놀러 가요</em></button>`).join('')}</div>${visits.length ? '' : '<p class="empty">아직 초대받은 집이 없어요.<br>가족에게 보기만 초대를 받으면 여기에 집이 생겨요.</p>'}${started ? '' : '<button class="soc plain" data-act="mynote">내 아기 수첩 만들기</button>'}`;
 }
 async function openVisit(id) {
   const v = visits.find(x => x.id === id); if (!v) return;

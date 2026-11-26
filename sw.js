@@ -1,5 +1,5 @@
 // 수정할 때 CACHE와 index.html의 APP_VERSION을 함께 올린다.
-const CACHE = 'baby-notebook-v0.11.7';
+const CACHE = 'baby-notebook-v0.11.8';
 const FILES = ['./', 'index.html', 'schedule.js', 'base-benefits.js', 'base-tips.js', 'local.js', 'regions.js', 'family.js', 'hospitals.js', 'drive.js', 'login.js', 'share.js', 'icons.js', 'care.js', 'album.js', 'notice.js', 'bell.js', 'swipe.js', 'media.js', 'viewer.js', 'sync.js', 'home.js', 'onboard.js', 'app.js', 'app.css', 'manifest.webmanifest', 'icon-192.png', 'apple-touch-icon.png'];
 importScripts('schedule.js', 'family.js', 'local.js', 'notice.js');
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
@@ -15,9 +15,26 @@ self.addEventListener('fetch', e => {
 /* 알림: 서버는 시각만 알려 주고, 글은 이 기기에 저장된 내용으로 여기서 만든다. */
 // 서버와 휴대폰 시계가 조금 다를 수 있어 1분 반까지는 때가 된 것으로 본다.
 const localNow = () => { const d = new Date(Date.now() + 90000), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+// 가족 수첩의 새 좋아요·댓글. 내가 한 것과 이미 알린 것은 빼고, 처음에는 오래된 것을 알리지 않는다.
+async function talkNews() {
+  const c = await Local.getKV('fam-creds'); if (!c || !c.list || !c.list.length) return null;
+  const seen = new Set((await Local.getKV('talk-seen')) || []), first = false, news = [], now = Date.now(); // 처음 것은 앱이 미리 적어 둔다(talkPrime)
+  for (const h of c.list) {
+    let t; try { const r = await fetch(`${c.url}/h/${h.id}/talk`, { headers: { authorization: 'Bearer ' + h.token } }); if (!r.ok) continue; t = await r.json(); } catch { continue; }
+    const nick = id => (t.nicks || {})[id] || '가족';
+    for (const n of t.notes || []) { const k = 'n:' + n.id; if (seen.has(k)) continue; seen.add(k); if (n.who !== h.mid && now - n.at < 3600000 * (first ? 1 : 72)) news.push({ h, note: true, nick: n.nick, text: n.text }); }
+    if (h.role !== 'viewer') for (const [tg, who] of Object.entries(t.likes || {})) for (const m of who) { const k = 'l:' + h.id + tg + '|' + m; if (seen.has(k)) continue; seen.add(k); if (m !== h.mid && !first) news.push({ h, nick: nick(m) }); }
+  }
+  await Local.setKV('talk-seen', [...seen].slice(-4000));
+  if (!news.length) return null;
+  const home = news[0].h, one = news.length === 1 ? news[0] : null;
+  return one ? { ids: ['talk:' + home.id], title: one.note ? `${one.nick}가 댓글을 남겼어요` : `${one.nick}가 하트를 눌렀어요`, body: (one.note ? one.text.slice(0, 80) + ' · ' : '') + home.name }
+    : { ids: ['talk:' + home.id], title: `${home.name}에 새 소식 ${news.length}개`, body: news.slice(0, 4).map(x => `${x.nick} ${x.note ? '댓글' : '하트'}`).join(' · ') };
+}
 async function notify() {
   let m = null, shown = [];
-  try {
+  try { m = await talkNews(); } catch { }
+  if (!m) try {
     const test = await Local.getKV('test');
     if (test && Date.now() - test < 120000) { await Local.setKV('test', 0); m = { ids: [], title: '알림이 잘 와요', body: '앞으로 이렇게 알려드릴게요' }; }
     else {
@@ -33,5 +50,6 @@ async function notify() {
 self.addEventListener('push', e => e.waitUntil(notify()));
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(l => { const c = l.find(x => x.url.startsWith(self.registration.scope)); if (c) { c.postMessage('alerts'); return c.focus(); } return clients.openWindow('./?alerts'); }));
+  const talk = String(e.notification.tag || '').startsWith('talk:') ? e.notification.tag : ''; // 좋아요·댓글 알림이면 그 집 일기로
+  e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(l => { const c = l.find(x => x.url.startsWith(self.registration.scope)); if (c) { c.postMessage(talk || 'alerts'); return c.focus(); } return clients.openWindow(talk ? './?talk=' + talk.slice(5) : './?alerts'); }));
 });

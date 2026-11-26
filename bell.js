@@ -26,7 +26,7 @@ async function pushInit() {
   const reg = await navigator.serviceWorker.ready; push.sub = await reg.pushManager.getSubscription();
   let off = false; try { off = localStorage.getItem('baby-push') === 'off'; } catch { }
   push.state = Notification.permission === 'denied' ? 'denied' : push.sub && Notification.permission === 'granted' && !off ? 'on' : 'ask';
-  if (push.state === 'on') pushSync(true).catch(() => { }); else pushCall('/key').then(j => { push.key = j.key; }).catch(() => { });
+  if (push.state === 'on') { pushSync(true).catch(() => { }); famPushReg(); } else pushCall('/key').then(j => { push.key = j.key; }).catch(() => { });
 }
 async function pushOn() {
   const ok = await Notification.requestPermission();
@@ -37,16 +37,18 @@ async function pushOn() {
   push.sub = sub || await Promise.race([reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(push.key) }), new Promise((_, no) => setTimeout(() => no(new Error('휴대폰이 알림 주소를 주지 않았어요. 잠시 뒤 다시 켜 주세요.')), 25000))]);
   push.state = 'on'; try { localStorage.setItem('baby-push', 'on'); } catch { }
   try { await pushSync(true); } catch (e) { push.state = 'ask'; throw e; }
+  famPushReg();
 }
 async function pushOff() {
   const s = push.sub; push.sub = null; push.last = ''; push.state = 'ask'; try { localStorage.setItem('baby-push', 'off'); } catch { }
   if (s) { await pushCall('/drop', { endpoint: s.endpoint }).catch(() => { }); await s.unsubscribe().catch(() => { }); }
+  famPushReg();
 }
 function pushCard() {
   if (!PUSH_URL || !local || push.state === 'none') return '';
   if (push.state === 'home') return `<div class="notice"><b>휴대폰으로 알림 받기</b><p class="sub">아이폰은 공유 단추에서 '홈 화면에 추가'한 앱에서 알림을 켤 수 있어요.</p></div>`;
   if (push.state === 'denied') return `<div class="notice"><b>알림이 꺼져 있어요</b><p class="sub">휴대폰 설정에서 이 앱의 알림을 켠 뒤 앱을 다시 열어 주세요.</p></div>`;
-  if (push.state === 'on') return `<div class="notice"><b>휴대폰 알림이 켜져 있어요</b><p class="sub">접종·검진·예약과 달력의 모든 일정을 알려요. 아침 알림은 ${db.hour}시이고 설정에서 바꿀 수 있어요.</p><div class="row"><button type="button" class="btn" data-act="pushtest">시험 알림 보내기</button><button type="button" class="btn" data-act="pushoff">끄기</button></div></div>`;
+  if (push.state === 'on') return `<div class="notice"><b>휴대폰 알림이 켜져 있어요</b><p class="sub">접종·검진·예약과 달력의 모든 일정, 가족 수첩의 새 좋아요와 댓글을 알려요. 아침 알림은 ${db.hour}시이고 설정에서 바꿀 수 있어요.</p><div class="row"><button type="button" class="btn" data-act="pushtest">시험 알림 보내기</button><button type="button" class="btn" data-act="pushoff">끄기</button></div></div>`;
   return `<div class="notice"><b>휴대폰으로 알림 받기</b><p class="sub">앱을 닫아 두어도 알려드려요. 알림 서버에는 기기 주소와 알릴 시각만 맡기고, 아기 정보는 보내지 않아요.</p><div class="row"><button type="button" class="btn main" data-act="pushon">알림 켜기</button></div></div>`;
 }
 function alertsDlg() {
@@ -58,7 +60,12 @@ function alertsDlg() {
   openDlg(`<form data-form="none"><h2>알림</h2>${pushCard()}${l.length ? `<div class="list">${l.map(n => `<button type="button" class="bellrow" ${act(n)}><span class="lic">${icon(ic(n))}</span><span><b>${esc(Notice.title(n))}</b>${n.body ? `<em>${esc(n.body)}</em>` : ''}<small>${when(n)}</small></span></button>`).join('')}</div>` : '<p class="empty">지금 알릴 것이 없어요.</p>'}<p class="sub">등록한 날부터 오늘 날짜에 맞는 것만 보여요. 시기가 지난 접종은 더보기의 접종·검진에서 볼 수 있어요.</p></form>`);
   $('#top').innerHTML = topBar();
 }
-if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data === 'alerts' && ready && started) alertsDlg(); });
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data === 'alerts' && ready && started) alertsDlg(); else if (typeof e.data === 'string' && e.data.startsWith('talk:') && ready) talkOpen(e.data.slice(5)); });
+// 좋아요·댓글 알림을 누르면 그 집의 일기를 연다.
+function talkOpen(id) {
+  if (bound && bound.id === id && started) { goTab('diary'); famPull(); return; }
+  if (visits.some(v => v.id === id)) openVisit(id);
+}
 // 앱을 켜 둔 동안에도 새 알림이 생기면 종에 점을 찍는다.
 setInterval(() => { if (ready && started && !document.hidden && !dlg.open) $('#top').innerHTML = topBar(); }, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && ready && started && !dlg.open) $('#top').innerHTML = topBar(); });

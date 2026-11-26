@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.11.7';
+const APP_VERSION = '0.11.8';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -807,7 +807,7 @@ async function moreActs(act, b, id) {
   else if (act === 'growview') growView();
   else if (act === 'gv') growStep(Number(d.n));
   else if (act === 'gvplay') growPlay();
-  else if (act === 'pushon') { b.disabled = true; b.textContent = '켜는 중'; try { await pushOn(); toast('알림을 켰어요'); } catch (e) { toast(e.message); } if (dlg.open) alertsDlg(); }
+  else if (act === 'pushon') { b.disabled = true; b.textContent = '켜는 중'; try { await pushOn(); toast('알림을 켰어요'); } catch (e) { toast(e.message); } if (dlg.open) alertsDlg(); else render(); }
   else if (act === 'pushoff') { b.disabled = true; await pushOff(); toast('알림을 껐어요'); if (dlg.open) alertsDlg(); }
   else if (act === 'pushtest') { b.disabled = true; try { await Local.setKV('test', Date.now()); const r = await pushCall('/test', { endpoint: push.sub.endpoint }); if (r.status >= 200 && r.status < 300) toast('보냈어요. 잠시 뒤 휴대폰에 알림이 떠요.'); else throw new Error(`알림을 보내지 못했어요 (${r.status}). 껐다가 다시 켜 주세요.`); } catch (e) { toast(e.message); } b.disabled = false; }
   else if (act === 'log') logDlg(d.t);
@@ -1044,9 +1044,10 @@ async function load() { const s = await api('/api/state'); rev = s.rev; db = Obj
     if (local && IN_APP === 'kakao' && /Android/i.test(navigator.userAgent) && /[?&]join=/.test(location.search) && !sessionStorage.getItem('baby-ext')) { sessionStorage.setItem('baby-ext', '1'); location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(location.href); }
     if (local && await joinCheck()) render();
     if (local && bound && started) famPull();
-    if (local) { waitPoll(); famRestore(); } // 카카오로 로그인해 둔 사람은 들어가 있는 가족 수첩과 놀러 갈 집을 다시 맞춘다 // 새 기기에서 로그인하면 들어가 있던 가족 수첩을 다시 연다
+    if (local) { waitPoll(); famRestore(); famCredsSave(); } // 카카오로 로그인해 둔 사람은 들어가 있는 가족 수첩과 놀러 갈 집을 다시 맞춘다 // 새 기기에서 로그인하면 들어가 있던 가족 수첩을 다시 연다
     hideSplash(); if (local) { checkAuth(); if (!soc) resumeSocial(); }
-    const bell = new URLSearchParams(location.search).has('alerts'); if (bell) history.replaceState(null, '', location.pathname);
+    const bell = new URLSearchParams(location.search).has('alerts'), talkId = new URLSearchParams(location.search).get('talk'); if (bell || talkId) history.replaceState(null, '', location.pathname);
+    if (talkId && local) setTimeout(() => talkOpen(talkId), 500);
     if (bell && started) setTimeout(alertsDlg, 1500);
     if (local && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
     if (local && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(pushInit).catch(() => {});

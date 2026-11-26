@@ -1,5 +1,5 @@
 /* 알림 서버(Cloudflare Workers + Durable Object). 저장하는 것: 기기로 보내는 주소와 알릴 시각뿐. 열쇠는 서버가 스스로 만들어 안에만 둔다. */
-import { DurableObject } from 'cloudflare:workers';
+import { DurableObject, WorkerEntrypoint } from 'cloudflare:workers';
 import { endpointOk, timesOk, newKeys, send } from './core.mjs';
 const MAX = 2000, BATCH = 40;
 
@@ -32,6 +32,8 @@ export class Bell extends DurableObject {
     if (s === 404 || s === 410) await this.drop(e);
     return s;
   }
+  // 가족 수첩 서버가 부탁한 알림(좋아요·댓글). 내용 없이 깨우기만 하고, 글은 휴대폰이 가족 수첩에서 받아 만든다.
+  async pushMany(list) { await Promise.all(list.map(e => this.push(e))); return list.length; }
   async next() {
     const r = this.ctx.storage.sql.exec('SELECT MIN(t) t FROM times').one().t;
     if (r) await this.ctx.storage.setAlarm(Math.max(r, Date.now() + 500)); else await this.ctx.storage.deleteAlarm();
@@ -45,6 +47,10 @@ export class Bell extends DurableObject {
     q.exec('DELETE FROM subs WHERE seen < ? AND e NOT IN (SELECT e FROM times)', now - 400 * 86400000);
     await this.next();
   }
+}
+// 가족 수첩 서버만 부를 수 있는 입구(서비스 연결). 인터넷에서는 닿지 않는다.
+export class Pinger extends WorkerEntrypoint {
+  async ping(list) { const ok = [...new Set(Array.isArray(list) ? list : [])].filter(endpointOk).slice(0, 60); if (!ok.length) return 0; return this.env.BELL.get(this.env.BELL.idFromName('all')).pushMany(ok); }
 }
 export default {
   async fetch(req, env) {
