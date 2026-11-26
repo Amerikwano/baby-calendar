@@ -1,17 +1,17 @@
-/* 카카오·네이버 로그인 서버(Cloudflare Workers). 비밀 값으로 로그인을 확인하고 이름만 앱에 돌려준다.
+/* 카카오·네이버 로그인 서버(Cloudflare Workers). 비밀 값으로 로그인을 확인하고 이름과, 가족 수첩 서버용 서명된 확인표만 앱에 돌려준다.
    다른 창에서 로그인이 끝나도 앱이 이어받도록 결과를 10분까지만 맡아 두고, 앱이 가져가면 바로 지운다(desk.mjs). */
 const PROVIDERS = {
   kakao: {
     authorize: (e, cb, s) => 'https://kauth.kakao.com/oauth/authorize?' + new URLSearchParams({ response_type: 'code', client_id: e.KAKAO_ID, redirect_uri: cb, state: s }),
     token: (e, cb, code) => ['https://kauth.kakao.com/oauth/token', { grant_type: 'authorization_code', client_id: e.KAKAO_ID, client_secret: e.KAKAO_SECRET, redirect_uri: cb, code }],
     me: 'https://kapi.kakao.com/v2/user/me', ready: e => e.KAKAO_ID && e.KAKAO_SECRET,
-    user: j => ({ id: j.id, name: ((j.kakao_account || {}).profile || j.properties || {}).nickname }),
+    user: j => { const pr = (j.kakao_account || {}).profile || {}, pp = j.properties || {}; return { id: j.id, name: pr.nickname || pp.nickname, img: pr.thumbnail_image_url || pp.thumbnail_image }; },
   },
   naver: {
     authorize: (e, cb, s) => 'https://nid.naver.com/oauth2.0/authorize?' + new URLSearchParams({ response_type: 'code', client_id: e.NAVER_ID, redirect_uri: cb, state: s }),
     token: (e, cb, code, s) => ['https://nid.naver.com/oauth2.0/token', { grant_type: 'authorization_code', client_id: e.NAVER_ID, client_secret: e.NAVER_SECRET, code, state: s }],
     me: 'https://openapi.naver.com/v1/nid/me', ready: e => e.NAVER_ID && e.NAVER_SECRET,
-    user: j => ({ id: (j.response || {}).id, name: (j.response || {}).nickname || (j.response || {}).name }),
+    user: j => ({ id: (j.response || {}).id, name: (j.response || {}).nickname || (j.response || {}).name, img: (j.response || {}).profile_image }),
   },
 };
 const STATE = /^[0-9a-f]{32}$/;
@@ -20,6 +20,13 @@ const go = url => new Response(null, { status: 302, headers: { location: url, 'c
 const back = (env, p, state, o) => go(env.APP_URL + '#' + new URLSearchParams(Object.assign({ social: p, state }, o)));
 
 const V = /^[0-9a-f]{64}$/;
+// 가족 수첩 서버가 "정말 이 카카오 계정으로 로그인했는지" 확인할 수 있게 서명한 확인표. 7일 동안 쓴다.
+const b64 = u => btoa(String.fromCharCode(...new Uint8Array(u))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+async function signWho(key, o) {
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const body = b64(new TextEncoder().encode(JSON.stringify(o))); return body + '.' + b64(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(body)));
+}
+const httpsImg = u => typeof u === 'string' && /^https?:\/\/[^\s"'<>]{1,400}$/.test(u) ? u.replace(/^http:/, 'https:') : '';
 const hex = async s => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))), b => b.toString(16).padStart(2, '0')).join('');
 // desk: 결과를 잠시 맡아 두는 곳. 시작한 앱만 아는 값(v)이 있어야 가져갈 수 있다.
 // 맡아 두는 곳이 잠깐 안 되더라도 로그인 자체는 이어진다.
@@ -61,6 +68,7 @@ async function handle(req, env, get = fetch, desk = env.DESK ? deskOf(env) : nul
     // 원래 회원번호 대신 이 앱에서만 쓰는 값으로 바꿔 돌려준다.
     const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${p}:${who.id}:${env[p.toUpperCase() + '_SECRET']}`));
     const ok = { id: Array.from(new Uint8Array(h).slice(0, 16), b => b.toString(16).padStart(2, '0')).join(''), name: String(who.name || '').slice(0, 40) };
+    if (env.FAMILY_KEY) ok.tok = await signWho(env.FAMILY_KEY, { p, id: ok.id, n: ok.name, i: httpsImg(who.img), e: Date.now() + 7 * 86400000 });
     if (box) await box.finish(p, ok);
     return back(env, p, state, ok);
   } catch (e) {

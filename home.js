@@ -1,5 +1,6 @@
 /* 가족 수첩: 함께 쓰기(같은 기록을 여럿이 고침)와 열람(일기·앨범만 보고 좋아요·댓글).
-   기록과 줄인 사진은 가족 수첩 서버(family/)에 두고, 초대 링크를 받아 들어온 사람만 볼 수 있다. */
+   기록과 줄인 사진은 가족 수첩 서버(family/)에 두고, 초대 링크를 받아 들어온 사람만 볼 수 있다.
+   초대 링크는 한 사람만 쓸 수 있고, 링크를 연 사람은 카카오로 로그인한 뒤 초대한 가족의 승인을 받아야 들어온다. */
 (function (root) {
   'use strict';
   const ARR = ['kids', 'events', 'diary', 'photos', 'faces', 'logs'];
@@ -45,8 +46,13 @@ let bound = jget('baby-home');
 // 열람 초대를 받은 집들 [{ id, token, mid, nick, name, kid }]
 let visits = jget('baby-visits') || [];
 let vis = null; // 지금 놀러 간 집 { …visit, data, talk, view }
-let join = null; // 초대 링크로 들어왔을 때 { home, code, role, name, by }
-const famErr = s => s === 401 ? '초대가 끝났거나 가족 목록에서 빠졌어요.' : s === 404 ? '초대 링크가 끝났어요. 새 링크를 받아 주세요.' : s === 413 || s === 507 ? '가족 수첩 저장 공간이 가득 찼어요.' : '가족 수첩 서버와 연결하지 못했어요. 잠시 뒤 다시 해 주세요.';
+let join = null; // 초대 링크로 들어왔을 때 { home, code, role, name, by, wait }
+// 승인을 기다리는 초대 [{ home, ticket, role, nick, name, by, at }]
+let waits = jget('baby-waits') || [];
+let famPending = [], famInvites = [];
+// 가족 수첩 서버에 보낼 로그인 확인표(카카오·네이버 로그인 서버가 서명함, 7일)
+const myTok = () => { const a = typeof Social !== 'undefined' && Social.account(); return a && a.tok && Date.now() - (a.tokAt || 0) < 6.5 * 86400000 ? a.tok : ''; };
+const famErr = s => s === 401 ? '초대가 끝났거나 가족 목록에서 빠졌어요.' : s === 404 ? '초대 링크가 끝났어요. 새 링크를 받아 주세요.' : s === 410 ? '이 초대 링크는 이미 다른 사람이 썼어요. 초대한 분께 새 링크를 받아 주세요.' : s === 413 || s === 507 ? '가족 수첩 저장 공간이 가득 찼어요.' : '가족 수첩 서버와 연결하지 못했어요. 잠시 뒤 다시 해 주세요.';
 async function famCall(h, path, opt = {}) {
   const headers = {}; if (h && h.token) headers.authorization = 'Bearer ' + h.token;
   if (opt.body && !(opt.body instanceof Blob)) headers['content-type'] = 'application/json';
@@ -74,7 +80,7 @@ function famPull() {
   if (!bound || !started) return famQ;
   return famRun(async () => {
     const base = await famBase(), r = await famCall(bound, 'state' + (base ? '?have=' + base.rev : ''));
-    famMembers = r.members || famMembers;
+    famMembers = r.members || famMembers; famSeen(r);
     if (!r.same) {
       const mine = Fam.shared(db);
       if (!base || Fam.same(mine, base.data)) await famApply(r.data); else await famApply(Fam.merge(base.data, mine, r.data));
@@ -97,6 +103,20 @@ async function famPushNow() {
 function famLater() { if (!bound || famBusy || bound.role === 'viewer') return; clearTimeout(famT); famT = setTimeout(() => famRun(famPushNow), 1500); }
 function famLost() { toast('가족 수첩에서 빠졌어요. 기록은 이 기기에 그대로 있어요.'); bound = null; jput('baby-home', null); render(); }
 let famMembers = [];
+// 서버가 알려 준 승인 대기와 안 쓴 초대. 처음 보는 승인 대기는 바로 물어본다.
+const asked = new Set();
+function famSeen(r) {
+  famPending = r.pending || []; famInvites = r.invites || [];
+  if (r.me && bound.linked !== r.me.linked) { bound.linked = r.me.linked; jput('baby-home', bound); }
+  if (r.me && !r.me.linked && myTok()) famCall(bound, 'link', { body: { tok: myTok() } }).then(() => { bound.linked = true; jput('baby-home', bound); }).catch(() => { });
+  const p = famPending.find(x => !asked.has(x.rid));
+  if (p && !dlg.open && !busyLock && started) { asked.add(p.rid); approveDlg(p); }
+}
+const ROLE = { owner: '처음 만든 사람', editor: '함께 쓰기', viewer: '보기만' };
+const kface = (img, name) => img ? `<img class="kimg" src="${esc(img)}" alt="" referrerpolicy="no-referrer">` : `<span class="nick kimg">${esc((name || '?').slice(0, 1))}</span>`;
+function approveDlg(p) {
+  openDlg(`<form data-form="none" class="approve"><h2>들어오려는 사람이 있어요</h2><div class="kwho">${kface(p.kimg, p.kname)}<b>${esc(p.kname || '이름 없음')}</b><span class="sub">${Social.NAME[p.kp] || '카카오'} 이름${p.kimg ? '과 사진' : ''}</span></div><p><b>${esc(p.nick)}</b>(이)라는 별명으로 <b>${p.role === 'editor' ? '함께 쓰기' : '보기만'} 초대</b>를 받아 들어오려고 해요.</p><p class="sub">카카오톡에서 보던 이름과 사진이 맞는지 확인해 주세요. 모르는 사람이면 거절하세요. 거절하면 그 초대 링크도 끝나요.</p><button type="button" class="btn main" data-act="approve" data-rid="${esc(p.rid)}" data-ok="1">들어오게 하기</button><button type="button" class="btn danger" data-act="approve" data-rid="${esc(p.rid)}">거절</button></form>`);
+}
 async function famTalk() { const t = await famCall(bound, 'talk').catch(() => null); if (t) { bound.talk = t; if (['diary', 'album'].includes(tab) || vw) talkPaint(); } }
 // 보기 좋게 줄인 사진(긴 변 1600px)을 올린다. 동영상은 첫 장면만.
 async function shrink(blob, max) {
@@ -166,14 +186,14 @@ async function picBlob(id) {
 async function famCreate() {
   if (bound) return bound;
   const nick = myNick() || '엄마', data = Fam.shared(db);
-  const r = await famCall(null, 'new', { body: { nick, data } });
-  bound = { id: r.home, token: r.token, role: 'owner', mid: r.id, name: r.name }; jput('baby-home', bound);
+  const tok = myTok(), r = await famCall(null, 'new', { body: Object.assign({ nick, data }, tok ? { tok } : {}) });
+  bound = { id: r.home, token: r.token, role: 'owner', mid: r.id, name: r.name, linked: Boolean(tok) }; jput('baby-home', bound);
   await setBase(r.rev, data); return bound;
 }
 async function inviteDlg(role) {
   if (!myNick()) return nickDlg(() => inviteDlg(role));
   const edit = role === 'editor';
-  openDlg(`<form data-form="none"><h2>${edit ? '함께 쓰기 초대' : '보기만 초대'}</h2><p class="sub">${edit ? '초대받은 사람은 이 수첩을 같이 보고 고칠 수 있어요. 아빠·엄마처럼 함께 기록할 사람에게 보내세요.' : '초대받은 사람은 일기와 앨범만 보고 좋아요와 댓글을 달 수 있어요. 할머니·이모처럼 아기 소식을 나눌 사람에게 보내세요.'}</p><p class="sub">초대 링크는 7일 동안 쓸 수 있어요. 링크를 받은 사람은 누구나 들어올 수 있으니 보낼 사람에게만 보내 주세요. 사진은 줄여서 가족 수첩 서버에 올라가요.</p><button type="button" class="soc kakao" data-act="sendinvite" data-role="${role}">${KAKAO_MARK}카카오톡으로 초대 보내기</button><button type="button" class="btn" data-act="sendinvite" data-role="${role}" data-other="1">다른 앱으로 보내기</button></form>`);
+  openDlg(`<form data-form="none"><h2>${edit ? '함께 쓰기 초대' : '보기만 초대'}</h2><p class="sub">${edit ? '초대받은 사람은 이 수첩을 같이 보고 고칠 수 있어요. 아빠·엄마처럼 함께 기록할 사람에게 보내세요.' : '초대받은 사람은 일기와 앨범만 보고 좋아요와 댓글을 달 수 있어요. 할머니·이모처럼 아기 소식을 나눌 사람에게 보내세요.'}</p><p class="sub">초대 링크는 한 사람만, 3일 안에 쓸 수 있어요. 받은 사람이 카카오로 로그인하면, 내가 그 사람의 카카오 이름과 사진을 보고 승인해야 들어와요. 여러 명을 부르려면 한 사람씩 따로 보내 주세요. 사진은 줄여서 가족 수첩 서버에 올라가요.</p><button type="button" class="soc kakao" data-act="sendinvite" data-role="${role}">${KAKAO_MARK}카카오톡으로 초대 보내기</button><button type="button" class="btn" data-act="sendinvite" data-role="${role}" data-other="1">다른 앱으로 보내기</button></form>`);
 }
 async function sendInvite(role, other) {
   busy('초대 링크를 만드는 중');
@@ -206,39 +226,102 @@ async function saveNick(f) {
 }
 function familyDlg() {
   const list = famMembers.length ? famMembers : [];
-  openDlg(`<form data-form="none"><h2>${esc(bound.name || '가족 수첩')}</h2><div class="list">${list.map(m => `<div class="hosp"><span class="row" style="flex-wrap:nowrap"><span class="nick">${esc(m.nick.slice(0, 1))}</span><span><b>${esc(m.nick)}${m.id === bound.mid ? ' (나)' : ''}</b><span class="sub">${{ owner: '처음 만든 사람', editor: '함께 쓰기', viewer: '보기만' }[m.role]}</span></span></span>${bound.role === 'owner' && m.role !== 'owner' ? `<button type="button" class="btn danger" data-act="kick" data-id="${esc(m.id)}">빼기</button>` : ''}</div>`).join('') || '<p class="sub">불러오는 중</p>'}</div>${bound.role !== 'owner' ? '<button type="button" class="btn danger" data-act="famleave">가족 수첩에서 나가기</button>' : ''}</form>`);
+  const edit = bound.role !== 'viewer', when = at => new Date(at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' });
+  const pend = edit && famPending.length ? `<h3>승인을 기다려요</h3><div class="list">${famPending.map(p => `<div class="hosp"><span class="row" style="flex-wrap:nowrap">${kface(p.kimg, p.kname)}<span><b>${esc(p.nick)}</b><span class="sub">${esc(p.kname)} · ${ROLE[p.role]}</span></span></span><button type="button" class="btn main" data-act="approveask" data-rid="${esc(p.rid)}">확인</button></div>`).join('')}</div>` : '';
+  const inv = edit && famInvites.length ? `<h3>아직 안 쓴 초대 링크</h3><div class="list">${famInvites.map(i => `<div class="hosp"><span><b>${ROLE[i.role]} 초대</b><span class="sub">${when(i.at)}에 보냄 · 3일 동안 쓸 수 있어요</span></span><button type="button" class="btn danger" data-act="uninvite" data-id="${esc(i.id)}">취소</button></div>`).join('')}</div>` : '';
+  openDlg(`<form data-form="none"><h2>${esc(bound.name || '가족 수첩')}</h2>${pend}<div class="list">${list.map(m => `<div class="hosp"><span class="row" style="flex-wrap:nowrap">${m.kname !== undefined ? kface(m.kimg, m.nick) : `<span class="nick">${esc(m.nick.slice(0, 1))}</span>`}<span><b>${esc(m.nick)}${m.id === bound.mid ? ' (나)' : ''}</b><span class="sub">${ROLE[m.role]}${m.kname ? ' · ' + esc(m.kname) : ''}</span></span></span>${bound.role === 'owner' && m.role !== 'owner' ? `<button type="button" class="btn danger" data-act="kick" data-id="${esc(m.id)}">빼기</button>` : ''}</div>`).join('') || '<p class="sub">불러오는 중</p>'}</div>${inv}${bound.linked ? '' : `<p class="sub">카카오로 로그인해 두면 휴대폰을 바꿔도 같은 카카오로 이 가족 수첩에 다시 들어올 수 있어요.</p>${myTok() ? '' : `<button type="button" class="soc kakao" data-act="social" data-p="kakao">${KAKAO_MARK}카카오로 로그인</button>`}`}${bound.role !== 'owner' ? '<button type="button" class="btn danger" data-act="famleave">가족 수첩에서 나가기</button>' : ''}</form>`);
   if (!list.length) famPull().then(() => { if (dlg.open && dlg.querySelector('[data-act=kick],.list .sub')) familyDlg(); });
 }
 
 /* ── 초대 링크로 들어왔을 때 ── */
 async function joinCheck() {
-  const q = new URLSearchParams(location.search), j = Fam.parseJoin(q.get('join')); if (!j) return false;
-  history.replaceState(null, '', location.pathname);
+  const q = new URLSearchParams(location.search), saved = jget('baby-join');
+  let j = Fam.parseJoin(q.get('join'));
+  if (j) history.replaceState(null, '', location.pathname);
+  else if (saved && Date.now() - saved.t < 30 * 60000) j = { home: saved.home, code: saved.code }; // 로그인하러 갔다 돌아왔다
+  jput('baby-join', null);
+  if (!j) { if (waits.length && !started && !visits.length) { join = Object.assign({}, waits[0], { wait: waits[0].ticket }); waitPoll(); return true; } return false; }
+  const w = waits.find(x => x.home === j.home); if (w) { join = Object.assign({}, w, { wait: w.ticket }); waitPoll(); return true; }
   try { const r = await famCall({ id: j.home }, 'peek?c=' + j.code); join = Object.assign(j, { role: r.role, name: r.name, by: r.by }); }
   catch (e) { toast(e.message); return false; }
   return true;
 }
+// 초대받은 사람: 1) 카카오로 로그인 2) 별명 3) 승인 기다리기
 function joinView() {
-  const edit = join.role === 'editor';
-  return `<form class="ob join" data-form="join"><div class="obmid"><div class="ring">${FACE}</div><h1>${esc(join.name)}${edit ? ' 수첩에<br>함께 기록해요' : '에<br>놀러 오세요'}</h1><p>${join.by ? esc(join.by) + '가 ' : ''}${edit ? '초대했어요. 같은 기록을 같이 보고 고칠 수 있어요.' : '초대했어요. 아기 일기와 사진을 보고 댓글을 달 수 있어요.'}</p></div><div class="stack"><b>${edit ? '나는 아기의' : '가족에게 보일 별명'}</b>${edit ? nickPick(myNick()) : '<input name="nickx" maxlength="12" placeholder="예: 할머니, 이모, 삼촌" autocomplete="off" required>'}${edit && started ? '<p class="sub">이 기기에 쓰던 기록 대신 초대받은 수첩을 써요. 지금 기록은 따로 보관해 둬요.</p>' : ''}<button class="soc kakao" style="background:var(--ink);color:#fff">${edit ? '함께 쓰기 시작' : '놀러 가기'}</button><button type="button" class="soc plain" data-act="joinno">다음에 할게요</button></div></form>`;
+  const edit = join.role === 'editor', a = Social.account(), tok = myTok();
+  if (join.wait) return `<section class="ob join"><div class="obmid"><div class="ring">${FACE}</div><h1>승인을 기다리고 있어요</h1><p>${join.by ? esc(join.by) + '에게' : '초대한 분에게'} <b>${esc(join.name)}</b>에 들어가도 되는지 물어봤어요.<br>카카오 이름과 사진을 확인하고 승인하면 바로 열려요.</p><p class="sub">이 화면을 닫아도 돼요. 앱을 다시 열면 이어서 확인해요.</p></div><div class="stack"><button type="button" class="soc kakao" style="background:var(--ink);color:#fff" data-act="waitnow">지금 확인하기</button><button type="button" class="soc plain" data-act="joinno">다음에 확인할게요</button></div></section>`;
+  if (!tok) return `<section class="ob join"><div class="obmid"><div class="ring">${FACE}</div><h1>${esc(join.name)}${edit ? ' 수첩에<br>함께 기록해요' : '에<br>놀러 오세요'}</h1><p>${join.by ? esc(join.by) + '가 ' : ''}초대했어요.<br>초대받은 사람이 맞는지 확인하려고 카카오로 로그인해요.</p><p class="sub">${join.by ? esc(join.by) + '가' : '초대한 분이'} 내 카카오 이름과 사진을 보고 승인하면 들어가요. 카카오 이름과 사진은 이 가족 수첩에서 함께 쓰는 가족에게만 보여요.</p></div><div class="stack"><button type="button" class="soc kakao" data-act="joinlogin" data-p="kakao">${KAKAO_MARK}카카오로 로그인하고 들어가기</button>${AUTH.naver ? `<button type="button" class="soc naver" data-act="joinlogin" data-p="naver">${NAVER_MARK}네이버로 로그인하고 들어가기</button>` : ''}<button type="button" class="soc plain" data-act="joinno">다음에 할게요</button></div></section>`;
+  const me = `<p class="sub">${esc(a.name || Social.NAME[a.provider] + ' 계정')}(${Social.NAME[a.provider]})로 확인했어요.</p>`;
+  return `<form class="ob join" data-form="join"><div class="obmid"><div class="ring">${FACE}</div><h1>${esc(join.name)}${edit ? ' 수첩에<br>함께 기록해요' : '에<br>놀러 오세요'}</h1><p>${join.by ? esc(join.by) + '가 ' : ''}${edit ? '초대했어요. 같은 기록을 같이 보고 고칠 수 있어요.' : '초대했어요. 아기 일기와 사진을 보고 댓글을 달 수 있어요.'}</p></div><div class="stack"><b>${edit ? '나는 아기의' : '가족에게 보일 별명'}</b>${edit ? nickPick(myNick()) : '<input name="nickx" maxlength="12" placeholder="예: 할머니, 이모, 삼촌" autocomplete="off" required>'}${me}${edit && started ? '<p class="sub">이 기기에 쓰던 기록 대신 초대받은 수첩을 써요. 지금 기록은 따로 보관해 둬요.</p>' : ''}<button class="soc kakao" style="background:var(--ink);color:#fff">${edit ? '함께 쓰기 요청' : '놀러 가기 요청'}</button><button type="button" class="soc plain" data-act="joinno">다음에 할게요</button></div></form>`;
 }
 async function doJoin(f) {
   const nick = readNick(f); if (!nick) return toast(join.role === 'editor' ? '나는 아기의 누구인지 골라 주세요' : '별명을 써 주세요');
-  busy(join.role === 'editor' ? '수첩을 불러오는 중' : '놀러 가는 중');
+  const tok = myTok(); if (!tok) { render(); return; }
+  busy('초대한 분에게 물어보는 중');
   try {
-    const r = await famCall({ id: join.home }, 'join', { body: { c: join.code, nick } }), h = { id: join.home, token: r.token, role: r.role, mid: r.id, name: r.name };
-    if (r.role === 'editor') {
-      if (!myNick()) jput('baby-me', { nick });
+    const r = await famCall({ id: join.home }, 'join', { body: { c: join.code, nick, tok } });
+    if (r.status === 202) { // 승인을 기다린다
+      const w = { home: join.home, ticket: r.ticket, role: r.role, nick, name: r.name, by: join.by, at: Date.now() };
+      waits = waits.filter(x => x.home !== w.home).concat([w]); jput('baby-waits', waits);
+      join = Object.assign({}, w, { wait: w.ticket }); busyOff(); render(); scrollTo(0, 0); waitPoll(); return;
+    }
+    busyOff(); await famEnter({ id: join.home, token: r.token, role: r.role, mid: r.id, name: r.name, linked: true }, r.nick || nick); // 이미 들어와 있던 사람
+  } catch (e) {
+    busyOff();
+    if (e.status === 401 && e.body && e.body.error === 'login') { const a = Social.account(); if (a) { delete a.tok; localStorage.setItem('baby-acct', JSON.stringify(a)); } render(); toast('로그인이 끝났어요. 다시 로그인해 주세요.'); return; }
+    if (e.status === 410 || e.status === 404) { join = null; render(); }
+    toast(e.message);
+  }
+}
+// 승인되어 들어간다. 함께 쓰기는 이 기기 수첩을 초대받은 수첩으로 바꾸고, 보기만은 놀러가기에 집을 더한다.
+async function famEnter(h, nick) {
+  waits = waits.filter(x => x.home !== h.id); jput('baby-waits', waits);
+  if (h.role !== 'viewer') {
+    if (bound && bound.id === h.id) { join = null; render(); return; }
+    if (!myNick()) jput('baby-me', { nick });
+    busy('수첩을 불러오는 중');
+    try {
       const s = await famCall(h, 'state');
       if (started) await Local.setKV('before-home', { at: Date.now(), data: db }).catch(() => { });
       bound = h; jput('baby-home', bound); famMembers = s.members;
-      if (!started) { started = true; } await famApply(s.data); await setBase(s.rev, s.data);
+      if (!started) started = true; await famApply(s.data); await setBase(s.rev, s.data);
       join = null; tab = 'home'; busyOff(); render(); toast(`${h.name} 수첩을 함께 쓰기 시작했어요`); famTalk();
-    } else {
-      visits = visits.filter(v => v.id !== h.id).concat([Object.assign(h, { nick })]); jput('baby-visits', visits);
-      join = null; busyOff(); await openVisit(h.id);
+    } catch (e) { busyOff(); toast(e.message); }
+  } else {
+    visits = visits.filter(v => v.id !== h.id).concat([Object.assign(h, { nick })]); jput('baby-visits', visits);
+    join = null; await openVisit(h.id);
+  }
+}
+// 승인을 기다리는 초대를 확인한다.
+let waitT = 0, waitBusy = false;
+async function waitPoll(loud) {
+  clearTimeout(waitT); if (!waits.length || waitBusy) return;
+  waitBusy = true;
+  try {
+    for (const w of [...waits]) {
+      const r = await famCall({ id: w.home }, 'wait', { body: { ticket: w.ticket } }).catch(() => null);
+      if (!r) { if (loud) toast(famErr(0)); continue; }
+      if (r.stage === 'ok') { toast(`${w.name}에 들어가요`); await famEnter({ id: w.home, token: r.token, role: r.role, mid: r.id, name: r.name, linked: true }, r.nick || w.nick); continue; }
+      if (r.stage === 'wait') { if (loud) toast('아직 승인을 기다리고 있어요'); continue; }
+      waits = waits.filter(x => x !== w); jput('baby-waits', waits);
+      if (join && join.wait === w.ticket) { join = null; render(); }
+      toast(r.stage === 'no' ? `${w.name}에 들어가지 못했어요. 초대한 분께 다시 물어봐 주세요.` : `${w.name} 초대가 끝났어요. 새 링크를 받아 주세요.`);
     }
-  } catch (e) { busyOff(); toast(e.message); }
+  } finally { waitBusy = false; }
+  if (waits.length) waitT = setTimeout(waitPoll, join && join.wait ? 5000 : 20000);
+}
+// 새 기기에서 로그인했을 때, 이 카카오 계정이 들어가 있던 가족 수첩에 다시 들어간다.
+async function famRestore() {
+  const tok = myTok(); if (!tok || join) return;
+  let homes; try { homes = (await famCall(null, 'mine', { body: { tok } })).homes || []; } catch { return; }
+  for (const x of homes) {
+    if (bound && bound.id === x.home || visits.some(v => v.id === x.home)) continue;
+    if (x.role !== 'viewer' && (bound || started && !confirm(`${x.name} 가족 수첩에 다시 들어갈까요?\n이 기기에 쓰던 기록 대신 가족 수첩을 써요. 지금 기록은 따로 보관해 둬요.`))) continue;
+    const r = await famCall({ id: x.home }, 'back', { body: { tok } }).catch(() => null); if (!r) continue;
+    const h = { id: x.home, token: r.token, role: r.role, mid: r.id, name: r.name, linked: true };
+    if (r.role === 'viewer') { visits = visits.filter(v => v.id !== h.id).concat([Object.assign(h, { nick: r.nick })]); jput('baby-visits', visits); toast(`${r.name}에 다시 놀러 갈 수 있어요`); render(); }
+    else await famEnter(h, r.nick);
+  }
 }
 
 /* ── 놀러가기 ── */
@@ -253,6 +336,7 @@ async function openVisit(id) {
     const [s, t] = await Promise.all([famCall(v, 'state'), famCall(v, 'talk')]);
     if (!vis || vis.id !== id) return;
     vis.data = s.data; vis.talk = t; vis.name = s.name;
+    if (s.me && !s.me.linked && myTok()) famCall(v, 'link', { body: { tok: myTok() } }).catch(() => { });
     const k = (s.data.kids || [])[0] || {}; Object.assign(v, { name: s.name, kid: { name: k.name, photo: k.photo, born: k.born, birth: k.birth } }); jput('baby-visits', visits);
     render();
   } catch (e) { if (e.status === 401) { visits = visits.filter(x => x.id !== id); jput('baby-visits', visits); vis = null; tab = started ? 'visits' : 'home'; render(); } toast(e.message); }
@@ -315,13 +399,21 @@ async function famActs(act, b) {
   else if (act === 'sendinvite') sendInvite(d.role, Boolean(d.other));
   else if (act === 'nick') nickDlg();
   else if (act === 'family') familyDlg();
-  else if (act === 'kick') { if (confirm('이 사람을 가족 수첩에서 뺄까요?')) { try { famMembers = (await famCall(bound, 'kick', { body: { id: d.id } })).members; familyDlg(); } catch (e) { toast(e.message); } } }
+  else if (act === 'kick') { if (confirm('이 사람을 가족 수첩에서 뺄까요? 다른 기기에서도 함께 빠져요.')) { try { famMembers = (await famCall(bound, 'kick', { body: { id: d.id } })).members; familyDlg(); } catch (e) { toast(e.message); } } }
   else if (act === 'famleave') { if (confirm('가족 수첩에서 나갈까요? 기록은 이 기기에 남지만 더는 함께 맞춰지지 않아요.')) { await famCall(bound, 'leave', { body: {} }).catch(() => { }); bound = null; jput('baby-home', null); dlg.close(); render(); toast('가족 수첩에서 나왔어요'); } }
   else if (act === 'visits') { vis = null; tab = 'visits'; render(); scrollTo(0, 0); }
   else if (act === 'visit') openVisit(d.id);
   else if (act === 'vview') { vis.view = d.v; render(); }
   else if (act === 'vphoto') { const list = () => [...(vis.data.photos || [])].sort((a, b) => a.date < b.date ? 1 : -1); viewPhoto('visit', d.id, list); }
   else if (act === 'joinno') { join = null; render(); }
+  else if (act === 'joinlogin') { jput('baby-join', { home: join.home, code: join.code, t: Date.now() }); Social.begin(AUTH.url, d.p); }
+  else if (act === 'waitnow') waitPoll(true);
+  else if (act === 'approveask') { const p = famPending.find(x => x.rid === d.rid); if (p) approveDlg(p); }
+  else if (act === 'approve') {
+    if (!d.ok && !confirm('거절할까요? 그 사람은 들어오지 못하고 초대 링크도 끝나요.')) return true;
+    try { famPending = (await famCall(bound, 'approve', { body: { rid: d.rid, ok: Boolean(d.ok) } })).pending; dlg.close(); toast(d.ok ? '들어오게 했어요' : '거절했어요'); famPull(); } catch (e) { toast(e.message); }
+  }
+  else if (act === 'uninvite') { try { famInvites = (await famCall(bound, 'uninvite', { body: { id: d.id } })).invites; familyDlg(); toast('초대를 취소했어요'); } catch (e) { toast(e.message); } }
   else if (act === 'mynote') { ob.mine = true; render(); }
   else return false;
   return true;
@@ -339,6 +431,6 @@ async function famForms(f) {
   return true;
 }
 if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && ready && bound && started) famPull(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && ready && bound && started) famPull(); if (!document.hidden && ready) waitPoll(); });
   setInterval(() => { if (!document.hidden && ready && bound && started && !dlg.open) famPull(); else if (!document.hidden && vis && tab === 'visit') famCall(vis, 'talk').then(t => { vis.talk = t; talkPaint(); }).catch(() => { }); }, 20000);
 }

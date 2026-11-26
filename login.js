@@ -12,8 +12,10 @@
     if (!NAME[p] || !saved || saved.p !== p || saved.state !== q.get('state') || now - saved.t > 15 * 60000) return { error: '로그인을 확인하지 못했어요. 다시 시도해 주세요.' };
     if (q.get('error')) return { error: q.get('error') === 'cancel' ? '로그인을 취소했어요. 로그인하지 않아도 계속 쓸 수 있어요.' : `${NAME[p]} 로그인에 실패했어요. 다시 시도해 주세요.` };
     const id = q.get('id') || ''; if (!/^[\w-]{1,80}$/.test(id)) return { error: '로그인을 확인하지 못했어요. 다시 시도해 주세요.' };
-    return { acct: { provider: p, id, name: (q.get('name') || '').slice(0, 40) } };
+    return { acct: Object.assign({ provider: p, id, name: (q.get('name') || '').slice(0, 40) }, tokOf(q.get('tok'))) };
   }
+  // 가족 수첩 서버가 확인하는 서명된 확인표(7일). 모양만 보고 그대로 둔다.
+  const tokOf = t => typeof t === 'string' && t.length < 3000 && /^[\w-]+\.[\w-]+$/.test(t) ? { tok: t, tokAt: Date.now() } : {};
   const hex = u => Array.from(new Uint8Array(u), b => b.toString(16).padStart(2, '0')).join('');
   async function begin(base, p) {
     const state = hex(crypto.getRandomValues(new Uint8Array(16))), v = hex(crypto.getRandomValues(new Uint8Array(32))), c = hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v)));
@@ -22,7 +24,7 @@
   const ask = (base, s) => fetch(base + '/result', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ state: s.state, v: s.v }), signal: AbortSignal.timeout(8000) }).then(r => r.json());
   // 로그인이 다른 창에서 끝났을 때 서버에 맡겨진 결과를 가져온다.
   function readResult(j, saved) {
-    if (j.stage === 'done' && j.provider === saved.p && /^[\w-]{1,80}$/.test(j.id || '')) return { acct: { provider: j.provider, id: j.id, name: String(j.name || '').slice(0, 40) } };
+    if (j.stage === 'done' && j.provider === saved.p && /^[\w-]{1,80}$/.test(j.id || '')) return { acct: Object.assign({ provider: j.provider, id: j.id, name: String(j.name || '').slice(0, 40) }, tokOf(j.tok)) };
     if (j.stage === 'fail') return { error: j.error === 'cancel' ? '로그인을 취소했어요. 로그인하지 않아도 계속 쓸 수 있어요.' : `${NAME[saved.p]} 로그인에 실패했어요. 다시 시도해 주세요.` };
     return null;
   }
@@ -68,7 +70,8 @@ const canLogin = () => Boolean(local && (GOOGLE_ID || AUTH.url && (AUTH.kakao ||
 // 로그인하러 갔다가 앱으로 돌아왔을 때 결과를 이어받는다.
 async function resumeSocial() {
   const r = await Social.resume(AUTH.url); if (!r) return false;
-  toast(r.error || `${Social.NAME[r.acct.provider]}로 로그인했어요`); if (!started) ob.step = ''; if (!dlg.open) render(); return true;
+  toast(r.error || `${Social.NAME[r.acct.provider]}로 로그인했어요`); if (!started) ob.step = ''; if (!dlg.open || join) render();
+  if (r.acct) famRestore(); return true;
 }
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => { if (!document.hidden && ready) resumeSocial(); });

@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.10.3';
+const APP_VERSION = '0.11.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -985,6 +985,7 @@ async function load() { const s = await api('/api/state'); rev = s.rev; db = Obj
     if (local && !back && Drive.token() && !Drive.account()) Drive.me().then(() => { if (!dlg.open) { if (!started) ob.step = ''; render(); } }).catch(() => { });
     if (local && await joinCheck()) render();
     if (local && bound && started) famPull();
+    if (local) { waitPoll(); if (soc && soc.acct || !bound && !visits.length) famRestore(); } // 새 기기에서 로그인하면 들어가 있던 가족 수첩을 다시 연다
     hideSplash(); if (local) { checkAuth(); if (!soc) resumeSocial(); }
     const bell = new URLSearchParams(location.search).has('alerts'); if (bell) history.replaceState(null, '', location.pathname);
     if (bell && started) setTimeout(alertsDlg, 1500);

@@ -10,7 +10,7 @@ export class Box {
   async take(c) {
     const own = await this.s.get('c'); if (!own || own !== c) return { stage: 'none' };
     const r = await this.s.get('r'); if (!r) return { stage: 'wait' };
-    const p = await this.s.get('p'); if (r.id) { await this.s.deleteAll(); return { stage: 'done', provider: p, id: r.id, name: r.name }; }
+    const p = await this.s.get('p'); if (r.id) { await this.s.deleteAll(); return { stage: 'done', provider: p, id: r.id, name: r.name, tok: r.tok }; }
     return { stage: 'fail', error: r.error };
   }
   clear() { return this.s.deleteAll(); }
