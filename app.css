@@ -247,3 +247,9 @@ nav button{color:#4f3f3a;text-shadow:0 0 6px rgb(255 255 255/.7)}
 nav button[aria-current=page]{background:linear-gradient(135deg,rgb(255 255 255/.55),rgb(255 255 255/.22));box-shadow:inset 0 1px 1px rgb(255 255 255/.8),0 2px 8px rgb(60 40 30/.1);color:#3b2c25}
 .albseg button:not([aria-selected=true]){text-shadow:0 0 6px rgb(255 255 255/.7)}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){nav,.totop,.albseg{background:rgb(255 252 247/.94)}}
+/* 완전 투명: 색은 빼고 살짝 흐림과 테두리 빛만 */
+nav,.totop,.albseg{background:transparent;-webkit-backdrop-filter:blur(10px) saturate(1.5);backdrop-filter:blur(10px) saturate(1.5);border:1px solid rgb(255 255 255/.6);box-shadow:0 8px 24px rgb(60 40 30/.12),inset 0 1px 1px rgb(255 255 255/.6)}
+nav button[aria-current=page]{background:rgb(255 255 255/.22);box-shadow:inset 0 1px 1px rgb(255 255 255/.7)}
+/* 위쪽 단추 줄: + 와 메뉴, 사진 찍기 카메라 단추 */
+.albbtns{display:flex;gap:10px}.albhead .sq{width:46px;height:46px}
+.camb{min-width:60px;padding:0 18px}.camb svg{width:26px;height:26px}

@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.11.17';
+const APP_VERSION = '0.11.18';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -256,7 +256,7 @@ new MutationObserver(markBlank).observe(document.body, { childList: true, subtre
 const thumb = p => `<button type="button" data-act="photo" data-id="${p.id}" aria-label="${kd(p.date)} ${p.type ? '동영상' : '사진'}"><img ${pic(p.id, 1)} alt="${esc(p.caption || kd(p.date) + ' 사진')}"></button>`;
 function records() {
   const ds = Family.forKid(db.diary, K().id).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
-  return (ds.length ? ds.map(x => `<article class="paper"><div class="row between"><div><h2>${kd(x.date)}</h2><span class="sub">${stageOf(x.date)}</span></div>${many() && !x.kid ? tag('') : ''}<button class="btn" data-act="write" data-id="${x.id}">고치기</button></div>${x.body ? `<p class="body">${esc(x.body)}</p>` : ''}${x.photos.length ? `<div class="grid">${x.photos.map(id => db.photos.find(p => p.id === id)).filter(Boolean).map(thumb).join('')}</div>` : ''}${talkBar(Fam.target('diary', x.id))}</article>`).join('') : `<div class="empty">${icon('diary', 'xl')}<p>아직 쓴 일기가 없어요.<br>${K().born ? '오늘 있었던 일을' : '기다리는 마음을'} 적어 보세요.</p></div>`) + `<button class="fab ico" data-act="write" aria-label="일기 쓰기">${icon('plus')}</button>`;
+  return `<div class="albtop"><div class="albhead"><h2>일기</h2><button class="sq" data-act="write" aria-label="일기 쓰기">${icon('plus')}</button></div></div>` + (ds.length ? ds.map(x => `<article class="paper"><div class="row between"><div><h2>${kd(x.date)}</h2><span class="sub">${stageOf(x.date)}</span></div>${many() && !x.kid ? tag('') : ''}<button class="btn" data-act="write" data-id="${x.id}">고치기</button></div>${x.body ? `<p class="body">${esc(x.body)}</p>` : ''}${x.photos.length ? `<div class="grid">${x.photos.map(id => db.photos.find(p => p.id === id)).filter(Boolean).map(thumb).join('')}</div>` : ''}${talkBar(Fam.target('diary', x.id))}</article>`).join('') : `<div class="empty">${icon('diary', 'xl')}<p>아직 쓴 일기가 없어요.<br>${K().born ? '오늘 있었던 일을' : '기다리는 마음을'} 적어 보세요.</p></div>`) ;
 }
 
 /* ── 육아 팁 ── */
@@ -492,7 +492,7 @@ function mission() {
   if (!k.born) return `<section class="notice"><b>매일 얼굴 사진 미션</b><p class="sub">태어난 날부터 1일차, 2일차 얼굴 사진을 하루 한 장씩 모아요. 나중에 성장 앨범 영상으로 만들 수 있어요.</p></section>`;
   const n = dayNo(k, t); if (n < 1) return '';
   const f = facesOf(k).find(x => x.date === t), cnt = facesOf(k).length;
-  return `<section class="hero"><div class="mission">${f ? `<button class="face on" data-act="face" data-id="${f.id}" aria-label="오늘 찍은 얼굴 사진"><img ${pic(f.id, 1)} alt="${n}일차 얼굴 사진"></button>` : `<button class="face" data-act="faceask" data-d="${t}" aria-label="${n}일차 사진 넣기">${icon('cam')}</button>`}<div class="stack" style="gap:6px"><h3>오늘의 미션</h3><h2>${f ? `${n}일차 사진을 찍었어요` : `${n}일차 얼굴 사진 찍기`}</h2><p class="sub">지금까지 ${cnt}장 모았어요.${nextDay(k)}</p></div></div><div class="row">${f ? '' : `<button class="btn main" data-act="faceadd" data-d="${t}" data-cam="1">사진 찍기</button><button class="btn" data-act="faceadd" data-d="${t}">앨범에서 고르기</button>`}${tab === 'grow' ? (cnt ? '<button class="btn" data-act="growview">성장 앨범 보기</button>' : '') : '<button class="btn" data-act="grow">성장 앨범 보기</button>'}</div></section>`;
+  return `<section class="hero"><div class="mission">${f ? `<button class="face on" data-act="face" data-id="${f.id}" aria-label="오늘 찍은 얼굴 사진"><img ${pic(f.id, 1)} alt="${n}일차 얼굴 사진"></button>` : `<button class="face" data-act="faceask" data-d="${t}" aria-label="${n}일차 사진 넣기">${icon('cam')}</button>`}<div class="stack" style="gap:6px"><h3>오늘의 미션</h3><h2>${f ? `${n}일차 사진을 찍었어요` : `${n}일차 얼굴 사진 찍기`}</h2><p class="sub">지금까지 ${cnt}장 모았어요.${nextDay(k)}</p></div></div><div class="row">${f ? '' : `<button class="btn main camb" data-act="faceadd" data-d="${t}" data-cam="1" aria-label="사진 찍기">${icon('cam')}</button><button class="btn" data-act="faceadd" data-d="${t}">앨범에서 고르기</button>`}${tab === 'grow' ? (cnt ? '<button class="btn" data-act="growview">성장 앨범 보기</button>' : '') : '<button class="btn" data-act="grow">성장 앨범 보기</button>'}</div></section>`;
 }
 function growth() {
   const k = K(), t = today();
@@ -502,7 +502,7 @@ function growth() {
   const miss = Array.from({ length: Math.min(14, n) }, (_, i) => S.addDays(t, -i)).filter(d => d >= k.birth && !has.has(d));
   const cells = fs.map(f => ({ d: f.date, f })).concat(miss.map(d => ({ d }))).sort((a, b) => a.d < b.d ? 1 : -1);
   return mission() + driveBar() + `<section class="stack"><div class="row between"><h2>성장 앨범 ${fs.length}장</h2><button class="btn main" data-act="video" ${fs.length < 2 ? 'disabled' : ''}>성장 영상 만들기</button></div><p class="sub">${fs.length < 2 ? '얼굴 사진이 두 장부터 영상을 만들 수 있어요. ' : ''}여기 사진은 사진첩과 따로 저장돼요. 빈칸을 누르면 지난 날짜 사진도 넣을 수 있어요.</p>
-    <div class="grid">${cells.map(c => c.f ? `<button data-act="face" data-id="${c.f.id}" aria-label="${dayNo(k, c.d)}일차 사진"><img ${pic(c.f.id, 1)} alt="${dayNo(k, c.d)}일차 얼굴 사진"><span class="d">${dayNo(k, c.d)}일차</span></button>` : `<button class="miss" data-act="faceask" data-d="${c.d}" aria-label="${dayNo(k, c.d)}일차 사진 넣기">${dayNo(k, c.d)}일차<br>넣기</button>`).join('')}</div><div class="row"><button class="btn" data-act="faceadd">다른 날짜 사진 넣기</button></div></section>${n > 0 ? `<button class="fab ico" data-act="faceadd" data-d="${t}" data-cam="1" aria-label="${has.has(t) ? '오늘 다시 찍기' : '오늘 사진 찍기'}">${icon('cam')}</button>` : ''}`;
+    <div class="grid">${cells.map(c => c.f ? `<button data-act="face" data-id="${c.f.id}" aria-label="${dayNo(k, c.d)}일차 사진"><img ${pic(c.f.id, 1)} alt="${dayNo(k, c.d)}일차 얼굴 사진"><span class="d">${dayNo(k, c.d)}일차</span></button>` : `<button class="miss" data-act="faceask" data-d="${c.d}" aria-label="${dayNo(k, c.d)}일차 사진 넣기">${dayNo(k, c.d)}일차<br>넣기</button>`).join('')}</div><div class="row"><button class="btn" data-act="faceadd">다른 날짜 사진 넣기</button></div></section>`;
 }
 // 얼굴 사진을 날짜 순서로 한 장씩 넘겨 본다.
 let gv = null;

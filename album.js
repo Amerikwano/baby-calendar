@@ -40,14 +40,13 @@ function album() {
   const all = albPhotos(), ys = Album.years(all), ty = today().slice(0, 4);
   if (!albYear || !ys.includes(albYear)) albYear = ys[0] || ty;
   const ms = Album.months(all, albYear); if (albView !== 'col' && !ms.includes(albView)) albView = 'col';
-  const top = `<div class="albtop">${albSeg()}<div class="albhead">${albView === 'col' ? '<h2>컬렉션</h2>' : `<button class="yearpill" data-act="years">${albYear}${icon('down', 's')}</button>`}<button class="sq" data-act="albmenu" aria-label="앨범 메뉴">${icon('more')}</button></div>
+  const top = `<div class="albtop">${albSeg()}<div class="albhead">${albView === 'col' ? '<h2>컬렉션</h2>' : `<button class="yearpill" data-act="years">${albYear}${icon('down', 's')}</button>`}<div class="albbtns"><button class="sq" data-act="addphotos" aria-label="사진·동영상 추가">${icon('plus')}</button><button class="sq" data-act="albmenu" aria-label="앨범 메뉴">${icon('more')}</button></div></div>
     <div class="mtabs" role="group" aria-label="월 고르기"><button data-act="albview" data-v="col" aria-label="컬렉션" aria-pressed="${albView === 'col'}">${icon('grid')}</button>${ms.map(m => `<button data-act="albview" data-v="${m}" aria-pressed="${albView === m}">${Number(m.slice(5))}월</button>`).join('')}</div></div>`;
-  const fab = `<button class="fab ico" data-act="addphotos" aria-label="사진·동영상 추가">${icon('plus')}</button>`;
-  if (!all.length) return top + `<div class="empty">${icon('album', 'xl')}<p>아직 사진이 없어요.<br>첫 사진을 넣어 보세요.</p></div>` + collections([], ys) + fab;
-  if (albView === 'col') return top + collections(all, ys) + driveBar() + fab;
+  if (!all.length) return top + `<div class="empty">${icon('album', 'xl')}<p>아직 사진이 없어요.<br>첫 사진을 넣어 보세요.</p></div>` + collections([], ys);
+  if (albView === 'col') return top + collections(all, ys) + driveBar();
   const l = all.filter(p => Album.mon(p) === albView), c = Album.cover(l), old = albView === today().slice(0, 7) ? Album.onThisDay(all, today()) : null, m = Number(albView.slice(5));
   return top + `<section class="cover bleed"><button data-act="photo" data-id="${c.id}" aria-label="${m}월 대표 사진"><img ${pic(c.id, c.type ? 1 : 0)} alt=""></button><div class="cap"><b>${m}월</b><span>${EN[m - 1]}</span><em>${esc(sinceBirth(lastDay(albView)))}</em></div>${old ? `<button class="old" data-act="photo" data-id="${old.p.id}"><img ${pic(old.p.id, 1)} alt=""><span>${old.ago}년 전 ${old.gap ? '이맘때' : '오늘'}</span></button>` : ''}</section>
-    <div class="mosaic bleed">${l.map((p, i) => cell(p, Album.big(i, l.length) ? 'big' : '')).join('')}</div>` + fab;
+    <div class="mosaic bleed">${l.map((p, i) => cell(p, Album.big(i, l.length) ? 'big' : '')).join('')}</div>`;
 }
 function collections(all, ys) {
   const fav = all.filter(p => p.fav);
