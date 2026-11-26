@@ -871,7 +871,12 @@ function navDrop(...kinds) { let n = 0; while (navStack.length && kinds.includes
 window.addEventListener('popstate', () => {
   if (navSkip) { navSkip--; return; }
   const top = navStack.pop(); if (top) top.undo();
+  repaintSoon();
 });
+// 아이폰은 밀어서 뒤로 간 뒤 위쪽 막대(고정)와 옆으로 미는 줄을 그리지 않고 비워 둘 때가 있다. 화면을 한 번 통째로 다시 그리게 한다.
+function repaint() { const h = document.documentElement, y = scrollY; h.style.display = 'none'; void h.offsetHeight; h.style.display = ''; scrollTo(0, y); }
+function repaintSoon() { if (!/iPhone|iPad|iPod/.test(navigator.userAgent)) return; requestAnimationFrame(repaint); setTimeout(repaint, 450); }
+document.addEventListener('visibilitychange', () => { if (!document.hidden) repaintSoon(); });
 // 화면의 뒤로 단추
 function navBack(fallback) { if (navStack.length && navStack[navStack.length - 1].kind === 'sub') history.back(); else fallback(); }
 // 창(사진 보기 포함)이 열리면 기록에 하나, 다 닫히면 뺀다.
