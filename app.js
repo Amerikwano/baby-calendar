@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.11.6';
+const APP_VERSION = '0.11.7';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -1040,9 +1040,11 @@ async function load() { const s = await api('/api/state'); rev = s.rev; db = Obj
     if (started && K().photo) { const u = local ? await Local.photoUrl(K().photo, true).catch(() => '') : `photos/${K().photo}/thumb`; if (u) $('#splashFace').innerHTML = `<img src="${u}" alt="">`; }
     if (local && !back && Drive.token() && Drive.account()) syncNow().catch(() => { });
     if (local && !back && Drive.token() && !Drive.account()) Drive.me().then(() => { if (!dlg.open) { if (!started) ob.step = ''; render(); } }).catch(() => { });
+    // 갤럭시 카카오톡 안에서 초대 링크를 열면 휴대폰으로 넘긴다. 앱을 설치했으면 앱이, 없으면 크롬이 연다.
+    if (local && IN_APP === 'kakao' && /Android/i.test(navigator.userAgent) && /[?&]join=/.test(location.search) && !sessionStorage.getItem('baby-ext')) { sessionStorage.setItem('baby-ext', '1'); location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(location.href); }
     if (local && await joinCheck()) render();
     if (local && bound && started) famPull();
-    if (local) { waitPoll(); if (soc && soc.acct || !bound && !visits.length) famRestore(); } // 새 기기에서 로그인하면 들어가 있던 가족 수첩을 다시 연다
+    if (local) { waitPoll(); famRestore(); } // 카카오로 로그인해 둔 사람은 들어가 있는 가족 수첩과 놀러 갈 집을 다시 맞춘다 // 새 기기에서 로그인하면 들어가 있던 가족 수첩을 다시 연다
     hideSplash(); if (local) { checkAuth(); if (!soc) resumeSocial(); }
     const bell = new URLSearchParams(location.search).has('alerts'); if (bell) history.replaceState(null, '', location.pathname);
     if (bell && started) setTimeout(alertsDlg, 1500);

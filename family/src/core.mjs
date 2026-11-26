@@ -146,9 +146,16 @@ export class HomeCore {
       if (this.now - x.at >= WAIT_DAYS * DAY) { await this.s.delete(k); return [200, { stage: 'none' }]; }
       if (x.no) { await this.s.delete(k); return [200, { stage: 'no' }]; }
       if (!x.ok) return [200, { stage: 'wait' }];
-      await this.s.delete(k);
-      const m = await this.addMember(x.role, x.nick, { k: x.k, kname: x.kname, kimg: x.kimg, kp: x.kp }), meta = await this.meta();
-      return [200, { stage: 'ok', token: m.token, id: m.id, role: x.role, nick: x.nick, name: meta.name, _link: { k: x.k, role: x.role, name: meta.name } }];
+      // 승인된 뒤 처음 물으면 가족으로 넣는다. 응답이 끊겨 다시 물어도 같은 사람의 새 열쇠를 준다(며칠 동안).
+      const meta = await this.meta(), link = { k: x.k, role: x.role, name: meta.name };
+      if (x.mh) {
+        const m = await this.s.get('m:' + x.mh); if (!m) { await this.s.delete(k); return [200, { stage: 'none' }]; }
+        const token = rand(32); await this.s.put('tk:' + await sha(token), x.mh);
+        return [200, { stage: 'ok', token, id: m.id, role: m.role, nick: m.nick, name: meta.name, _link: link }];
+      }
+      const m = await this.addMember(x.role, x.nick, { k: x.k, kname: x.kname, kimg: x.kimg, kp: x.kp });
+      x.mh = await sha(m.token); await this.s.put(k, x);
+      return [200, { stage: 'ok', token: m.token, id: m.id, role: x.role, nick: x.nick, name: meta.name, _link: link }];
     }
     return [200, { stage: 'none' }];
   }

@@ -28,7 +28,10 @@ async function server() {
     assert.equal((await call(H + '/wait', { method: 'POST', body: { ticket: j.body.ticket } })).body.stage, 'wait');
     const p = (await call(H + '/state', { token: approver })).body.pending; const rid = p.find(x => x.nick === nick).rid;
     await call(H + '/approve', { method: 'POST', token: approver, body: { rid, ok: true } });
-    const w = (await call(H + '/wait', { method: 'POST', body: { ticket: j.body.ticket } })).body; assert.equal(w.stage, 'ok'); return w;
+    const w = (await call(H + '/wait', { method: 'POST', body: { ticket: j.body.ticket } })).body; assert.equal(w.stage, 'ok');
+    // 응답이 끊겨 다시 물어도 같은 사람으로 다시 들어온다
+    const w2 = (await call(H + '/wait', { method: 'POST', body: { ticket: j.body.ticket } })).body; assert.equal(w2.stage, 'ok'); assert.equal(w2.id, w.id);
+    assert.equal((await call(H + '/state', { token: w2.token })).status, 200); return w;
   };
   return { call, homes, who, enter, tick: ms => { now += ms; } };
 }

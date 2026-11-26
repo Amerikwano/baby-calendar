@@ -254,7 +254,8 @@ async function joinCheck() {
 function joinView() {
   const edit = join.role === 'editor', a = Social.account(), tok = myTok();
   if (join.wait) return `<section class="ob join"><div class="obmid"><div class="ring">${FACE}</div><h1>승인을 기다리고 있어요</h1><p>${join.by ? esc(join.by) + '에게' : '초대한 분에게'} <b>${esc(join.name)}</b>에 들어가도 되는지 물어봤어요.<br>카카오 이름과 사진을 확인하고 승인하면 바로 열려요.</p><p class="sub">이 화면을 닫아도 돼요. 앱을 다시 열면 이어서 확인해요.</p></div><div class="stack"><button type="button" class="soc kakao" style="background:var(--ink);color:#fff" data-act="waitnow">지금 확인하기</button><button type="button" class="soc plain" data-act="joinno">다음에 확인할게요</button></div></section>`;
-  if (!tok) return `<section class="ob join"><div class="obmid"><div class="ring">${FACE}</div><h1>${esc(join.name)}${edit ? ' 수첩에<br>함께 기록해요' : '에<br>놀러 오세요'}</h1><p>${join.by ? esc(join.by) + '가 ' : ''}초대했어요.<br>초대받은 사람이 맞는지 확인하려고 카카오로 로그인해요.</p><p class="sub">${join.by ? esc(join.by) + '가' : '초대한 분이'} 내 카카오 이름과 사진을 보고 승인하면 들어가요. 카카오 이름과 사진은 이 가족 수첩에서 함께 쓰는 가족에게만 보여요.</p></div><div class="stack"><button type="button" class="soc kakao" data-act="joinlogin" data-p="kakao">${KAKAO_MARK}카카오로 로그인하고 들어가기</button>${AUTH.naver ? `<button type="button" class="soc naver" data-act="joinlogin" data-p="naver">${NAVER_MARK}네이버로 로그인하고 들어가기</button>` : ''}<button type="button" class="soc plain" data-act="joinno">다음에 할게요</button></div></section>`;
+  const appTip = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(navigator.standalone === true) ? `<div class="notice apptip"><b>홈 화면에 아기 수첩 앱이 있나요?</b><p class="sub">앱에서 보려면 링크를 복사하고, 앱의 더보기 → <b>초대 링크로 들어가기</b>에 붙여 넣어요. 여기서 들어가도 앱에서 같은 카카오로 로그인하면 보여요.</p><button type="button" class="btn" data-act="copyjoin">초대 링크 복사</button></div>` : '';
+  if (!tok) return `<section class="ob join"><div class="obmid"><div class="ring">${FACE}</div><h1>${esc(join.name)}${edit ? ' 수첩에<br>함께 기록해요' : '에<br>놀러 오세요'}</h1><p>${join.by ? esc(join.by) + '가 ' : ''}초대했어요.<br>초대받은 사람이 맞는지 확인하려고 카카오로 로그인해요.</p><p class="sub">${join.by ? esc(join.by) + '가' : '초대한 분이'} 내 카카오 이름과 사진을 보고 승인하면 들어가요. 카카오 이름과 사진은 이 가족 수첩에서 함께 쓰는 가족에게만 보여요.</p></div><div class="stack"><button type="button" class="soc kakao" data-act="joinlogin" data-p="kakao">${KAKAO_MARK}카카오로 로그인하고 들어가기</button>${AUTH.naver ? `<button type="button" class="soc naver" data-act="joinlogin" data-p="naver">${NAVER_MARK}네이버로 로그인하고 들어가기</button>` : ''}<button type="button" class="soc plain" data-act="joinno">다음에 할게요</button>${appTip}</div></section>`;
   const me = `<p class="sub">${esc(a.name || Social.NAME[a.provider] + ' 계정')}(${Social.NAME[a.provider]})로 확인했어요.</p>`;
   return `<form class="ob join" data-form="join"><div class="obmid"><div class="ring">${FACE}</div><h1>${esc(join.name)}${edit ? ' 수첩에<br>함께 기록해요' : '에<br>놀러 오세요'}</h1><p>${join.by ? esc(join.by) + '가 ' : ''}${edit ? '초대했어요. 같은 기록을 같이 보고 고칠 수 있어요.' : '초대했어요. 아기 일기와 사진을 보고 댓글을 달 수 있어요.'}</p></div><div class="stack"><b>${edit ? '나는 아기의' : '가족에게 보일 별명'}</b>${edit ? nickPick(myNick()) : '<input name="nickx" maxlength="12" placeholder="예: 할머니, 이모, 삼촌" autocomplete="off" required>'}${me}${edit && started ? '<p class="sub">이 기기에 쓰던 기록 대신 초대받은 수첩을 써요. 지금 기록은 따로 보관해 둬요.</p>' : ''}<button class="soc kakao" style="background:var(--ink);color:#fff">${edit ? '함께 쓰기 요청' : '놀러 가기 요청'}</button><button type="button" class="soc plain" data-act="joinno">다음에 할게요</button></div></form>`;
 }
@@ -309,6 +310,7 @@ async function waitPoll(loud) {
       if (r.stage === 'wait') { if (loud) toast('아직 승인을 기다리고 있어요'); continue; }
       waits = waits.filter(x => x !== w); jput('baby-waits', waits);
       if (join && join.wait === w.ticket) { join = null; render(); }
+      if (r.stage === 'none' && await famRestore()) continue; // 승인됐는데 답을 못 받았을 수도 있다: 카카오 계정으로 다시 찾아본다
       toast(r.stage === 'no' ? `${w.name}에 들어가지 못했어요. 초대한 분께 다시 물어봐 주세요.` : `${w.name} 초대가 끝났어요. 새 링크를 받아 주세요.`);
     }
   } finally { waitBusy = false; }
@@ -316,16 +318,19 @@ async function waitPoll(loud) {
 }
 // 새 기기에서 로그인했을 때, 이 카카오 계정이 들어가 있던 가족 수첩에 다시 들어간다.
 async function famRestore() {
-  const tok = myTok(); if (!tok || join) return;
-  let homes; try { homes = (await famCall(null, 'mine', { body: { tok } })).homes || []; } catch { return; }
+  const tok = myTok(); if (!tok || join) return 0;
+  let homes, got = 0; try { homes = (await famCall(null, 'mine', { body: { tok } })).homes || []; } catch { return 0; }
   for (const x of homes) {
     if (bound && bound.id === x.home || visits.some(v => v.id === x.home)) continue;
-    if (x.role !== 'viewer' && (bound || started && !confirm(`${x.name} 가족 수첩에 다시 들어갈까요?\n이 기기에 쓰던 기록 대신 가족 수첩을 써요. 지금 기록은 따로 보관해 둬요.`))) continue;
+    const no = jget('baby-restore-no') || []; if (x.role !== 'viewer' && no.includes(x.home)) continue;
+    if (x.role !== 'viewer' && (bound || started && !(confirm(`${x.name} 가족 수첩에 다시 들어갈까요?\n이 기기에 쓰던 기록 대신 가족 수첩을 써요. 지금 기록은 따로 보관해 둬요.`) || (jput('baby-restore-no', no.concat(x.home)), false)))) continue;
     const r = await famCall({ id: x.home }, 'back', { body: { tok } }).catch(() => null); if (!r) continue;
     const h = { id: x.home, token: r.token, role: r.role, mid: r.id, name: r.name, linked: true };
-    if (r.role === 'viewer') { visits = visits.filter(v => v.id !== h.id).concat([Object.assign(h, { nick: r.nick })]); jput('baby-visits', visits); toast(`${r.name}에 다시 놀러 갈 수 있어요`); render(); }
+    got++;
+    if (r.role === 'viewer') { visits = visits.filter(v => v.id !== h.id).concat([Object.assign(h, { nick: r.nick })]); jput('baby-visits', visits); toast(`${r.name}에 놀러 갈 수 있어요`); render(); }
     else await famEnter(h, r.nick);
   }
+  return got;
 }
 
 /* ── 놀러가기 ── */
@@ -411,6 +416,8 @@ async function famActs(act, b) {
   else if (act === 'vview') { vis.view = d.v; render(); }
   else if (act === 'vphoto') { const list = () => [...(vis.data.photos || [])].sort((a, b) => a.date < b.date ? 1 : -1); viewPhoto('visit', d.id, list); }
   else if (act === 'joinno') { join = null; render(); }
+  else if (act === 'copyjoin') { const u = `${Share.APP}?join=${join.home}.${join.code}`; try { await navigator.clipboard.writeText(u); toast('초대 링크를 복사했어요. 앱에서 붙여 넣어 주세요.'); } catch { prompt('이 링크를 복사해 주세요', u); } }
+  else if (act === 'pastejoin') openDlg(`<form data-form="pastejoin"><h2>초대 링크로 들어가기</h2><p class="sub">카카오톡으로 받은 초대 링크를 길게 눌러 복사한 뒤 아래에 붙여 넣어요.</p><input name="u" placeholder="https://…?join=…" autocomplete="off" required><button class="btn main">들어가기</button></form>`);
   else if (act === 'joinlogin') { jput('baby-join', { home: join.home, code: join.code, t: Date.now() }); Social.begin(AUTH.url, d.p); }
   else if (act === 'waitnow') waitPoll(true);
   else if (act === 'approveask') { const p = famPending.find(x => x.rid === d.rid); if (p) approveDlg(p); }
@@ -432,6 +439,10 @@ async function famForms(f) {
   } else if (k === 'nick') await saveNick(f);
   else if (k === 'who') { const n = readNick(f); if (!n) { toast('나는 아기의 누구인지 골라 주세요'); return true; } jput('baby-me', { nick: n }); ob.step = 'choose'; render(); scrollTo(0, 0); }
   else if (k === 'join') await doJoin(f);
+  else if (k === 'pastejoin') {
+    const m = /[?&]join=([0-9a-f]{24}\.[0-9a-f]{24})/.exec(f.querySelector('[name=u]').value || ''); if (!m) { toast('초대 링크가 아니에요. 카카오톡에서 받은 링크를 그대로 붙여 넣어 주세요.'); return true; }
+    dlg.close(); history.replaceState(null, '', location.pathname + '?join=' + m[1]); if (await joinCheck()) render();
+  }
   else return false;
   return true;
 }
