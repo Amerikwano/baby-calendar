@@ -25,6 +25,7 @@ async function server() {
   // 초대 링크로 들어와서 승인받기
   const enter = async (H, c, nick, tok, approver) => {
     const j = await call(H + '/join', { method: 'POST', body: { c, nick, tok } }); assert.equal(j.status, 202, JSON.stringify(j.body));
+    assert.ok((await call(H + '/talk', { token: approver })).body.pending.some(p => p.nick === nick)); // 함께 쓰는 가족은 알림용으로 승인 요청을 본다
     assert.equal((await call(H + '/wait', { method: 'POST', body: { ticket: j.body.ticket } })).body.stage, 'wait');
     const p = (await call(H + '/state', { token: approver })).body.pending; const rid = p.find(x => x.nick === nick).rid;
     await call(H + '/approve', { method: 'POST', token: approver, body: { rid, ok: true } });

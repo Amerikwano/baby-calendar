@@ -50,7 +50,7 @@ async function talkPrime(list) {
   for (const h of list) {
     if (homes.has(h.id)) continue;
     const t = await famCall(h, 'talk').catch(() => null); if (!t) continue;
-    (t.notes || []).forEach(n => seen.add('n:' + n.id)); Object.entries(t.likes || {}).forEach(([tg, who]) => who.forEach(m => seen.add('l:' + h.id + tg + '|' + m)));
+    (t.notes || []).forEach(n => seen.add('n:' + n.id)); (t.pending || []).forEach(p => seen.add('p:' + h.id + p.rid)); Object.entries(t.likes || {}).forEach(([tg, who]) => who.forEach(m => seen.add('l:' + h.id + tg + '|' + m)));
     homes.add(h.id); changed = true;
   }
   if (changed) { await Local.setKV('talk-seen', [...seen].slice(-4000)).catch(() => { }); jput('baby-talk-primed', [...homes]); }
@@ -278,7 +278,7 @@ async function joinCheck() {
 // 초대받은 사람: 1) 카카오로 로그인 2) 별명 3) 승인 기다리기
 function joinView() {
   const edit = join.role === 'editor', a = Social.account(), tok = myTok();
-  if (join.wait) return `<section class="ob join"><div class="obmid"><div class="ring">${FACE}</div><h1>승인을 기다리고 있어요</h1><p>${join.by ? esc(join.by) + '에게' : '초대한 분에게'} <b>${esc(join.name)}</b>에 들어가도 되는지 물어봤어요.<br>카카오 이름과 사진을 확인하고 승인하면 바로 열려요.</p><p class="sub">이 화면을 닫아도 돼요. 앱을 다시 열면 이어서 확인해요.</p></div><div class="stack"><button type="button" class="soc kakao" style="background:var(--ink);color:#fff" data-act="waitnow">지금 확인하기</button><button type="button" class="soc plain" data-act="joinno">다음에 확인할게요</button></div></section>`;
+  if (join.wait) return `<section class="ob join"><div class="obmid"><div class="ring">${FACE}</div><h1>승인을 기다리고 있어요</h1><p>${join.by ? esc(join.by) + '에게' : '초대한 분에게'} <b>${esc(join.name)}</b>에 들어가도 되는지 물어봤어요.<br>카카오 이름과 사진을 확인하고 승인하면 바로 열려요.</p><p class="sub">이 화면을 닫아도 돼요. 앱을 다시 열면 이어서 확인해요.</p></div><div class="stack"><button type="button" class="soc kakao" data-act="waitkakao">${KAKAO_MARK}${join.by ? esc(join.by) + '에게' : '초대한 분께'} 카톡으로 알리기</button><button type="button" class="soc kakao" style="background:var(--ink);color:#fff" data-act="waitnow">지금 확인하기</button><button type="button" class="soc plain" data-act="joinno">다음에 확인할게요</button></div></section>`;
   const appTip = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(navigator.standalone === true) ? `<div class="notice apptip"><b>홈 화면에 아기 수첩 앱이 있나요?</b><p class="sub">앱에서 보려면 링크를 복사하고, 앱의 더보기 → <b>초대 링크로 들어가기</b>에 붙여 넣어요. 여기서 들어가도 앱에서 같은 카카오로 로그인하면 보여요.</p><button type="button" class="btn" data-act="copyjoin">초대 링크 복사</button></div>` : '';
   if (!tok) return `<section class="ob join"><div class="obmid"><div class="ring">${FACE}</div><h1>${esc(join.name)}${edit ? ' 수첩에<br>함께 기록해요' : '에<br>놀러 오세요'}</h1><p>${join.by ? esc(join.by) + '가 ' : ''}초대했어요.<br>초대받은 사람이 맞는지 확인하려고 카카오로 로그인해요.</p><p class="sub">${join.by ? esc(join.by) + '가' : '초대한 분이'} 내 카카오 이름과 사진을 보고 승인하면 들어가요. 카카오 이름과 사진은 이 가족 수첩에서 함께 쓰는 가족에게만 보여요.</p></div><div class="stack"><button type="button" class="soc kakao" data-act="joinlogin" data-p="kakao">${KAKAO_MARK}카카오로 로그인하고 들어가기</button>${AUTH.naver ? `<button type="button" class="soc naver" data-act="joinlogin" data-p="naver">${NAVER_MARK}네이버로 로그인하고 들어가기</button>` : ''}<button type="button" class="soc plain" data-act="joinno">다음에 할게요</button>${appTip}</div></section>`;
   const me = `<p class="sub">${esc(a.name || Social.NAME[a.provider] + ' 계정')}(${Social.NAME[a.provider]})로 확인했어요.</p>`;
@@ -446,6 +446,11 @@ async function famActs(act, b) {
   else if (act === 'pastejoin') openDlg(`<form data-form="pastejoin"><h2>초대 링크로 들어가기</h2><p class="sub">카카오톡으로 받은 초대 링크를 길게 눌러 복사한 뒤 아래에 붙여 넣어요.</p><input name="u" placeholder="https://…?join=…" autocomplete="off" required><button class="btn main">들어가기</button></form>`);
   else if (act === 'joinlogin') { jput('baby-join', { home: join.home, code: join.code, t: Date.now() }); Social.begin(AUTH.url, d.p); }
   else if (act === 'waitnow') waitPoll(true);
+  else if (act === 'waitkakao') { // 승인해 달라고 카톡으로 직접 보낸다(받는 사람은 내가 고른다)
+    const a = Social.account() || {}, url = `${Share.APP}?talk=${join.home}`, link = { mobileWebUrl: url, webUrl: url };
+    try { await loadKakao(); Kakao.Share.sendDefault({ objectType: 'feed', content: { title: `${join.name}에 들어가고 싶어요`, description: `${join.nick || '가족'}${a.name ? `(${a.name})` : ''}가 승인을 기다리고 있어요`, imageUrl: Share.APP + 'icon-512.png?v=2', imageWidth: 512, imageHeight: 512, link }, buttons: [{ title: '승인하러 가기', link }] }); }
+    catch { toast('카카오톡을 열지 못했어요'); }
+  }
   else if (act === 'approveask') { const p = famPending.find(x => x.rid === d.rid); if (p) approveDlg(p); }
   else if (act === 'approve') {
     if (!d.ok && !confirm('거절할까요? 그 사람은 들어오지 못하고 초대 링크도 끝나요.')) return true;

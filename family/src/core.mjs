@@ -128,6 +128,7 @@ export class HomeCore {
     const was = await this.s.get('pend:' + rid); // 같은 사람이 다시 열면 기다리던 것을 이어 간다
     await this.s.put('pend:' + rid, { rid, role: i.role, nick: nick.trim(), k: w.k, kname: w.kname, kimg: w.kimg, kp: w.kp, at: was ? was.at : this.now, t: await sha(ticket), by: i.by, inv: i.h, ok: Boolean(was && was.ok) });
     i.used = w.k; await this.s.put('inv:' + i.h, (({ h, ...x }) => x)(i));
+    if (!was) await this.ping({ id: '' }, true); // 함께 쓰는 가족에게 승인 요청 알림
     return [202, { wait: true, ticket, name: meta.name, role: i.role }];
   }
   // 승인을 기다리는 사람들 (오래된 것은 지운다)
@@ -201,16 +202,17 @@ export class HomeCore {
     if (!idOk(id)) return null; const key = `ph:${id}:${thumb ? 't' : 'f'}`, b = await this.getBig(key);
     return b ? { type: (await this.s.get(key + ':type')) || 'image/jpeg', bytes: b } : null;
   }
-  async talk() {
+  async talk(me) {
     const notes = [...(await this.s.list({ prefix: 'note:' })).values()], likes = {};
     for (const k of (await this.s.list({ prefix: 'like:' })).keys()) { const [t, who] = k.slice(5).split('|'); (likes[t] = likes[t] || []).push(who); }
     const nicks = Object.fromEntries((await this.members()).map(m => [m.id, m.nick]));
-    return [200, { notes: notes.sort((a, b) => a.at - b.at), likes, nicks }];
+    // 함께 쓰는 가족에게는 승인을 기다리는 사람도 알려 준다(휴대폰 알림용)
+    return [200, Object.assign({ notes: notes.sort((a, b) => a.at - b.at), likes, nicks }, me && EDIT.includes(me.role) ? { pending: (await this.pendings()).map(p => ({ rid: p.rid, nick: p.nick, kname: p.kname, role: p.role })) } : {})];
   }
   async like(me, b) {
     if (!b || !targetOk(b.target)) return [400, { error: 'target' }];
     const k = `like:${b.target}|${me.id}`; if (b.on) { if (!await this.s.get(k)) await this.ping(me, true); await this.s.put(k, 1); } else await this.s.delete(k);
-    return this.talk();
+    return this.talk(me);
   }
   async note(me, b) {
     if (!b || !targetOk(b.target) || typeof b.text !== 'string' || !b.text.trim() || b.text.length > 500) return [400, { error: 'note' }];
@@ -218,13 +220,13 @@ export class HomeCore {
     let parent = '';
     if (b.parent) { const p = all.get('note:' + b.parent); if (!p || p.target !== b.target) return [400, { error: 'parent' }]; parent = p.parent || p.id; } // 대댓글의 대댓글은 같은 댓글 아래에 붙인다
     const n = { id: rand(8), target: b.target, parent, who: me.id, nick: me.nick, text: b.text.trim(), at: this.now };
-    await this.s.put('note:' + n.id, n); await this.ping(me, false); return this.talk();
+    await this.s.put('note:' + n.id, n); await this.ping(me, false); return this.talk(me);
   }
   async unnote(me, b) {
     const n = b && typeof b.id === 'string' && await this.s.get('note:' + b.id); if (!n) return [404, { error: 'note' }];
     if (n.who !== me.id && me.role !== 'owner') return [403, { error: 'role' }];
     const kids = [...(await this.s.list({ prefix: 'note:' })).values()].filter(x => x.parent === n.id).map(x => 'note:' + x.id);
-    await this.s.delete(['note:' + n.id, ...kids]); return this.talk();
+    await this.s.delete(['note:' + n.id, ...kids]); return this.talk(me);
   }
   // 좋아요·댓글이 달리면 다른 가족의 휴대폰에 알린다(하트는 함께 쓰는 가족에게만). 잠시 모았다가 한 번에 보낸다.
   async ping(me, editorsOnly) {
@@ -269,7 +271,7 @@ export class HomeCore {
       if (what === 'approve' && m === 'POST') { if (!EDIT.includes(me.role)) return [403, { error: 'role' }]; return this.approve(await body()); }
       if (what === 'uninvite' && m === 'POST') { if (!EDIT.includes(me.role)) return [403, { error: 'role' }]; return this.uninvite(await body()); }
       if (what === 'link' && m === 'POST') return this.link(me, await body());
-      if (what === 'talk' && m === 'GET') return this.talk();
+      if (what === 'talk' && m === 'GET') return this.talk(me);
       if (what === 'like' && m === 'POST') return this.like(me, await body());
       if (what === 'note' && m === 'POST') return this.note(me, await body());
       if (what === 'unnote' && m === 'POST') return this.unnote(me, await body());

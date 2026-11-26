@@ -1,5 +1,5 @@
 // 수정할 때 CACHE와 index.html의 APP_VERSION을 함께 올린다.
-const CACHE = 'baby-notebook-v0.11.8';
+const CACHE = 'baby-notebook-v0.11.9';
 const FILES = ['./', 'index.html', 'schedule.js', 'base-benefits.js', 'base-tips.js', 'local.js', 'regions.js', 'family.js', 'hospitals.js', 'drive.js', 'login.js', 'share.js', 'icons.js', 'care.js', 'album.js', 'notice.js', 'bell.js', 'swipe.js', 'media.js', 'viewer.js', 'sync.js', 'home.js', 'onboard.js', 'app.js', 'app.css', 'manifest.webmanifest', 'icon-192.png', 'apple-touch-icon.png'];
 importScripts('schedule.js', 'family.js', 'local.js', 'notice.js');
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
@@ -23,10 +23,13 @@ async function talkNews() {
     let t; try { const r = await fetch(`${c.url}/h/${h.id}/talk`, { headers: { authorization: 'Bearer ' + h.token } }); if (!r.ok) continue; t = await r.json(); } catch { continue; }
     const nick = id => (t.nicks || {})[id] || '가족';
     for (const n of t.notes || []) { const k = 'n:' + n.id; if (seen.has(k)) continue; seen.add(k); if (n.who !== h.mid && now - n.at < 3600000 * (first ? 1 : 72)) news.push({ h, note: true, nick: n.nick, text: n.text }); }
+    for (const p of t.pending || []) { const k = 'p:' + h.id + p.rid; if (seen.has(k)) continue; seen.add(k); news.push({ h, ask: true, nick: p.nick, kname: p.kname }); }
     if (h.role !== 'viewer') for (const [tg, who] of Object.entries(t.likes || {})) for (const m of who) { const k = 'l:' + h.id + tg + '|' + m; if (seen.has(k)) continue; seen.add(k); if (m !== h.mid && !first) news.push({ h, nick: nick(m) }); }
   }
   await Local.setKV('talk-seen', [...seen].slice(-4000));
   if (!news.length) return null;
+  const ask = news.find(x => x.ask); // 승인 요청이 있으면 그것부터 알린다
+  if (ask) return { ids: ['talk:' + ask.h.id], title: `${ask.nick}${ask.kname ? `(${ask.kname})` : ''}가 들어오려고 해요`, body: `${ask.h.name} · 눌러서 승인해 주세요` };
   const home = news[0].h, one = news.length === 1 ? news[0] : null;
   return one ? { ids: ['talk:' + home.id], title: one.note ? `${one.nick}가 댓글을 남겼어요` : `${one.nick}가 하트를 눌렀어요`, body: (one.note ? one.text.slice(0, 80) + ' · ' : '') + home.name }
     : { ids: ['talk:' + home.id], title: `${home.name}에 새 소식 ${news.length}개`, body: news.slice(0, 4).map(x => `${x.nick} ${x.note ? '댓글' : '하트'}`).join(' · ') };

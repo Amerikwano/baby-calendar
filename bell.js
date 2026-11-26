@@ -63,8 +63,10 @@ function alertsDlg() {
 if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data === 'alerts' && ready && started) alertsDlg(); else if (typeof e.data === 'string' && e.data.startsWith('talk:') && ready) talkOpen(e.data.slice(5)); });
 // 좋아요·댓글 알림을 누르면 그 집의 일기를 연다.
 function talkOpen(id) {
-  if (bound && bound.id === id && started) { goTab('diary'); famPull(); return; }
-  if (visits.some(v => v.id === id)) openVisit(id);
+  if (bound && bound.id === id && started) { goTab('diary'); asked.clear(); famPull(); return; } // 승인 요청이 있으면 famPull이 승인 창을 띄운다
+  if (visits.some(v => v.id === id)) return openVisit(id);
+  // 카카오톡 안 브라우저처럼 가족 수첩이 없는 창에서 열었으면 앱을 열라고 알려 준다
+  openDlg(`<form data-form="none"><h2>앱에서 확인해 주세요</h2><p>이 창에는 가족 수첩이 없어요. 홈 화면의 <b>아기 수첩</b> 앱(또는 평소 쓰던 브라우저)을 열면 승인 창이 떠요.</p>${IN_APP === 'kakao' ? '<button type="button" class="btn main" data-act="external">크롬·사파리로 열기</button>' : ''}</form>`);
 }
 // 앱을 켜 둔 동안에도 새 알림이 생기면 종에 점을 찍는다.
 setInterval(() => { if (ready && started && !document.hidden && !dlg.open) $('#top').innerHTML = topBar(); }, 60000);
