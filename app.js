@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.11.23';
+const APP_VERSION = '0.11.24';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -93,6 +93,8 @@ function busy(title, sub, done, total) {
 function busyOff() { clearTimeout(busyWait); busyLock = false; if (busyDlg.open) busyDlg.close(); }
 // 파일 고르기. 아이폰은 화면에 붙어 있지 않은 칸의 결과를 버릴 수 있어, 다 고를 때까지 문서(열린 창이 있으면 그 안)에 붙여 둔다.
 let picker = null;
+// 사진만(동영상은 고르는 목록에 안 보이게). 'image/*'만 주면 휴대폰에 따라 동영상도 보여서 종류를 하나씩 적는다.
+const PHOTO_ONLY = 'image/jpeg,image/png,image/heic,image/heif,image/webp,image/gif,.jpg,.jpeg,.png,.heic,.heif,.webp';
 function pickFiles(o, done) {
   if (picker) picker.remove();
   const i = picker = document.createElement('input'); i.type = 'file'; i.className = 'vh'; i.tabIndex = -1; i.setAttribute('aria-hidden', 'true');
@@ -532,7 +534,7 @@ const shootBtns = (cam, pick) => `<div class="picks two2"><button type="button" 
 const addDlg = () => openDlg(`<form data-form="none"><h2>사진·동영상 추가</h2><div class="picks two2 three"><button type="button" data-act="albcam">${icon('cam', 'xl')}<b>사진 찍기</b></button><button type="button" data-act="albvid">${icon('video', 'xl')}<b>동영상 찍기</b></button><button type="button" data-act="albpick">${icon('album', 'xl')}<b>앨범에서 고르기</b></button></div><p class="sub">여기서 찍은 것은 아기 앨범에 오늘 날짜로 들어가요. 휴대폰 사진첩에도 두려면 열어서 내보내기를 눌러 주세요. 동영상은 하나에 200MB까지 넣을 수 있어요.</p></form>`);
 const faceAsk = d => openDlg(`<form data-form="none"><h2>${esc(K().name)} ${dayNo(K(), d)}일차</h2>${shootBtns(`data-act="faceadd" data-d="${d}" data-cam="1"`, `data-act="faceadd" data-d="${d}"`)}</form>`);
 function pickFace(date, cam) {
-  pickFiles({ capture: cam ? 'environment' : '' }, async ([f]) => cropDlg(f, date || await exifDate(f) || new Date(f.lastModified).toLocaleDateString('sv-SE'), !date));
+  pickFiles({ accept: PHOTO_ONLY, capture: cam ? 'environment' : '' }, async ([f]) => cropDlg(f, date || await exifDate(f) || new Date(f.lastModified).toLocaleDateString('sv-SE'), !date));
 }
 // 얼굴을 원 안에 맞춘다. 같은 자리에 맞춰 두면 영상이 매끄럽다.
 let crop = null;
@@ -880,7 +882,7 @@ async function moreActs(act, b, id) {
   else if (act === 'sharelink') shareLink();
   else if (act === 'faceask') faceAsk(d.d);
   else if (act === 'faceadd') pickFace(d.d || '', Boolean(d.cam));
-  else if (act === 'facebulk') pickFiles({ multiple: true, busy: '사진을 준비하고 있어요' }, faceBulk);
+  else if (act === 'facebulk') pickFiles({ accept: PHOTO_ONLY, multiple: true, busy: '사진을 준비하고 있어요' }, faceBulk);
   else if (act === 'bulkpick') bulkPick(Number(d.g), Number(d.i));
   else if (act === 'bulksave') bulkSave();
   else if (act === 'face') { const f = db.faces.find(x => x.id === id); if (f) viewPhoto('face', id, () => facesOf(kidOf(f.kid)).reverse()); }
