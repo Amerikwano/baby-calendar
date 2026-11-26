@@ -435,7 +435,9 @@ function notesDlg(t, keep) {
   if (!keep) replyTo = null;
   const when = at => new Date(at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   const can = n => n.who === h.mid || h.role === 'owner';
-  const one = (n, reply) => `<div class="note${reply ? ' re' : ''}"><span class="nick">${esc((n.nick || '?').slice(0, 1))}</span><div><b>${esc(n.nick)}</b> <span class="sub">${when(n.at)}</span><p>${esc(n.text)}</p><div class="row">${reply ? '' : `<button type="button" class="lnk" data-act="reply" data-id="${n.id}" data-nick="${esc(n.nick)}">답글</button>`}${can(n) ? `<button type="button" class="lnk" data-act="unnote" data-id="${n.id}">지우기</button>` : ''}</div></div></div>`;
+  // 댓글에는 쓴 사람 아이디가 있고, 이름은 이 집 가족 명단의 지금 별명으로 보여 준다(빠진 사람은 마지막 별명)
+  const nm = n => (h.talk && h.talk.nicks && h.talk.nicks[n.who]) || n.nick || '?';
+  const one = (n, reply) => `<div class="note${reply ? ' re' : ''}"><span class="nick">${esc(nm(n).slice(0, 1))}</span><div><b>${esc(nm(n))}</b> <span class="sub">${when(n.at)}</span><p>${esc(n.text)}</p><div class="row">${reply ? '' : `<button type="button" class="lnk" data-act="reply" data-id="${n.id}" data-nick="${esc(nm(n))}">답글</button>`}${can(n) ? `<button type="button" class="lnk" data-act="unnote" data-id="${n.id}">지우기</button>` : ''}</div></div></div>`;
   const th = Fam.thread(h.talk ? h.talk.notes : [], t);
   openDlg(`<form data-form="note" data-t="${t}"><h2>댓글</h2><div class="notes">${th.length ? th.map(x => one(x.n) + x.replies.map(r => one(r, true)).join('')).join('') : '<p class="empty">첫 댓글을 남겨 보세요.</p>'}</div>${replyTo ? `<div class="row between replying"><span class="sub">${esc(replyTo.nick)}에게 답글</span><button type="button" class="lnk" data-act="replyno">취소</button></div>` : ''}<div class="row" style="flex-wrap:nowrap"><input name="text" maxlength="500" placeholder="${esc((h === vis ? vis.nick : myNick()) || '나')}(으)로 댓글 달기" autocomplete="off" value="${esc(was)}"><button class="btn main">올리기</button></div></form>`);
 }

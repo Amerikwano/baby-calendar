@@ -97,7 +97,7 @@ test('가족 수첩 서버', async () => {
   await call(H + '/like', { method: 'POST', token: own, body: { target: 'd:d1', on: false } });
   assert.equal(c1.nick, '할머니');
   await call(H + '/me', { method: 'POST', token: gma.token, body: { nick: '외할머니' } });
-  assert.equal((await call(H + '/talk', { token: own })).body.notes[0].nick, '외할머니'); // 별명을 바꾸면 예전 댓글 이름도
+  const tk = (await call(H + '/talk', { token: own })).body; assert.equal(tk.nicks[tk.notes[0].who], '외할머니'); // 댓글 이름은 그 집 명단의 지금 별명으로 보여 준다
   await call(H + '/me', { method: 'POST', token: gma.token, body: { nick: '할머니' } });
   tick(1000); t = (await call(H + '/note', { method: 'POST', token: own, body: { target: 'd:d1', parent: c1.id, text: '고마워요' } })).body; const r1 = t.notes[1]; assert.equal(r1.parent, c1.id);
   tick(1000); t = (await call(H + '/note', { method: 'POST', token: dad.token, body: { target: 'd:d1', parent: r1.id, text: '저도요' } })).body; assert.equal(t.notes[2].parent, c1.id);
