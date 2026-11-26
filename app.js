@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.10.2';
+const APP_VERSION = '0.10.3';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -373,7 +373,7 @@ function render() {
   if (!ready) return;
   $('#top').hidden = $('nav').hidden = !started; document.body.classList.toggle('on', started);
   if (!started) { $('#main').className = 'stack tab-' + tab; $('#main').innerHTML = join ? joinView() : handoff ? handoffView(handoff === 'google') : tab === 'visit' && vis ? visitView() : visits.length && !ob.mine ? visitsView() : onboard(); return; }
-  if (join) { $('#main').innerHTML = joinView(); return; }
+  if (join) { $('#top').hidden = $('nav').hidden = true; document.body.classList.remove('on'); $('#main').className = 'stack'; $('#main').innerHTML = joinView(); scrollTo(0, 0); return; }
   $('#top').innerHTML = topBar(); $('nav').innerHTML = navBar();
   const q = $('#main .pill'), qx = q ? q.scrollLeft : 0, mt = $('#main .mtabs'), mx = mt ? mt.scrollLeft : 0;
   const opened = [...document.querySelectorAll('#main details[open]')].map(x => x.dataset.key || 'all');

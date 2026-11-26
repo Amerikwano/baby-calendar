@@ -206,3 +206,6 @@ html:has(#viewer[open]),body:has(#viewer[open]){background:#120d0b}
 .house b{font-size:19px;margin-top:6px}.house em{font-style:normal;color:var(--sub);font-size:14px}
 .vkid{display:flex;gap:14px;align-items:center}.vkid>img,.vkid>svg{width:72px;height:72px;border-radius:50%;object-fit:cover;border:4px solid #ffd976;background:#fff}.vkid b{display:block;font-size:20px}.vkid em{font-style:normal;color:var(--sub)}
 .vgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.vgrid button{position:relative;aspect-ratio:1;padding:0;overflow:hidden;border-radius:10px;background:var(--soft)}.vgrid img{width:100%;height:100%;object-fit:cover}.vgrid s{position:absolute;right:6px;bottom:6px;color:#fff;text-decoration:none}
+
+/* 초대 화면: 그림과 입력칸을 가운데에 모아 처음부터 보이게 */
+.ob.join{justify-content:center}.ob.join .obmid{flex:none}.ob.join .obmid .ring{width:112px;height:112px;border-width:6px}.ob.join .obmid .ring svg{width:84px}.ob.join .stack{gap:12px}
