@@ -13,7 +13,7 @@
 if (typeof document !== 'undefined') {
   let s = null;
   // 가로로 미는 줄, 입력칸, 지도, 화면 맨 가장자리(아이폰의 뒤로 가기)에서는 탭을 옮기지 않는다.
-  const skip = el => el.closest('.pill,.mtabs,input[type=range],video,canvas,#map,nav') || document.querySelector('dialog[open]');
+  const skip = el => el.closest('.pill,.mtabs,.growcar,input[type=range],video,canvas,#map,nav') || document.querySelector('dialog[open]');
   const typing = () => { const a = document.activeElement; return a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || [...document.querySelectorAll('#main [data-form=quick] input')].some(i => i.value.trim()); };
   document.addEventListener('touchstart', e => {
     const t = e.touches[0]; s = null;

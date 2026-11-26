@@ -260,3 +260,12 @@ nav button{text-shadow:0 0 4px rgb(255 255 255/.95),0 0 10px rgb(255 255 255/.7)
 nav button[aria-current=page]{background:rgb(255 255 255/.22);box-shadow:inset 1px 1px 1px -.5px rgb(255 255 255/.95),inset -1px -1px 1px -.5px rgb(255 255 255/.5),0 2px 8px rgb(40 25 15/.12)}
 nav button[aria-current=page]{background:rgb(120 120 120/.3)}
 nav button{text-shadow:0 0 3px rgb(255 255 255/.85)}nav button .ic{filter:drop-shadow(0 0 1.5px rgb(255 255 255/.9))}
+/* 홈: 지금 받을 것 접고 펴기 */
+.acc{background:var(--card);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+.acc summary{list-style:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 16px;cursor:pointer;min-height:56px}.acc summary::-webkit-details-marker{display:none}
+.acc summary>.ic:first-child{color:var(--vaccine)}.acc summary b{font-size:15px}.acc summary>.ic:last-child{transition:transform .2s}.acc[open] summary>.ic:last-child{transform:rotate(180deg)}
+.acc .list{margin:0 16px}.accall{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;min-height:46px;color:var(--sub);font-size:14px;border-top:1px solid var(--line)}
+/* 홈: 성장 앨범 사진 옆으로 넘기기 */
+.growcar{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;border-radius:22px;box-shadow:var(--shadow);background:var(--soft);touch-action:pan-x pan-y}.growcar::-webkit-scrollbar{display:none}
+.growcar button{flex:0 0 100%;scroll-snap-align:start;position:relative;aspect-ratio:4/3;max-height:340px}.growcar img{width:100%;height:100%;object-fit:cover;display:block}
+.growcar .d{position:absolute;left:14px;bottom:12px;padding:4px 12px;border-radius:99px;background:rgb(0 0 0/.38);color:#fff;font-size:14px;font-weight:700}

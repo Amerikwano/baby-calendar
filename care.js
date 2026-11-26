@@ -92,11 +92,35 @@ function missionStrip(k) {
 function home() {
   const k = K(), a = alerts(k), n = a.open.length, first = a.open[0];
   const strip = !k.born && today() >= k.birth ? `<div class="notice hot"><b>예정일이 되었어요. 아기가 태어났나요?</b><div class="row"><button class="btn main" data-act="born">생일 넣기</button></div></div>`
-    : first ? `<button class="strip" data-act="vaxnow">${icon('shield')}<span><b>지금 받을 것 ${n}개</b><em>${esc(first.title)}${n > 1 ? ' 외' : ''}</em></span>${icon('right', 's')}</button>` : '';
+    : first ? `<details class="acc" ${localStorage.getItem('baby-acc-vax') === '0' ? '' : 'open'}><summary>${icon('shield')}<b>지금 받을 것 ${n}개</b>${icon('down', 's')}</summary><div class="list">${a.open.map(itemRow).join('')}</div><button class="accall" data-act="vaxnow">전체 일정 보기${icon('right', 's')}</button></details>` : '';
   const ev = a.events.map(e => `<button class="strip" data-act="event" data-id="${e.id}">${icon('cal')}<span><b>${esc(e.title)}</b><em>${e.date === today() ? '오늘' : '내일'}${e.time ? ' ' + Care.clock(e.time) : ''}</em></span>${icon('right', 's')}</button>`).join('');
   const [, m, x] = today().split('-').map(Number), wd = '일월화수목금토'[new Date(today() + 'T12:00').getDay()];
-  return inAppCard() + syncCard() + `<p class="todayd">${m}월 ${x}일 (${wd})</p>` + quickRow(k) + (k.born ? '' : hero()) + `<div class="stack">${strip}${ev}${missionStrip(k)}</div>` + (k.born ? '' : mission()) + `<section class="logs">${timeline(k)}</section>` + loginCard();
+  return inAppCard() + syncCard() + `<p class="todayd">${m}월 ${x}일 (${wd})</p>` + quickRow(k) + (k.born ? '' : hero()) + growCar(k) + `<div class="stack">${strip}${ev}${missionStrip(k)}</div>` + (k.born ? '' : mission()) + `<section class="logs">${timeline(k)}</section>` + loginCard();
 }
+
+// 홈 위쪽: 성장 앨범 사진을 날짜 순서로 옆으로 넘기며 보여 준다
+let carI = 0;
+function growCar(k) {
+  const fs = k.born ? facesOf(k) : []; if (!fs.length) return '';
+  if (carI >= fs.length) carI = 0;
+  setTimeout(() => { const c = document.querySelector('.growcar'); if (c) c.scrollLeft = carI * c.clientWidth; });
+  return `<div class="growcar" aria-label="성장 앨범">${fs.map(f => `<button data-act="face" data-id="${f.id}"><img ${pic(f.id)} alt="${dayNo(k, f.date)}일차 얼굴 사진"><span class="d">${dayNo(k, f.date)}일차</span></button>`).join('')}</div>`;
+}
+(() => {
+  let hold = 0;
+  ['pointerdown', 'touchstart'].forEach(n => document.addEventListener(n, e => { if (e.target.closest && e.target.closest('.growcar')) hold = Date.now(); }, { passive: true, capture: true }));
+  setInterval(() => {
+    const c = document.querySelector('.growcar'); if (!c || document.hidden || Date.now() - hold < 6000 || matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+    const w = c.clientWidth, n = c.children.length; if (!w || n < 2) return;
+    carI = (Math.round(c.scrollLeft / w) + 1) % n;
+    const x0 = c.scrollLeft, x1 = carI * w, t0 = performance.now(), ms = 520; c.style.scrollSnapType = 'none';
+    const step = t => { const p = Math.min(1, (t - t0) / ms), e = p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; c.scrollLeft = x0 + (x1 - x0) * e; if (p < 1) requestAnimationFrame(step); else c.style.scrollSnapType = ''; };
+    requestAnimationFrame(step);
+  }, 3000);
+  document.addEventListener('scroll', e => { const c = e.target; if (c.classList && c.classList.contains('growcar') && c.clientWidth && !c.style.scrollSnapType) carI = Math.round(c.scrollLeft / c.clientWidth); }, { capture: true, passive: true });
+  // 접기·펴기 상태를 기억한다(처음엔 펼침)
+  document.addEventListener('toggle', e => { if (e.target.matches && e.target.matches('details.acc')) try { localStorage.setItem('baby-acc-vax', e.target.open ? '1' : '0'); } catch { } }, true);
+})();
 
 /* ── 기록 창 ── */
 function logDlg(type, l, plan) {
