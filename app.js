@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.11.3';
+const APP_VERSION = '0.11.4';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -803,7 +803,7 @@ async function moreActs(act, b, id) {
   else if (act === 'pickkid') { dlg.close(); if (id !== db.cur) { await save(x => { x.cur = id; }); albView = 'col'; syncAI(); } }
   else if (act === 'report') reportDlg(d.d);
   else if (act === 'alerts') alertsDlg();
-  else if (act === 'vaxnow') { tab = 'vax'; render(); scrollTo(0, 0); }
+  else if (act === 'vaxnow') enterSub('vax');
   else if (act === 'growview') growView();
   else if (act === 'gv') growStep(Number(d.n));
   else if (act === 'gvplay') growPlay();
@@ -854,10 +854,17 @@ async function moreActs(act, b, id) {
 }
 
 /* ── 동작 ── */
-function goTab(t) { tab = t; if (dlg.open) dlg.close(); syncAI(); render(); scrollTo(0, 0); }
+// 다른 화면 안에서 여는 화면(접종·검진, 놀러가기). 뒤로 누르면 연 곳과 그 위치로 돌아간다.
+const SUB = ['vax', 'visits']; let subFrom = null;
+function enterSub(t) { if (!SUB.includes(tab)) subFrom = { tab, y: scrollY }; tab = t; render(); scrollTo(0, 0); }
+function goTab(t, back) {
+  if (SUB.includes(t) && !SUB.includes(tab)) { if (dlg.open) dlg.close(); return enterSub(t); }
+  const y = back && subFrom && subFrom.tab === t ? subFrom.y : 0; if (!SUB.includes(t)) subFrom = null;
+  tab = t; if (dlg.open) dlg.close(); syncAI(); render(); scrollTo(0, y);
+}
 document.addEventListener('click', async ev => {
   const nt = ev.target.closest('[data-tab]');
-  if (nt && ready && started) { goTab(nt.dataset.tab); return; }
+  if (nt && ready && started) { goTab(nt.dataset.tab, Boolean(nt.dataset.back)); return; }
   const b = ev.target.closest('[data-act]'); if (!b || !ready) return;
   const { act, id } = b.dataset;
   if (act === 'close') (b.closest('dialog') || dlg).close();

@@ -405,7 +405,7 @@ async function famActs(act, b) {
   else if (act === 'family') familyDlg();
   else if (act === 'kick') { if (confirm('이 사람을 가족 수첩에서 뺄까요? 다른 기기에서도 함께 빠져요.')) { try { famMembers = (await famCall(bound, 'kick', { body: { id: d.id } })).members; familyDlg(); } catch (e) { toast(e.message); } } }
   else if (act === 'famleave') { if (confirm('가족 수첩에서 나갈까요? 기록은 이 기기에 남지만 더는 함께 맞춰지지 않아요.')) { await famCall(bound, 'leave', { body: {} }).catch(() => { }); bound = null; jput('baby-home', null); dlg.close(); render(); toast('가족 수첩에서 나왔어요'); } }
-  else if (act === 'visits') { vis = null; tab = 'visits'; render(); scrollTo(0, 0); }
+  else if (act === 'visits') { vis = null; if (dlg.open) dlg.close(); if (tab === 'visit' || !started) { tab = 'visits'; render(); scrollTo(0, 0); } else enterSub('visits'); }
   else if (act === 'visit') openVisit(d.id);
   else if (act === 'vview') { vis.view = d.v; render(); }
   else if (act === 'vphoto') { const list = () => [...(vis.data.photos || [])].sort((a, b) => a.date < b.date ? 1 : -1); viewPhoto('visit', d.id, list); }

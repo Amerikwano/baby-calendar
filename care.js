@@ -59,7 +59,8 @@ function topBar() {
   return `<div><button class="me" data-act="kids" aria-label="${esc(k.name)}, 아이 고르기">${face(k)}<span><b>${esc(k.name)}${icon('baby', k.sex || 'unk')}${k.sex ? `<span class="vh">${Family.SEX[k.sex]}아이</span>` : ''}${many() ? icon('down', 's') : ''}</b><em>${ageLine(k)}</em></span></button>${visits.length ? `<button class="sq" data-act="visits" aria-label="놀러가기">${icon('visit')}</button>` : ''}<button class="sq" data-act="report" aria-label="하루 요약">${icon('pie')}</button><button class="sq" data-act="alerts" aria-label="알림${hot ? ', 확인할 것이 있어요' : ''}">${icon('bell')}${hot ? '<i></i>' : ''}</button></div>`;
 }
 function navBar() {
-  const main = { home: 'home', cal: 'cal', diary: 'diary', album: 'album', grow: 'album', tips: 'tips', money: 'tips' }[tab] || 'more';
+  const M = { home: 'home', cal: 'cal', diary: 'diary', album: 'album', grow: 'album', tips: 'tips', money: 'tips' };
+  const main = M[SUB.includes(tab) && subFrom ? subFrom.tab : tab] || 'more';
   const b = (t, n, i) => `<button data-tab="${t}" ${main === t ? 'aria-current="page"' : ''}>${i}<span>${n}</span></button>`;
   return `<div>${b('home', '홈', `<span class="navface">${face(K())}</span>`)}${b('cal', '달력', icon('cal'))}${b('diary', '육아일기', icon('diary'))}${b('album', '앨범', icon('album'))}${b('tips', '꿀팁', icon('tips'))}${b('more', '더보기', icon('more'))}</div>`;
 }
@@ -134,7 +135,8 @@ function more() {
   <section class="menus"><h3>가족</h3>${it('diary', '함께 쓰기 초대', '아빠·엄마와 같은 수첩을 같이 기록해요', 'data-act="invite" data-role="editor"')}${it('heart', '보기만 초대', '할머니·이모가 일기와 앨범을 보고 댓글을 달아요', 'data-act="invite" data-role="viewer"')}${it('visit', '놀러가기', visits.length ? `초대받은 집 ${visits.length}곳` : '보기만 초대를 받은 집에 놀러 가요', 'data-act="visits"')}${bound ? it('baby', '가족 수첩 보기', esc(bound.name || '') + ' 가족 목록', 'data-act="family"') : ''}${it('gear', '내 별명', myNick() ? esc(myNick()) : '아직 정하지 않았어요', 'data-act="nick"')}</section>
   <section class="menus"><h3>앱</h3>${it('heart', '카카오톡으로 공유하기', '디데이나 앱 소개 보내기', 'data-act="sharek"')}${it('gear', '설정', '아이 정보, 지역, 백업', 'data-act="settings"')}</section><p class="sub">질병관리청 표준예방접종일정표(2026) 기준이에요. 실제 접종은 병원 안내를 먼저 따르세요. 버전 ${APP_VERSION}</p>`;
 }
-const backRow = (t, to) => `<div class="backrow"><button data-tab="${to || 'more'}" aria-label="뒤로">${icon('left')}</button><h2>${t}</h2></div>`;
+// 들어온 곳(홈, 더보기 …)으로 돌아간다
+const backRow = (t, to) => `<div class="backrow"><button data-tab="${to || (subFrom && subFrom.tab) || 'more'}" data-back="1" aria-label="뒤로">${icon('left')}</button><h2>${t}</h2></div>`;
 function vax() {
   const a = alerts(K()), sec = (t, l) => l.length ? `<section class="stack"><h2>${t}</h2><div class="list">${l.map(itemRow).join('')}</div></section>` : '';
   return backRow('접종·검진') + sec('지금 받을 것', a.open) + sec(K().born ? '다음 일정' : '태어나면 바로 챙길 것', a.next) + sec('시기가 지난 일정', a.late) + sec('전체', items());
