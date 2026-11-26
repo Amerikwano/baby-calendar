@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.11.20';
+const APP_VERSION = '0.11.21';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -800,7 +800,7 @@ async function moreActs(act, b, id) {
   else if (act === 'avatar') pickAvatar(bl => setAvatar(id, bl));
   else if (act === 'avatardel') { const old = kidOf(id).photo; if (await save(x => { x.kids.find(k => k.id === id).photo = ''; })) { api('/api/photos/' + old, { method: 'DELETE' }).catch(() => { }); kidDlg(id); } }
   else if (act === 'kids') kidsDlg();
-  else if (act === 'pickkid') { dlg.close(); if (id !== db.cur) { await save(x => { x.cur = id; }); albView = 'col'; syncAI(); } }
+  else if (act === 'pickkid') { dlg.close(); if (id !== db.cur) { await save(x => { x.cur = id; }); albView = ''; albYear = ''; syncAI(); } }
   else if (act === 'report') reportDlg(d.d);
   else if (act === 'alerts') alertsDlg();
   else if (act === 'vaxnow') enterSub('vax');

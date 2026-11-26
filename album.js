@@ -18,7 +18,7 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = Album; else root.Album = Album;
 })(typeof window !== 'undefined' ? window : globalThis);
 
-let albView = 'col', albYear = '';
+let albView = '', albYear = ''; // 처음 열면 가장 최근 달
 const EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const albPhotos = () => Album.sort(Family.forKid(db.photos, K().id));
 // 출생일로부터 2년 7개월. 달이나 해 전체는 그 기간의 마지막 날(오늘까지)로 센다.
@@ -39,7 +39,8 @@ function album() {
   if (db.photos.some(p => p.type === 'video' && p.th !== 1)) setTimeout(repairPosters, 500);
   const all = albPhotos(), ys = Album.years(all), ty = today().slice(0, 4);
   if (!albYear || !ys.includes(albYear)) albYear = ys[0] || ty;
-  const ms = Album.months(all, albYear); if (albView !== 'col' && !ms.includes(albView)) albView = 'col';
+  const ms = Album.months(all, albYear); if (!albView) albView = ms[0] || 'col';
+  if (albView !== 'col' && !ms.includes(albView)) albView = 'col';
   const top = `<div class="albtop">${albSeg()}<div class="albhead">${albView === 'col' ? '<h2>컬렉션</h2>' : `<button class="yearpill" data-act="years">${albYear}${icon('down', 's')}</button>`}<div class="albbtns"><button class="sq" data-act="addphotos" aria-label="사진·동영상 추가">${icon('plus')}</button><button class="sq" data-act="albmenu" aria-label="앨범 메뉴">${icon('more')}</button></div></div>
     <div class="mtabs" role="group" aria-label="월 고르기"><button data-act="albview" data-v="col" aria-label="컬렉션" aria-pressed="${albView === 'col'}">${icon('grid')}</button>${ms.map(m => `<button data-act="albview" data-v="${m}" aria-pressed="${albView === m}">${Number(m.slice(5))}월</button>`).join('')}</div></div>`;
   if (!all.length) return top + `<div class="empty">${icon('album', 'xl')}<p>아직 사진이 없어요.<br>첫 사진을 넣어 보세요.</p></div>` + collections([], ys);
