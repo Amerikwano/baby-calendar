@@ -1,0 +1,10 @@
+{
+  "name": "baby-notebook-family",
+  "main": "src/main.mjs",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "observability": { "enabled": false },
+  "vars": { "APP_ORIGIN": "https://amerikwano.github.io" },
+  "durable_objects": { "bindings": [{ "name": "HOME", "class_name": "Home" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Home"] }]
+}

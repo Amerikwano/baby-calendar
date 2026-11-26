@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.9.8';
+const APP_VERSION = '0.10.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -65,7 +65,7 @@ function save(change) {
   return chain = chain.then(async () => {
     const before = JSON.stringify(db);
     change(db);
-    try { rev = (await api('/api/state', { method: 'PUT', body: JSON.stringify({ rev, data: db }) })).rev; render(); pushLater(); syncLater(); return true; }
+    try { rev = (await api('/api/state', { method: 'PUT', body: JSON.stringify({ rev, data: db }) })).rev; render(); pushLater(); syncLater(); famLater(); return true; }
     catch (e) {
       db = JSON.parse(before);
       if (e.status === 409) { const s = await api('/api/state').catch(() => null); if (s) { rev = s.rev; db = Object.assign(fresh(), Family.migrate(s.data)); } toast('다른 창에서 바뀐 내용을 불러왔어요. 다시 저장해 주세요.'); }
@@ -244,7 +244,7 @@ const pic = (id, t) => local ? `data-pic="${id}" data-t="${t || ''}"` : `${t ? '
 // 이 기기에 저장한 사진은 화면에 그려진 뒤 불러온다.
 new MutationObserver(() => document.querySelectorAll('img[data-pic]').forEach(i => {
   const id = i.dataset.pic, t = i.dataset.t; i.removeAttribute('data-pic');
-  Local.photoUrl(id, Boolean(t)).then(u => { if (!u) return; i.src = u; if (!t) i.onload = () => URL.revokeObjectURL(u); }).catch(() => {});
+  picUrl(id, Boolean(t)).then(u => { if (!u) return; i.src = u; if (!t) i.onload = () => URL.revokeObjectURL(u); }).catch(() => {});
 })).observe(document.body, { childList: true, subtree: true });
 // 빈 날짜·시각 칸 표시
 if (/Android/.test(navigator.userAgent)) document.documentElement.classList.add('android');
@@ -254,7 +254,7 @@ new MutationObserver(markBlank).observe(document.body, { childList: true, subtre
 const thumb = p => `<button type="button" data-act="photo" data-id="${p.id}" aria-label="${kd(p.date)} ${p.type ? '동영상' : '사진'}"><img ${pic(p.id, 1)} alt="${esc(p.caption || kd(p.date) + ' 사진')}"></button>`;
 function records() {
   const ds = Family.forKid(db.diary, K().id).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
-  return (ds.length ? ds.map(x => `<article class="paper"><div class="row between"><div><h2>${kd(x.date)}</h2><span class="sub">${stageOf(x.date)}</span></div>${many() && !x.kid ? tag('') : ''}<button class="btn" data-act="write" data-id="${x.id}">고치기</button></div>${x.body ? `<p class="body">${esc(x.body)}</p>` : ''}${x.photos.length ? `<div class="grid">${x.photos.map(id => db.photos.find(p => p.id === id)).filter(Boolean).map(thumb).join('')}</div>` : ''}</article>`).join('') : `<div class="empty">${icon('diary', 'xl')}<p>아직 쓴 일기가 없어요.<br>${K().born ? '오늘 있었던 일을' : '기다리는 마음을'} 적어 보세요.</p></div>`) + `<button class="fab" data-act="write">${icon('plus')}일기 쓰기</button>`;
+  return (ds.length ? ds.map(x => `<article class="paper"><div class="row between"><div><h2>${kd(x.date)}</h2><span class="sub">${stageOf(x.date)}</span></div>${many() && !x.kid ? tag('') : ''}<button class="btn" data-act="write" data-id="${x.id}">고치기</button></div>${x.body ? `<p class="body">${esc(x.body)}</p>` : ''}${x.photos.length ? `<div class="grid">${x.photos.map(id => db.photos.find(p => p.id === id)).filter(Boolean).map(thumb).join('')}</div>` : ''}${talkBar(Fam.target('diary', x.id))}</article>`).join('') : `<div class="empty">${icon('diary', 'xl')}<p>아직 쓴 일기가 없어요.<br>${K().born ? '오늘 있었던 일을' : '기다리는 마음을'} 적어 보세요.</p></div>`) + `<button class="fab" data-act="write">${icon('plus')}일기 쓰기</button>`;
 }
 
 /* ── 육아 팁 ── */
@@ -372,12 +372,13 @@ function syncAI() {
 function render() {
   if (!ready) return;
   $('#top').hidden = $('nav').hidden = !started; document.body.classList.toggle('on', started);
-  if (!started) { $('#main').innerHTML = handoff ? handoffView(handoff === 'google') : onboard(); return; }
+  if (!started) { $('#main').className = 'stack tab-' + tab; $('#main').innerHTML = join ? joinView() : handoff ? handoffView(handoff === 'google') : tab === 'visit' && vis ? visitView() : visits.length && !ob.mine ? visitsView() : onboard(); return; }
+  if (join) { $('#main').innerHTML = joinView(); return; }
   $('#top').innerHTML = topBar(); $('nav').innerHTML = navBar();
   const q = $('#main .pill'), qx = q ? q.scrollLeft : 0, mt = $('#main .mtabs'), mx = mt ? mt.scrollLeft : 0;
   const opened = [...document.querySelectorAll('#main details[open]')].map(x => x.dataset.key || 'all');
   $('#main').className = 'stack tab-' + tab;
-  $('#main').innerHTML = { home, cal: calendar, diary: records, album, more, tips, money, vax, grow: () => `<div class="albtop">${albSeg()}</div>` + growth() }[tab]();
+  $('#main').innerHTML = { home, cal: calendar, diary: records, album, more, tips, money, vax, visits: visitsView, visit: visitView, grow: () => `<div class="albtop">${albSeg()}</div>` + growth() }[tab]();
   document.querySelectorAll('#main details').forEach(x => { if (opened.includes(x.dataset.key || 'all')) x.open = true; });
   if ($('#main .pill')) $('#main .pill').scrollLeft = qx; if ($('#main .mtabs')) $('#main .mtabs').scrollLeft = mx;
   if (vw) viewRefresh();
@@ -568,7 +569,7 @@ function faceDlg(id) {
   const f = db.faces.find(x => x.id === id); if (!f) return; const k = kidOf(f.kid);
   openDlg(`<form data-form="face" data-id="${id}"><h2>${esc(k.name)} ${dayNo(k, f.date)}일차</h2><label class="f">날짜<input type="date" name="date" required min="${k.birth}" max="${today()}" value="${f.date}"></label><label class="f">설명<textarea name="caption" class="cap1" maxlength="1000" placeholder="이 사진의 이야기를 적어 보세요">${esc(f.caption || '')}</textarea></label><div class="row"><button type="button" class="btn" data-act="faceask" data-d="${f.date}">사진 바꾸기</button><button type="button" class="btn" data-act="sharephoto" data-id="${id}">내보내기</button></div>${acts(['face', id, '사진 지우기'])}</form>`);
 }
-const photoBlob = id => local ? Local.photoBlob(id) : fetch('photos/' + id).then(r => r.ok ? r.blob() : null);
+const photoBlob = id => local ? picBlob(id) : fetch('photos/' + id).then(r => r.ok ? r.blob() : null);
 
 /* ── 성장 영상 ── */
 let video = null;
@@ -814,7 +815,7 @@ async function moreActs(act, b, id) {
   else if (act === 'faceask') faceAsk(d.d);
   else if (act === 'faceadd') pickFace(d.d || '', Boolean(d.cam));
   else if (act === 'face') { const f = db.faces.find(x => x.id === id); if (f) viewPhoto('face', id, () => facesOf(kidOf(f.kid)).reverse()); }
-  else if (act === 'vmenu') { const p = vItem(), pl = vVideo(); if (pl) pl.pause(); if (p) (vw.kind === 'face' ? faceDlg : photoDlg)(p.id); }
+  else if (act === 'vmenu') { const p = vItem(), pl = vVideo(); if (pl) pl.pause(); if (p && vw.kind === 'visit') openDlg(`<form data-form="none"><h2>${kd(p.date, true)}</h2>${p.caption ? `<p>${esc(p.caption)}</p>` : '<p class="sub">설명이 없어요</p>'}</form>`); else if (p) (vw.kind === 'face' ? faceDlg : photoDlg)(p.id); }
   else if (act === 'vtip') vTip($('#vtip').hidden);
   else if (act === 'vgo') vGo(Number(d.n));
   else if (act === 'vplay') vPlay();
@@ -848,6 +849,7 @@ document.addEventListener('click', async ev => {
   const { act, id } = b.dataset;
   if (act === 'close') (b.closest('dialog') || dlg).close();
   else if (await moreActs(act, b, id)) return;
+  else if (await famActs(act, b)) return;
   else if (await syncActs(act)) return;
   else if (act === 'settings') settingsDlg();
   else if (act === 'born') bornDlg();
@@ -902,6 +904,7 @@ document.addEventListener('change', async ev => {
 document.addEventListener('submit', async ev => {
   ev.preventDefault();
   const f = ev.target, v = Object.fromEntries(new FormData(f)), id = f.dataset.id, kind = f.dataset.form;
+  if (await famForms(f)) return;
   let ok = false;
   if (kind === 'item') ok = await save(d => { const r = (d.kids.find(k => k.id === f.dataset.kid) || d.kids[0]).records; if (v.appt || v.done) r[id] = { appt: v.appt || null, done: v.done || null }; else delete r[id]; });
   if (kind === 'event') ok = await save(d => { const e = d.events.find(x => x.id === id), n = { title: v.title.trim(), date: v.date, time: v.time, memo: v.memo, rem: new FormData(f).getAll('rem'), kid: v.kid != null ? v.kid : e ? e.kid : K().id }; if (e) Object.assign(e, n); else d.events.push(Object.assign({ id: uid() }, n)); });
@@ -980,6 +983,8 @@ async function load() { const s = await api('/api/state'); rev = s.rev; db = Obj
     if (started && K().photo) { const u = local ? await Local.photoUrl(K().photo, true).catch(() => '') : `photos/${K().photo}/thumb`; if (u) $('#splashFace').innerHTML = `<img src="${u}" alt="">`; }
     if (local && !back && Drive.token() && Drive.account()) syncNow().catch(() => { });
     if (local && !back && Drive.token() && !Drive.account()) Drive.me().then(() => { if (!dlg.open) { if (!started) ob.step = ''; render(); } }).catch(() => { });
+    if (local && await joinCheck()) render();
+    if (local && bound && started) famPull();
     hideSplash(); if (local) { checkAuth(); if (!soc) resumeSocial(); }
     const bell = new URLSearchParams(location.search).has('alerts'); if (bell) history.replaceState(null, '', location.pathname);
     if (bell && started) setTimeout(alertsDlg, 1500);

@@ -7,7 +7,7 @@ const vTheme = c => { const m = document.querySelector('meta[name=theme-color]')
 const vItem = () => vw && vw.items[vw.i];
 function viewPhoto(kind, id, list) {
   vw = { kind, list, id, i: 0, items: [], slides: [], urls: new Map(), busy: false };
-  viewer.innerHTML = `<div class="vstage">${'<div class="vs"><img alt="" draggable="false"></div>'.repeat(3)}</div><div class="vtop"><span id="vcount" aria-live="polite"></span><button type="button" data-act="vmenu" aria-label="사진 정보">${icon('dots')}</button><button type="button" data-act="close" aria-label="닫기">${icon('x')}</button></div><button type="button" class="vnav l" data-act="vgo" data-n="-1" aria-label="이전 사진">${icon('left')}</button><button type="button" class="vnav r" data-act="vgo" data-n="1" aria-label="다음 사진">${icon('right')}</button><div class="vbar" id="vbar" hidden><button type="button" data-act="vplay" id="vpb" aria-label="재생">${icon('vplay')}</button><input type="range" id="vrange" min="0" max="1000" value="0" aria-label="재생 위치"><span id="vtime"></span></div><div class="vtip" id="vtip" role="status" hidden></div><button type="button" class="vcap" id="vcap" data-act="vtip" aria-expanded="false" hidden>${icon('memo', 's')}설명</button>`;
+  viewer.innerHTML = `<div class="vstage">${'<div class="vs"><img alt="" draggable="false"></div>'.repeat(3)}</div><div class="vtop"><span id="vcount" aria-live="polite"></span><span id="vtalk"></span><button type="button" data-act="vmenu" aria-label="사진 정보">${icon('dots')}</button><button type="button" data-act="close" aria-label="닫기">${icon('x')}</button></div><button type="button" class="vnav l" data-act="vgo" data-n="-1" aria-label="이전 사진">${icon('left')}</button><button type="button" class="vnav r" data-act="vgo" data-n="1" aria-label="다음 사진">${icon('right')}</button><div class="vbar" id="vbar" hidden><button type="button" data-act="vplay" id="vpb" aria-label="재생">${icon('vplay')}</button><input type="range" id="vrange" min="0" max="1000" value="0" aria-label="재생 위치"><span id="vtime"></span></div><div class="vtip" id="vtip" role="status" hidden></div><button type="button" class="vcap" id="vcap" data-act="vtip" aria-expanded="false" hidden>${icon('memo', 's')}설명</button>`;
   vw.slides = [...viewer.querySelectorAll('.vs')];
   vSwipe(viewer.querySelector('.vstage'));
   $('#vrange').addEventListener('input', e => { const v = vVideo(); if (v && v.duration) v.currentTime = v.duration * e.target.value / 1000; });
@@ -28,7 +28,7 @@ async function vLoad(slide, p) {
   const was = slide.querySelector('video'); if (was) { was.pause(); was.removeAttribute('src'); was.load(); was.remove(); }
   slide.dataset.id = id; img.hidden = false; img.removeAttribute('src'); img.alt = p ? p.caption || kd(p.date) + ' 사진' : ''; if (!p) return;
   const now = vw, mine = () => vw === now && slide.dataset.id === id;
-  const small = local ? await Local.photoUrl(id, true).catch(() => '') : `photos/${id}/thumb`;
+  const small = local ? await picUrl(id, true).catch(() => '') : `photos/${id}/thumb`;
   if (mine() && small) img.src = small; // 작은 사진을 먼저 보이고 원본으로 바꾼다
   // 동영상은 주소만 준비해 두고 재생을 누르면 튼다(아이폰은 누른 순간에 시작해야 한다)
   if (p.type) { if (!now.urls.get(id)) { const b = await photoBlob(id).catch(() => null); if (b && mine() && !now.urls.get(id)) now.urls.set(id, URL.createObjectURL(b)); } return; }
@@ -45,11 +45,12 @@ function vPaint() {
   viewer.querySelector('.vnav.l').hidden = vw.i === 0; viewer.querySelector('.vnav.r').hidden = vw.i === n - 1;
   $('#vbar').hidden = !p.type; viewer.classList.toggle('isvid', Boolean(p.type)); if (p.type) vBar();
   $('#vcap').hidden = !(p.caption || '').trim();
+  const vt = $('#vtalk'); if (vt) vt.innerHTML = talkHome() ? talkBar(Fam.target('photo', p.id)) : '';
   if ($('#vcap').hidden) vTip(false); else if (!$('#vtip').hidden) vTip(true);
 }
 function vTip(on) {
   const t = $('#vtip'), p = vItem(), k = kidOf(p.kid);
-  if (on) t.innerHTML = `<b>${kd(p.date, true)}</b><em>${vw.kind === 'face' ? `${esc(k.name)} ${dayNo(k, p.date)}일차` : esc(stageOf(p.date, k))}</em><p>${esc(p.caption)}</p>`;
+  if (on) t.innerHTML = `<b>${kd(p.date, true)}</b><em>${vw.kind === 'visit' ? '' : vw.kind === 'face' ? `${esc(k.name)} ${dayNo(k, p.date)}일차` : esc(stageOf(p.date, k))}</em><p>${esc(p.caption)}</p>`;
   t.hidden = !on; $('#vcap').setAttribute('aria-expanded', String(on));
 }
 function vGo(n) {
@@ -81,7 +82,7 @@ async function vPlay() {
   v.addEventListener('playing', () => { slide.querySelector('img').hidden = true; });
   v.addEventListener('timeupdate', () => { if (v.currentTime < 1.5) posterFromPlaying(p, v); }, { once: true });
   v.addEventListener('error', () => { if (v.getAttribute('src')) { v.remove(); slide.querySelector('img').hidden = false; toast('이 기기에서 재생할 수 없는 형식이에요. ⋯에서 내보내기로 저장해 보세요.'); } });
-  let u = now.urls.get(p.id); if (!u) { const b = await photoBlob(p.id).catch(() => null); if (!b) { v.remove(); return toast('동영상을 찾지 못했어요'); } if (vw !== now || vItem() !== p) { v.remove(); return; } u = URL.createObjectURL(b); now.urls.set(p.id, u); }
+  let u = now.urls.get(p.id); if (!u) { const b = await photoBlob(p.id).catch(() => null); if (!b || !b.type.startsWith('video/')) { v.remove(); return toast(b ? '동영상은 올린 사람의 휴대폰에서 볼 수 있어요. 가족에게는 첫 장면만 보여요.' : '동영상을 찾지 못했어요'); } if (vw !== now || vItem() !== p) { v.remove(); return; } u = URL.createObjectURL(b); now.urls.set(p.id, u); }
   v.src = u; v.play().catch(() => vBar());
 }
 // 아래로 끌면 사진이 따라 내려가며 뒤가 비친다.

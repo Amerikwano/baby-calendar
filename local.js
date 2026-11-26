@@ -53,12 +53,12 @@
   const urls = new Map();
   async function photoUrl(id, thumb) {
     const k = id + (thumb ? 't' : ''); if (urls.has(k)) return urls.get(k);
-    const r = await getPhoto(id); if (!r || thumb && !r.thumb && r.type.startsWith('video/')) return '';
+    const r = await getPhoto(id); if (!r || thumb && !r.thumb && (r.type.startsWith('video/') || !r.data) || !thumb && !r.data) return '';
     const u = URL.createObjectURL(thumb && r.thumb ? new Blob([r.thumb], { type: 'image/jpeg' }) : new Blob([r.data], { type: r.type }));
     if (thumb) urls.set(k, u); return u;
   }
 
-  async function photoBlob(id) { const r = await getPhoto(id); return r ? new Blob([r.data], { type: r.type }) : null; }
+  async function photoBlob(id) { const r = await getPhoto(id); return r && r.data ? new Blob([r.data], { type: r.type }) : null; }
 
   /* ── zip (압축 없이 묶기만) ── */
   const T = new Uint32Array(256).map((_, n) => { for (let k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ (n >>> 1) : n >>> 1; return n >>> 0; });
@@ -132,6 +132,8 @@
   // 드라이브에서 받아 온 사진·동영상을 원래 번호 그대로 넣는다.
   const has = id => getPhoto(id).then(r => Boolean(r && r.data));
   async function keep(id, blob) { const type = blob.type || 'image/jpeg'; await putPhoto(id, { type, data: type.startsWith('video/') ? blob : await blob.arrayBuffer() }); urls.delete(id); urls.delete(id + 't'); }
-  const out = { has, keep, api, getKV, setKV, photoUrl, photoBlob, blobCrc, backup, restore, zip, unzip };
+  // 가족 수첩 서버에서 받은 작은 사진이나 줄인 사진을 원래 번호로 넣는다(있던 것은 그대로).
+  async function keepPart(id, part) { const r = (await getPhoto(id)) || { type: 'image/jpeg', data: null }; if (part.data) { r.type = part.data.type || 'image/jpeg'; r.data = await part.data.arrayBuffer(); } if (part.thumb) r.thumb = await part.thumb.arrayBuffer(); await putPhoto(id, r); }
+  const out = { has, keep, keepPart, api, getKV, setKV, photoUrl, photoBlob, blobCrc, backup, restore, zip, unzip };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Local = out;
 })(this);

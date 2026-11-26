@@ -30,6 +30,7 @@ function syncNow() {
   return syncing = (async () => {
     if (!canSync() || !Drive.token()) return 'off';
     const mine = mySync(), r = await Drive.stateMeta();
+    if (bound) { if (started && (dirty() || !r)) await pushState(r ? r.id : null); return 'up'; } // 가족 수첩은 가족 서버가 기준이라 드라이브에는 올리기만
     if (!r) { if (started) await pushState(null); return 'up'; }
     if (r.at === mine.at) { if (dirty()) await pushState(r.id); return 'same'; }
     const data = await Drive.readState(r.id), text = JSON.stringify(data);
