@@ -76,8 +76,10 @@ const dayBar = (k, d) => { const [, m, x] = d.split('-').map(Number); return `<d
 function timeline(k) {
   const by = Care.byDay(logsOf(k)), t = today(); by[t] = by[t] || [];
   const days = Object.keys(by).sort().reverse(), future = days.filter(d => d > t), past = days.filter(d => d <= t);
-  return future.reverse().slice(0, 3).map(d => dayBar(k, d) + by[d].map(logRow).join('')).join('')
-    + past.slice(0, careDays).map(d => dayBar(k, d) + (d < t ? `<button class="rep" data-act="report" data-d="${d}">하루 요약</button>` : '') + (by[d].map(logRow).join('') || '<p class="empty" style="padding:18px 0">위의 그림을 눌러 첫 기록을 남겨 보세요.</p>')).join('')
+  const fut = future.reverse().slice(0, 3);
+  // 오늘 날짜는 홈 위쪽에 따로 보이므로, 앞에 예정된 날이 없으면 오늘 막대는 뺀다.
+  return fut.map(d => dayBar(k, d) + by[d].map(logRow).join('')).join('')
+    + past.slice(0, careDays).map(d => (d === t && !fut.length ? '' : dayBar(k, d)) + (d < t ? `<button class="rep" data-act="report" data-d="${d}">하루 요약</button>` : '') + (by[d].map(logRow).join('') || '<p class="empty" style="padding:18px 0">위의 그림을 눌러 첫 기록을 남겨 보세요.</p>')).join('')
     + (past.length > careDays ? '<button class="btn" data-act="moredays">지난 기록 더 보기</button>' : '');
 }
 // 홈에서는 한 줄로 줄인 얼굴 사진 미션
@@ -91,7 +93,8 @@ function home() {
   const strip = !k.born && today() >= k.birth ? `<div class="notice hot"><b>예정일이 되었어요. 아기가 태어났나요?</b><div class="row"><button class="btn main" data-act="born">생일 넣기</button></div></div>`
     : first ? `<button class="strip" data-act="vaxnow">${icon('shield')}<span><b>지금 받을 것 ${n}개</b><em>${esc(first.title)}${n > 1 ? ' 외' : ''}</em></span>${icon('right', 's')}</button>` : '';
   const ev = a.events.map(e => `<button class="strip" data-act="event" data-id="${e.id}">${icon('cal')}<span><b>${esc(e.title)}</b><em>${e.date === today() ? '오늘' : '내일'}${e.time ? ' ' + Care.clock(e.time) : ''}</em></span>${icon('right', 's')}</button>`).join('');
-  return inAppCard() + syncCard() + quickRow(k) + (k.born ? '' : hero()) + `<div class="stack">${strip}${ev}${missionStrip(k)}</div>` + (k.born ? '' : mission()) + `<section class="logs">${timeline(k)}</section>` + loginCard();
+  const [, m, x] = today().split('-').map(Number), wd = '일월화수목금토'[new Date(today() + 'T12:00').getDay()];
+  return inAppCard() + syncCard() + `<p class="todayd">${m}월 ${x}일 (${wd})</p>` + quickRow(k) + (k.born ? '' : hero()) + `<div class="stack">${strip}${ev}${missionStrip(k)}</div>` + (k.born ? '' : mission()) + `<section class="logs">${timeline(k)}</section>` + loginCard();
 }
 
 /* ── 기록 창 ── */
