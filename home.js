@@ -81,6 +81,7 @@ function famPull() {
       await setBase(r.rev, r.data); await famPushNow();
     }
     await famTalk();
+    famUpload();
   });
 }
 async function famPushNow() {
@@ -104,34 +105,49 @@ async function shrink(blob, max) {
   const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(bmp, 0, 0, c.width, c.height); bmp.close();
   return new Promise(x => c.toBlob(x, 'image/jpeg', .85));
 }
-let upping = false;
-async function famUpload() {
-  if (!bound || upping || bound.role === 'viewer') return; upping = true;
-  const doneKey = 'baby-home-up:' + bound.id, done = new Set(jget(doneKey) || []);
-  try {
-    for (const p of drivePhotos()) {
-      if (done.has(p.id) || !bound) continue;
-      const rec = await Local.has(p.id) ? await photoBlob(p.id) : null; if (!rec) continue;
-      const small = await Local.photoUrl(p.id, true).then(u => u ? fetch(u).then(r => r.blob()) : null).catch(() => null);
-      const full = rec.type.startsWith('video/') ? small : await shrink(rec, 1600).catch(() => null);
-      if (full) await famCall(bound, `photo/${p.id}`, { method: 'PUT', body: full, slow: true });
-      if (small) await famCall(bound, `photo/${p.id}?t=1`, { method: 'PUT', body: small });
-      done.add(p.id); jput(doneKey, [...done]);
+let upping = null;
+const upKey = (h, k) => `baby-home-${k}:${h.id}`;
+// 아직 안 올린 사진 수(작은 사진 기준)
+const famLeft = () => bound && bound.role !== 'viewer' ? drivePhotos().filter(p => !(jget(upKey(bound, 'upt')) || []).includes(p.id)).length : 0;
+// 사진 올리기. 목록에 보일 작은 사진을 먼저 모두 올리고, 그다음 크게 볼 줄인 사진(긴 변 1600px)을 올린다.
+// 중간에 끊겨도(카카오톡으로 넘어가는 등) 다음에 앱을 열거나 돌아오면 이어서 올린다. onStep(올린 수, 전체)는 작은 사진 단계만 알린다.
+function famUpload(onStep, thumbsOnly) {
+  if (!bound || bound.role === 'viewer') return Promise.resolve();
+  if (upping) return upping;
+  return upping = (async () => {
+    const h = bound, done = { t: new Set(jget(upKey(h, 'upt')) || []), f: new Set(jget(upKey(h, 'up')) || []) };
+    const keep = k => jput(upKey(h, k === 't' ? 'upt' : 'up'), [...done[k]]);
+    for (const k of thumbsOnly ? ['t'] : ['t', 'f']) {
+      const list = drivePhotos().filter(p => !done[k].has(p.id)); let n = 0;
+      for (const p of list) {
+        if (bound !== h) return;
+        try {
+          if (!await Local.has(p.id)) { n++; continue; } // 이 기기에 없는 사진은 가진 사람이 올린다
+          const rec = await photoBlob(p.id), video = rec.type.startsWith('video/');
+          let small = await Local.photoUrl(p.id, true).then(u => u ? fetch(u).then(r => r.blob()) : null).catch(() => null);
+          if (!small && !video) small = await shrink(rec, 480).catch(() => null);
+          const body = k === 't' ? small : video ? small : (await shrink(rec, 1600).catch(() => null)) || small;
+          if (body) await famCall(h, `photo/${p.id}${k === 't' ? '?t=1' : ''}`, { method: 'PUT', body, slow: k === 'f' });
+          done[k].add(p.id); keep(k);
+        } catch (e) { if (e.status === 507) { toast(e.message); return; } if (!e.status || e.status === 401) return; } // 연결이 끊기면 다음에 이어서
+        n++; if (k === 't' && onStep) onStep(n, list.length);
+      }
     }
-  } catch (e) { if (e.status === 507) toast(e.message); } finally { upping = false; }
+  })().finally(() => { upping = null; });
 }
 // 이 기기에 없는 사진은 가족 수첩 서버에서 받아 온다. 내 수첩이면 이 기기에 저장해 둔다.
 const remoteUrls = new Map();
 async function remotePic(h, id, thumb, keep) {
   const k = h.id + id + (thumb ? 't' : ''); if (remoteUrls.has(k)) return remoteUrls.get(k);
-  const p = (async () => {
+  let p = null; p = (async () => {
     let r = await famCall(h, `photo/${id}${thumb ? '?t=1' : ''}`, { raw: true }).catch(() => null);
-    if (!r && thumb) r = await famCall(h, `photo/${id}`, { raw: true }).catch(() => null);
+    let exact = Boolean(r);
+    if (!r) { r = await famCall(h, `photo/${id}${thumb ? '' : '?t=1'}`, { raw: true }).catch(() => null); p.rough = true; } // 대신 받은 사진은 다음에 다시 받아 본다
     if (!r) return '';
-    const b = await r.blob(); if (keep) await Local.keepPart(id, thumb ? { thumb: b } : { data: b }).catch(() => { });
+    const b = await r.blob(); if (keep && exact) await Local.keepPart(id, thumb ? { thumb: b } : { data: b }).catch(() => { });
     return URL.createObjectURL(b);
   })();
-  remoteUrls.set(k, p); const u = await p; if (!u) remoteUrls.delete(k); return u;
+  remoteUrls.set(k, p); const u = await p; if (!u || p.rough) remoteUrls.delete(k); return u;
 }
 // 화면에 그릴 사진 주소. 놀러 간 집이면 그 집, 아니면 이 기기, 없으면 가족 수첩 서버.
 async function picUrl(id, thumb) {
@@ -152,7 +168,7 @@ async function famCreate() {
   const nick = myNick() || '엄마', data = Fam.shared(db);
   const r = await famCall(null, 'new', { body: { nick, data } });
   bound = { id: r.home, token: r.token, role: 'owner', mid: r.id, name: r.name }; jput('baby-home', bound);
-  await setBase(r.rev, data); famUpload(); return bound;
+  await setBase(r.rev, data); return bound;
 }
 async function inviteDlg(role) {
   if (!myNick()) return nickDlg(() => inviteDlg(role));
@@ -162,10 +178,12 @@ async function inviteDlg(role) {
 async function sendInvite(role, other) {
   busy('초대 링크를 만드는 중');
   try {
-    const h = await famCreate(), r = await famCall(h, 'invite', { body: { role } });
+    const h = await famCreate();
+    if (famLeft()) await famUpload((n, all) => busy('사진을 가족 수첩에 올리는 중', `${n}/${all}`, n, all), true);
+    busy('초대 링크를 만드는 중'); const r = await famCall(h, 'invite', { body: { role } });
     const url = `${Share.APP}?join=${h.id}.${r.code}`, kid = db.kids[0], name = h.name || (kid.name + '네');
     const title = role === 'editor' ? `${name} 수첩에 함께 기록해요` : `${name}에 놀러 오세요`, desc = role === 'editor' ? `${myNick()}가 아기 수첩을 같이 쓰자고 초대했어요` : `${myNick()}가 아기 일기와 사진을 보여 드리고 싶대요`;
-    busyOff();
+    busyOff(); famUpload();
     if (!other) { try { await loadKakao(); const link = { mobileWebUrl: url, webUrl: url }; Kakao.Share.sendDefault({ objectType: 'feed', content: { title, description: desc, imageUrl: Share.APP + 'icon-512.png?v=2', imageWidth: 512, imageHeight: 512, link }, buttons: [{ title: role === 'editor' ? '함께 쓰기' : '놀러 가기', link }] }); return; } catch { toast('카카오톡을 열지 못했어요. 다른 앱으로 보내기를 눌러 주세요.'); return; } }
     if (navigator.share) return navigator.share({ title, text: desc, url }).catch(() => { });
     await navigator.clipboard.writeText(`${title}\n${desc}\n${url}`); toast('초대 링크를 복사했어요');
