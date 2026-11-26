@@ -246,7 +246,11 @@ export class HomeCore {
   async rename(me, b) {
     if (!b || !nickOk(b.nick)) return [400, { error: 'nick' }];
     if (me.role === 'viewer' && parentNick(b.nick)) return [400, { error: 'parent' }];
-    const m = await this.s.get('m:' + me.h); m.nick = b.nick.trim(); await this.s.put('m:' + me.h, m); return [200, { nick: m.nick }];
+    const m = await this.s.get('m:' + me.h); m.nick = b.nick.trim(); await this.s.put('m:' + me.h, m);
+    // 예전에 단 댓글의 이름도 바꾼다
+    const mine = [...(await this.s.list({ prefix: 'note:' }))].filter(([, n]) => n.who === me.id && n.nick !== m.nick);
+    if (mine.length) await this.s.put(Object.fromEntries(mine.map(([k, n]) => [k, Object.assign(n, { nick: m.nick })])));
+    return [200, { nick: m.nick }];
   }
   async leave(me) { if (me.role === 'owner') return [400, { error: 'owner' }]; await this.dropMember(me.h); return [200, Object.assign({ ok: true }, me.k ? { _unlink: { k: me.k } } : {})]; }
   async kick(me, b) {

@@ -374,13 +374,15 @@ async function openVisit(id) {
     const [s, t] = await Promise.all([famCall(v, 'state'), famCall(v, 'talk')]);
     if (!vis || vis.id !== id) return;
     vis.data = s.data; vis.talk = t; vis.name = s.name;
+    if (s.me && s.me.nick) { vis.nick = v.nick = s.me.nick; } // 이 집에서 쓰는 내 별명
+    if (s.me && Fam.parentNick(s.me.nick) && !dlg.open) setTimeout(() => vnickDlg(true), 300); // 예전 버전에서 엄마·아빠로 덮인 별명은 바꿔 달라고 한다
     if (s.me && !s.me.linked && myTok()) famCall(v, 'link', { body: { tok: myTok() } }).catch(() => { });
     const k = (s.data.kids || [])[0] || {}; Object.assign(v, { name: s.name, kid: { name: k.name, photo: k.photo, born: k.born, birth: k.birth } }); jput('baby-visits', visits);
     render();
   } catch (e) { if (e.status === 401) { visits = visits.filter(x => x.id !== id); jput('baby-visits', visits); vis = null; tab = started ? 'visits' : 'home'; render(); } toast(e.message); }
 }
 function visitView() {
-  const d = vis.data, head = `<div class="backrow"><button data-act="visitback" aria-label="뒤로">${icon('left')}</button><h2>${esc(vis.name)}</h2></div>`;
+  const d = vis.data, head = `<div class="backrow"><button data-act="visitback" aria-label="뒤로">${icon('left')}</button><h2>${esc(vis.name)}</h2><button type="button" class="btn vnick" data-act="vnick">${esc(vis.nick || '내 별명')}</button></div>`;
   if (!d) return head + '<p class="empty">불러오는 중이에요</p>';
   const kids = d.kids || [], k = kids[0] || {};
   const age = k.born ? `태어난 지 ${S.diffDays(k.birth, today()) + 1}일` : `만나기까지 D-${S.diffDays(today(), k.birth)}`;
@@ -397,6 +399,21 @@ if (typeof document !== 'undefined') new MutationObserver(() => document.querySe
   const [hid, id, t] = i.dataset.vp.split(':'), v = visits.find(x => x.id === hid); i.removeAttribute('data-vp'); if (!v) return;
   remotePic(v, id, t === 't').then(u => { if (u) i.src = u; });
 })).observe(document.body, { childList: true, subtree: true });
+
+// 놀러 간 집에서만 쓰는 내 별명(할머니, 이모, 삼촌 …)
+function vnickDlg(fix) {
+  openDlg(`<form data-form="vnick"><h2>${esc(vis.name)}에서 내 별명</h2>${fix ? `<p class="notice hot">이 집에서 별명이 '${esc(vis.nick)}'(으)로 되어 있어요. 엄마·아빠는 아기 부모님만 쓸 수 있어서 다른 별명으로 바꿔 주세요.</p>` : ''}<p class="sub">이 집 가족에게만 보이는 이름이에요. 내 수첩의 별명과는 따로예요.</p><input name="nickx" maxlength="12" placeholder="예: 할머니, 이모, 삼촌" autocomplete="off" value="${fix ? '' : esc(vis.nick || '')}" required><p class="sub">엄마·아빠는 아기 부모님만 쓸 수 있어요.</p><button class="btn main">저장</button></form>`);
+}
+async function saveVnick(f) {
+  const n = (f.querySelector('[name=nickx]').value || '').trim().slice(0, 12); if (!n) return toast('별명을 써 주세요');
+  if (Fam.parentNick(n)) return toast('엄마·아빠는 아기 부모님만 쓸 수 있어요. 할머니, 이모, 삼촌처럼 다른 별명을 지어 주세요.');
+  try {
+    await famCall(vis, 'me', { body: { nick: n } });
+    vis.nick = n; const v = visits.find(x => x.id === vis.id); if (v) { v.nick = n; jput('baby-visits', visits); }
+    if (vis.talk) vis.talk = await famCall(vis, 'talk').catch(() => vis.talk); // 내가 단 댓글의 이름도 새로
+    dlg.close(); render(); toast('별명을 바꿨어요');
+  } catch (e) { toast(e.message); }
+}
 
 /* ── 좋아요와 댓글 ── */
 // 지금 화면의 가족 수첩(놀러 간 집 또는 내 가족 수첩)
@@ -440,6 +457,7 @@ async function famActs(act, b) {
   else if (act === 'kick') { if (confirm('이 사람을 가족 수첩에서 뺄까요? 다른 기기에서도 함께 빠져요.')) { try { famMembers = (await famCall(bound, 'kick', { body: { id: d.id } })).members; familyDlg(); } catch (e) { toast(e.message); } } }
   else if (act === 'famleave') { if (confirm('가족 수첩에서 나갈까요? 기록은 이 기기에 남지만 더는 함께 맞춰지지 않아요.')) { await famCall(bound, 'leave', { body: {} }).catch(() => { }); bound = null; jput('baby-home', null); dlg.close(); render(); toast('가족 수첩에서 나왔어요'); } }
   else if (act === 'visits') { if (dlg.open) dlg.close(); if (!started || SUB.includes(tab)) { vis = null; tab = 'visits'; render(); scrollTo(0, 0); } else { vis = null; enterSub('visits'); } }
+  else if (act === 'vnick') vnickDlg();
   else if (act === 'visitback') navBack(() => { vis = null; tab = 'visits'; render(); scrollTo(0, 0); });
   else if (act === 'visit') { if (tab === 'visits') enterSub('visit', () => openVisit(d.id)); else openVisit(d.id); }
   else if (act === 'vview') { vis.view = d.v; render(); }
@@ -473,6 +491,7 @@ async function famForms(f) {
   } else if (k === 'nick') await saveNick(f);
   else if (k === 'who') { const n = readNick(f); if (!n) { toast('나는 아기의 누구인지 골라 주세요'); return true; } jput('baby-me', { nick: n }); ob.step = 'choose'; render(); scrollTo(0, 0); }
   else if (k === 'join') await doJoin(f);
+  else if (k === 'vnick') await saveVnick(f);
   else if (k === 'pastejoin') {
     const m = /[?&]join=([0-9a-f]{24}\.[0-9a-f]{24})/.exec(f.querySelector('[name=u]').value || ''); if (!m) { toast('초대 링크가 아니에요. 카카오톡에서 받은 링크를 그대로 붙여 넣어 주세요.'); return true; }
     dlg.close(); history.replaceState(null, '', location.pathname + '?join=' + m[1]); if (await joinCheck()) render();
