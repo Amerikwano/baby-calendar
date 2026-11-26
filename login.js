@@ -75,7 +75,12 @@ async function resumeSocial() {
 }
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => { if (!document.hidden && ready) resumeSocial(); });
-  window.addEventListener('pageshow', e => { if (e.persisted && ready) resumeSocial(); });
+  window.addEventListener('pageshow', e => {
+    if (!e.persisted || !ready) return;
+    // 밀어서 뒤로 가기 등으로 이전 화면이 그대로 돌아오면 덜 그려진 채 남지 않게 다시 그린다.
+    document.querySelectorAll('#main, dialog').forEach(x => { x.style.transform = ''; x.style.transition = ''; });
+    render(); resumeSocial();
+  });
 }
 function accountCard() {
   if (!canLogin()) return '';

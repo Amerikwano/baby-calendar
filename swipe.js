@@ -36,11 +36,13 @@ if (typeof document !== 'undefined') {
   }, { passive: true });
   // 홈 화면에 추가한 앱(아이폰)은 사파리처럼 밀어서 뒤로 가기가 없어서, 왼쪽 가장자리에서 오른쪽으로 밀면 뒤로 간다.
   const STANDALONE = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
-  let edge = null;
+  // 새 아이폰은 홈 화면 앱에서도 스스로 밀어서 뒤로 가기를 한다. 그걸 한 번이라도 보면 이 기능은 끈다(두 번 뒤로 가지 않게).
+  let edge = null, popAt = 0, native = localStorage.getItem('baby-native-back') === '1';
+  window.addEventListener('popstate', () => { popAt = Date.now(); if (edge) edge.pop = true; });
   document.addEventListener('touchstart', e => {
     const t = e.touches[0]; edge = null;
-    if (!STANDALONE || !/iPhone|iPad|iPod/.test(navigator.userAgent) || e.touches.length > 1 || t.clientX > 24 || !navStack.length) return;
-    edge = { x: t.clientX, y: t.clientY, el: openDlgs().pop() || document.querySelector('#main') };
+    if (native || !STANDALONE || !/iPhone|iPad|iPod/.test(navigator.userAgent) || e.touches.length > 1 || t.clientX > 24 || !navStack.length) return;
+    edge = { x: t.clientX, y: t.clientY, at: Date.now(), el: openDlgs().pop() || document.querySelector('#main') };
   }, { passive: true });
   document.addEventListener('touchmove', e => {
     if (!edge) return; const t = e.touches[0], dx = t.clientX - edge.x, dy = Math.abs(t.clientY - edge.y);
@@ -48,9 +50,11 @@ if (typeof document !== 'undefined') {
     if (dx > 0) { edge.el.style.transition = 'none'; edge.el.style.transform = `translateX(${Math.min(dx, innerWidth) * .6}px)`; }
   }, { passive: true });
   const edgeEnd = e => {
-    if (!edge) return; const el = edge.el, t = e.changedTouches && e.changedTouches[0], go = t && t.clientX - edge.x > 80; edge = null;
+    if (!edge) return; const g = edge, el = g.el, t = e.changedTouches && e.changedTouches[0], go = t && t.clientX - g.x > 80; edge = null;
     el.style.transition = 'transform .18s'; el.style.transform = ''; setTimeout(() => { el.style.transition = ''; }, 200);
-    if (go) history.back();
+    if (!go) return;
+    // 아이폰이 이미 뒤로 갔으면(기록이 바뀌었으면) 우리는 가지 않는다.
+    setTimeout(() => { if (g.pop || popAt >= g.at) { native = true; localStorage.setItem('baby-native-back', '1'); return; } history.back(); }, 450);
   };
   document.addEventListener('touchend', edgeEnd, { passive: true }); document.addEventListener('touchcancel', edgeEnd, { passive: true });
 }
