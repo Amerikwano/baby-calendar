@@ -233,3 +233,11 @@ nav button[aria-current=page]{background:rgb(107 81 71/.13);color:#3b2c25}nav bu
 /* 앨범 나누기 단추도 같은 반투명 캡슐, 고른 쪽은 진하게 */
 .albseg{border-radius:999px;background:rgb(255 252 247/.6);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgb(255 255 255/.75);box-shadow:0 4px 16px rgb(80 55 40/.12)}
 .albseg button{border-radius:999px}.albseg button[aria-selected=true]{background:var(--main);color:#fff;box-shadow:0 2px 8px rgb(80 55 40/.25)}
+/* 내리면 아래 메뉴가 숨고, 맨 위로 단추 */
+nav{transition:transform .28s ease,opacity .28s ease}body.navhide nav{transform:translateY(calc(100% + 14px + env(safe-area-inset-bottom,0px)));opacity:0;pointer-events:none}
+.fab{transition:bottom .28s ease}body.navhide .fab{bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.totop{position:fixed;right:max(16px,calc(50vw - 364px));bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:5;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:var(--ink);background:rgb(255 252 247/.6);-webkit-backdrop-filter:blur(14px) saturate(1.6);backdrop-filter:blur(14px) saturate(1.6);border:1px solid rgb(255 255 255/.75);box-shadow:0 6px 18px rgb(80 55 40/.18);transition:bottom .28s ease}
+.totop[hidden]{display:none}body:has(.fab) .totop{bottom:calc(152px + env(safe-area-inset-bottom,0px))}
+body.navhide .totop{bottom:calc(16px + env(safe-area-inset-bottom,0px))}body.navhide:has(.fab) .totop{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.totop{background:rgb(255 252 247/.94)}}
+@media (prefers-reduced-motion:reduce){nav,.fab,.totop{transition:none}}

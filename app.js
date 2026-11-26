@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.11.15';
+const APP_VERSION = '0.11.16';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -1062,4 +1062,23 @@ async function load() { const s = await api('/api/state'); rev = s.rev; db = Obj
     if (local && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
     if (local && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(pushInit).catch(() => {});
   } catch (e) { hideSplash(0); $('#main').innerHTML = `<div class="notice hot"><b>수첩을 열지 못했어요</b><p>${esc(e.message)}</p></div>`; }
+})();
+// 아래로 내리면 아래 메뉴를 숨기고, 위로 올리면 다시 보인다. 많이 내려가면 '맨 위로' 단추가 생긴다.
+(() => {
+  let last = scrollY;
+  const top = $('#totop'), cls = document.body.classList;
+  const tick = () => {
+    const y = Math.max(0, scrollY), nav = $('nav'), end = y + innerHeight >= document.documentElement.scrollHeight - 4;
+    if (y < 60 || end || nav.hidden) { cls.remove('navhide'); last = y; }
+    else if (Math.abs(y - last) > 8) { cls.toggle('navhide', y > last); last = y; }
+    top.hidden = nav.hidden || y < innerHeight * 0.8;
+  };
+  addEventListener('scroll', tick, { passive: true });
+  addEventListener('resize', tick, { passive: true });
+  // 브라우저의 부드러운 스크롤은 화면 모양이 바뀌면 중간에 멈추므로 직접 움직인다
+  top.addEventListener('click', () => {
+    const y0 = scrollY, t0 = performance.now(), ms = matchMedia('(prefers-reduced-motion:reduce)').matches ? 0 : Math.min(500, 200 + y0 / 8);
+    const step = t => { const p = ms ? Math.min(1, (t - t0) / ms) : 1; scrollTo(0, Math.round(y0 * (1 - (1 - Math.pow(1 - p, 3))))); if (p < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  });
 })();
