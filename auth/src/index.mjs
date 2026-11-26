@@ -2,7 +2,7 @@
    다른 창에서 로그인이 끝나도 앱이 이어받도록 결과를 10분까지만 맡아 두고, 앱이 가져가면 바로 지운다(desk.mjs). */
 const PROVIDERS = {
   kakao: {
-    authorize: (e, cb, s) => 'https://kauth.kakao.com/oauth/authorize?' + new URLSearchParams({ response_type: 'code', client_id: e.KAKAO_ID, redirect_uri: cb, state: s }),
+    authorize: (e, cb, s) => 'https://kauth.kakao.com/oauth/authorize?' + new URLSearchParams({ response_type: 'code', client_id: e.KAKAO_ID, redirect_uri: cb, state: s, scope: 'profile_nickname,profile_image' }), // 예전에 닉네임만 동의한 사람에게도 사진 동의를 묻는다
     token: (e, cb, code) => ['https://kauth.kakao.com/oauth/token', { grant_type: 'authorization_code', client_id: e.KAKAO_ID, client_secret: e.KAKAO_SECRET, redirect_uri: cb, code }],
     me: 'https://kapi.kakao.com/v2/user/me', ready: e => e.KAKAO_ID && e.KAKAO_SECRET,
     user: j => { const pr = (j.kakao_account || {}).profile || {}, pp = j.properties || {}; return { id: j.id, name: pr.nickname || pp.nickname, img: pr.thumbnail_image_url || pp.thumbnail_image }; },
