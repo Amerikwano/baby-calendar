@@ -125,10 +125,12 @@ async function shrink(blob, max) {
   const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(bmp, 0, 0, c.width, c.height); bmp.close();
   return new Promise(x => c.toBlob(x, 'image/jpeg', .85));
 }
-let upping = null;
+let upping = null, famUp = { done: 0, total: 0 };
 const upKey = (h, k) => `baby-home-${k}:${h.id}`;
+// 썸네일을 새로 만든 동영상은 가족 수첩에 다시 올린다.
+function famRedo(id) { if (!bound) return; ['upt', 'up'].forEach(k => jput(upKey(bound, k), (jget(upKey(bound, k)) || []).filter(x => x !== id))); famUpload(); }
 // 아직 안 올린 사진 수(작은 사진 기준)
-const famLeft = () => bound && bound.role !== 'viewer' ? drivePhotos().filter(p => !(jget(upKey(bound, 'upt')) || []).includes(p.id)).length : 0;
+const famLeft = () => bound && bound.role !== 'viewer' ? drivePhotos().filter(p => !(p.type === 'video' && p.th !== 1) && !(jget(upKey(bound, 'upt')) || []).includes(p.id)).length : 0;
 // 사진 올리기. 목록에 보일 작은 사진을 먼저 모두 올리고, 그다음 크게 볼 줄인 사진(긴 변 1600px)을 올린다.
 // 중간에 끊겨도(카카오톡으로 넘어가는 등) 다음에 앱을 열거나 돌아오면 이어서 올린다. onStep(올린 수, 전체)는 작은 사진 단계만 알린다.
 function famUpload(onStep, thumbsOnly) {
@@ -137,8 +139,10 @@ function famUpload(onStep, thumbsOnly) {
   return upping = (async () => {
     const h = bound, done = { t: new Set(jget(upKey(h, 'upt')) || []), f: new Set(jget(upKey(h, 'up')) || []) };
     const keep = k => jput(upKey(h, k === 't' ? 'upt' : 'up'), [...done[k]]);
-    for (const k of thumbsOnly ? ['t'] : ['t', 'f']) {
-      const list = drivePhotos().filter(p => !done[k].has(p.id)); let n = 0;
+    const kinds = thumbsOnly ? ['t'] : ['t', 'f'], wait = p => p.type === 'video' && p.th !== 1; // 썸네일을 아직 못 만든 동영상은 만든 뒤에 올린다
+    famUp = { done: 0, total: kinds.reduce((a, k) => a + drivePhotos().filter(p => !done[k].has(p.id) && !wait(p)).length, 0) }; upShow();
+    for (const k of kinds) {
+      const list = drivePhotos().filter(p => !done[k].has(p.id) && !wait(p)); let n = 0;
       for (const p of list) {
         if (bound !== h) return;
         try {
@@ -150,10 +154,10 @@ function famUpload(onStep, thumbsOnly) {
           if (body) await famCall(h, `photo/${p.id}${k === 't' ? '?t=1' : ''}`, { method: 'PUT', body, slow: k === 'f' });
           done[k].add(p.id); keep(k);
         } catch (e) { if (e.status === 507) { toast(e.message); return; } if (!e.status || e.status === 401) return; } // 연결이 끊기면 다음에 이어서
-        n++; if (k === 't' && onStep) onStep(n, list.length);
+        n++; famUp.done++; upShow(); if (k === 't' && onStep) onStep(n, list.length);
       }
     }
-  })().finally(() => { upping = null; });
+  })().finally(() => { upping = null; famUp = { done: 0, total: 0 }; upShow(); });
 }
 // 이 기기에 없는 사진은 가족 수첩 서버에서 받아 온다. 내 수첩이면 이 기기에 저장해 둔다.
 const remoteUrls = new Map();

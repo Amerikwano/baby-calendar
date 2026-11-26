@@ -29,7 +29,7 @@ function sinceBirth(end) {
   return m < 0 ? `${k.name}, 태어나기 전` : `${k.name}, 출생일로부터 ${Math.floor(m / 12) ? Math.floor(m / 12) + '년 ' : ''}${m % 12}개월`;
 }
 const lastDay = ym => S.addDays(S.addMonths(ym + '-01', 1), -1);
-const cell = (p, cls) => `<button class="${cls || ''}" data-act="photo" data-id="${p.id}" aria-label="${kd(p.date)} ${p.type ? '동영상' : '사진'}"><img ${pic(p.id, 1)} alt="${esc(p.caption || kd(p.date) + ' 사진')}">${p.type ? `<s>${icon('vplay', 's')}${p.dur ? Media.clock(p.dur) : ''}</s>` : ''}${p.fav ? `<i>${icon('heart', 'fill')}</i>` : ''}</button>`;
+const cell = (p, cls) => `<button class="${cls || ''}" data-act="photo" data-id="${p.id}" aria-label="${kd(p.date)} ${p.type ? '동영상' : '사진'}"><img ${pic(p.id, 1)} alt="${esc(p.caption || kd(p.date) + ' 사진')}">${p.type && p.th !== 1 && local ? `<video class="vfix" data-vfix="${p.id}" muted playsinline preload="auto" aria-hidden="true" tabindex="-1"></video>` : ''}${p.type ? `<s>${icon('vplay', 's')}${p.dur ? Media.clock(p.dur) : ''}</s>` : ''}${p.fav ? `<i>${icon('heart', 'fill')}</i>` : ''}</button>`;
 const yearCard = (y, l) => { const c = Album.cover(l); return `<button class="ycard" data-act="albyear" data-y="${y}"><img ${pic(c.id, 1)} alt=""><b>${y}</b><em>${esc(sinceBirth(y + '-12-31'))}</em></button>`; };
 // 한 메뉴 안의 두 화면을 오가는 위쪽 탭
 const segTabs = (label, list) => `<div class="albseg" role="tablist" aria-label="${label}">${list.map(([t, n]) => `<button role="tab" data-tab="${t}" aria-selected="${tab === t}">${n}</button>`).join('')}</div>`;

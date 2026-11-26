@@ -41,12 +41,14 @@ async function videoPoster(blob) {
   let dur = 0, c = null;
   try {
     v.muted = true; v.defaultMuted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto'; v.className = 'vprobe'; v.setAttribute('aria-hidden', 'true'); document.body.append(v);
-    const meta = wait('loadedmetadata', 12000); v.src = url; v.load(); await meta;
+    const meta = wait('loadedmetadata', 12000), data = wait('loadeddata', 15000).then(() => true, () => false);
+    v.src = url + '#t=0.001'; v.load(); await meta; // #t: 아이폰이 첫 장면을 미리 읽게 한다
     dur = Number.isFinite(v.duration) ? v.duration : 0;
     const frame = v.requestVideoFrameCallback ? new Promise(ok => { v.requestVideoFrameCallback(() => ok()); setTimeout(ok, 5000); }) : wait('timeupdate', 5000).catch(() => { });
     const played = await v.play().then(() => true, () => false);
     if (played) { await frame; c = frameCanvas(v); }
     v.pause();
+    if (!c && await data) { await new Promise(r => setTimeout(r, 150)); c = frameCanvas(v); } // 저전력 모드라 재생이 막혀도 첫 장면은 읽힌다
     if (!c) { const seek = wait('seeked', 6000); v.currentTime = Math.min(.05, (dur || 1) / 2); await seek; await new Promise(r => setTimeout(r, 120)); c = frameCanvas(v); }
   } catch { }
   v.pause(); v.removeAttribute('src'); v.load(); v.remove(); URL.revokeObjectURL(url);
@@ -66,15 +68,29 @@ async function repairPosters() {
       const r = await videoPoster(b); if (!r.real || !r.thumb) continue;
       await api(`/photos/${p.id}/thumb`, { method: 'PUT', body: r.thumb }).then(() => done.set(p.id, r.dur)).catch(() => { });
     }
-    if (done.size) await save(d => d.photos.forEach(x => { if (done.has(x.id)) { x.th = 1; if (!x.dur) x.dur = Math.round(done.get(x.id) * 10) / 10; } }));
+    if (done.size) { await save(d => d.photos.forEach(x => { if (done.has(x.id)) { x.th = 1; if (!x.dur) x.dur = Math.round(done.get(x.id) * 10) / 10; } })); done.forEach((_, id) => posterDone(id)); }
   } finally { postering = false; }
 }
 // 재생할 때 첫 장면을 얻으면 그것으로도 채운다.
 async function posterFromPlaying(p, v) {
   if (p.th === 1) return; const c = frameCanvas(v); if (!c) return;
   const b = await toJpeg(c); if (!b) return;
-  try { await api(`/photos/${p.id}/thumb`, { method: 'PUT', body: b }); p.th = 1; await save(d => { const x = d.photos.find(y => y.id === p.id); if (x) { x.th = 1; if (!x.dur && Number.isFinite(v.duration)) x.dur = Math.round(v.duration * 10) / 10; } }); } catch { }
+  try { await api(`/photos/${p.id}/thumb`, { method: 'PUT', body: b }); p.th = 1; await save(d => { const x = d.photos.find(y => y.id === p.id); if (x) { x.th = 1; if (!x.dur && Number.isFinite(v.duration)) x.dur = Math.round(v.duration * 10) / 10; } }); posterDone(p.id); } catch { }
 }
+// 썸네일을 새로 만들었으면 화면의 그림을 바꾸고, 가족 수첩에도 다시 올린다.
+function posterDone(id) {
+  if (typeof famRedo === 'function') famRedo(id);
+  document.querySelectorAll(`[data-act=photo][data-id="${id}"] img`).forEach(i => Local.photoUrl(id, true).then(u => { if (u) i.src = u; }).catch(() => { }));
+  document.querySelectorAll(`video[data-vfix="${id}"]`).forEach(v => v.remove());
+}
+// 그래도 썸네일이 없는 동영상은 앨범 칸에 동영상 자체를 붙여 첫 장면을 보여 준다.
+// 화면에 보이는 동영상은 아이폰도 첫 장면을 그려 주므로, 그때 썸네일로 저장한다.
+if (typeof document !== 'undefined') new MutationObserver(() => document.querySelectorAll('video[data-vfix]:not([src])').forEach(async v => {
+  const id = v.dataset.vfix; v.setAttribute('src', ''); const b = await photoBlob(id).catch(() => null); if (!b || !v.isConnected) return;
+  const url = URL.createObjectURL(b);
+  v.addEventListener('loadeddata', () => setTimeout(async () => { const p = db.photos.find(x => x.id === id); if (p) await posterFromPlaying(p, v); if (p && p.th === 1) URL.revokeObjectURL(url); }, 200), { once: true });
+  v.src = url + '#t=0.001';
+})).observe(document.body, { childList: true, subtree: true });
 async function imageThumb(blob) {
   const bmp = await createImageBitmap(blob), k = Math.min(1, 480 / Math.max(bmp.width, bmp.height)), c = document.createElement('canvas');
   c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));

@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.11.0';
+const APP_VERSION = '0.11.1';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -101,7 +101,9 @@ function pickFiles(o, done) {
   i.addEventListener('cancel', () => { i.remove(); if (picker === i) picker = null; if (o.busy) busyOff(); });
   ([...document.querySelectorAll('dialog[open]')].pop() || document.body).append(i); i.click();
   // 다 고른 뒤 휴대폰이 동영상을 준비하는 몇 초 동안 보이도록 고르는 화면 뒤에 미리 띄운다. 아이폰의 고르기 메뉴와 겹치지 않게 조금 늦춘다.
-  clearTimeout(busyWait); if (o.busy) busyWait = setTimeout(() => { if (picker === i) busy(o.busy, '휴대폰이 준비하고 있어요. 잠시 기다려 주세요'); }, o.capture ? 1200 : 3000);
+  clearTimeout(busyWait); if (o.busy) busyWait = setTimeout(() => { if (picker === i) busy(o.busy, '휴대폰이 사진과 동영상을 준비하고 있어요. 잠시 기다려 주세요'); }, o.capture ? 1200 : 1500);
+  // 고르는 화면이 닫히고 앱으로 돌아오면 바로 띄운다(동영상이 많으면 휴대폰이 준비하는 데 오래 걸린다).
+  if (o.busy) { const back = () => { if (picker === i) { clearTimeout(busyWait); busyWait = setTimeout(() => { if (picker === i) busy(o.busy, '휴대폰이 사진과 동영상을 준비하고 있어요. 잠시 기다려 주세요'); }, 300); } }; window.addEventListener('focus', back, { once: true }); document.addEventListener('visibilitychange', () => { if (!document.hidden) back(); }, { once: true }); }
 }
 const items = (k = K()) => S.build(k.birth, k.options, k.records).map(i => Object.assign(i, { kid: k.id }));
 const famItems = () => db.kids.flatMap(k => items(k)).sort((a, b) => a.start < b.start ? -1 : a.start > b.start ? 1 : 0);
@@ -463,14 +465,16 @@ async function exifDate(file) {
 async function upload(files, fixedDate) {
   const added = [], bad = []; let n = 0;
   for (const f of files) {
-    busy(Media.isVideo(f) ? '동영상을 저장하는 중이에요' : '사진을 저장하는 중이에요', files.length > 1 ? `${++n} / ${files.length}, 화면을 켜 두세요` : '화면을 켜 두세요', n - 1, files.length);
+    const v = Media.isVideo(f); n++;
+    busy(files.length > 1 ? `${files.length}개를 앨범에 넣는 중이에요` : v ? '동영상을 넣는 중이에요' : '사진을 넣는 중이에요', `${files.length > 1 ? `${n}번째 ${v ? '동영상' : '사진'}, ` : ''}${v ? '썸네일을 만들고 있어요. ' : ''}화면을 켜 두세요`, n - 1, files.length);
     await new Promise(r => setTimeout(r, 30)); // 창이 먼저 그려지게 한다
     try {
       const m = await storeMedia(f), made = m.type ? await Media.madeAt(f) : null;
       added.push(Object.assign(m, { date: fixedDate || (made ? made.toLocaleDateString('sv-SE') : await exifDate(f)) || new Date(f.lastModified || Date.now()).toLocaleDateString('sv-SE'), caption: '', kid: K().id }));
     } catch (e) { bad.push((f.name || '파일') + (e.status ? ': ' + e.message : ': 열 수 없는 파일이에요')); }
   }
-  const kept = added.length && await save(d => d.photos.push(...added)); busyOff(); if (kept) autoUpload();
+  if (files.length > 1) { busy(`${files.length}개를 앨범에 넣는 중이에요`, '거의 다 됐어요', files.length, files.length); }
+  const kept = added.length && await save(d => d.photos.push(...added)); busyOff(); if (kept) { autoUpload(); upShow(); }
   if (bad.length) toast(bad[0] + (bad.length > 1 ? ` 외 ${bad.length - 1}장` : '')); else if (added.length) { const v = added.filter(x => x.type).length, n = added.length - v; toast([n ? `사진 ${n}장` : '', v ? `동영상 ${v}개` : ''].filter(Boolean).join(', ') + (v ? '를' : '을') + ' 넣었어요'); }
   return added;
 }
@@ -723,7 +727,7 @@ async function uploadAll() {
   if (job.on) return;
   if (!Drive.token()) return Drive.login(GOOGLE_ID);
   Object.assign(job, { on: true, done: 0, total: waiting().length, stop: false });
-  const paint = () => { if ($('#upn')) { $('#upn').textContent = `드라이브에 올리는 중 ${job.done}/${job.total}`; $('#upp').max = job.total; $('#upp').value = job.done; } };
+  const paint = () => { upShow(); if ($('#upn')) { $('#upn').textContent = `드라이브에 올리는 중 ${job.done}/${job.total}`; $('#upp').max = job.total; $('#upp').value = job.done; } };
   render(); let bad = 0;
   try {
     await syncSent(); // 다른 기기에서 이미 올린 사진은 건너뛴다
@@ -739,9 +743,18 @@ async function uploadAll() {
     }
     toast(job.stop ? '올리기를 멈췄어요' : bad ? `${job.done}장을 올렸고 ${bad}장은 올리지 못했어요` : job.done ? `사진 ${job.done}장을 드라이브에 올렸어요` : '새로 올릴 사진이 없어요');
   } catch (e) { toast(e.message); }
-  job.on = false; render();
+  job.on = false; render(); upShow();
 }
 // 로그인이 살아 있을 때 새 사진을 바로 올린다.
+// 화면 아래 작은 알림: 드라이브나 가족 수첩에 사진을 올리는 중이면 보여 준다.
+let upPill = null;
+function upShow() {
+  if (typeof document === 'undefined') return;
+  const fam = typeof famUp !== 'undefined' && famUp.total ? famUp : null;
+  const t = job.on ? `구글 드라이브에 올리는 중 ${job.done}/${job.total}` : fam ? `가족 수첩에 올리는 중 ${fam.done}/${fam.total}` : '';
+  if (!upPill) { upPill = document.createElement('div'); upPill.className = 'uppill'; upPill.setAttribute('role', 'status'); document.body.append(upPill); }
+  upPill.hidden = !t || !started; upPill.innerHTML = t ? `<i class="spin" aria-hidden="true"></i>${esc(t)}` : '';
+}
 function autoUpload() { if (autoUp && canDrive() && Drive.account() && Drive.token() && !job.on && !dlg.open) uploadAll(); }
 let driveFiles = [];
 async function driveDlg() {

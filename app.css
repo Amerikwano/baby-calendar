@@ -212,3 +212,5 @@ html:has(#viewer[open]),body:has(#viewer[open]){background:#120d0b}
 .kimg{flex:none;width:40px;height:40px;border-radius:50%;object-fit:cover;background:#ffe3b0}
 .kwho{display:grid;justify-items:center;gap:4px;padding:8px 0}.kwho .kimg{width:88px;height:88px;font-size:34px;border:4px solid #ffd976}.kwho b{font-size:20px}
 .approve .btn{width:100%;min-height:48px}
+.vfix{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;background:transparent}
+.uppill{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(164px + env(safe-area-inset-bottom));z-index:30;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:rgb(60 45 35 / .86);color:#fff;font-size:13.5px;font-weight:700;white-space:nowrap;box-shadow:0 4px 14px rgb(0 0 0 / .15)}.uppill[hidden]{display:none}.uppill .spin{width:14px;height:14px;border-width:2px;margin:0;border-color:rgb(255 255 255 / .35);border-top-color:#fff}
