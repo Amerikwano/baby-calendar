@@ -9,7 +9,7 @@
     const special = { 100: '오늘은 백일이에요', 200: '오늘은 200일이에요' }[n];
     return { title: `${k.name} 태어난 지 ${n}일`, description: special || '오늘도 한 뼘 자랐어요' };
   }
-  const message = t => { const link = { mobileWebUrl: APP, webUrl: APP }; return { objectType: 'feed', content: { title: t.title, description: t.description, imageUrl: APP + 'icon-512.png?v=2', imageWidth: 512, imageHeight: 512, link }, buttons: [{ title: '수첩 열기', link }] }; };
+  const message = t => { const link = { mobileWebUrl: APP, webUrl: APP }; return { objectType: 'feed', content: { title: t.title, description: t.description, imageUrl: APP + 'icon-512.png?v=3', imageWidth: 512, imageHeight: 512, link }, buttons: [{ title: '수첩 열기', link }] }; };
   const out = { APP, text, message };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Share = out;
 })(typeof window !== 'undefined' ? window : globalThis);
