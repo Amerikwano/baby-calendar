@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.25.3';
+const APP_VERSION = '0.26.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -439,8 +439,32 @@ const courseData = (steps, res, base) => ({ base: base || '', steps: steps.map((
 const cvText = e => `[우리 수첩] ${e.title}\n${kd(e.date)}${e.course.base ? ' · ' + e.course.base + ' 근처' : ''}\n\n${e.course.steps.map(([a, b, n, p]) => `${a}  ${b}${p && !n ? ' - ' + p.place_name : ''}`).join('\n')}`;
 function courseView(id) {
   const e = db.events.find(x => x.id === id); if (!e || !e.course) return eventDlg(id); const c = e.course;
-  openDlg(`<form data-form="none"><div class="row between"><h2>${esc(e.title)}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="cvcap" data-id="${id}" aria-label="사진에 저장">${icon('capture')}</button><button type="button" class="sq" data-act="cvcap" data-id="${id}" aria-label="공유하기" data-share="1">${icon('share')}</button></span></div><p class="sub">${kd(e.date)}${c.base ? ' · ' + esc(c.base) + ' 근처' : ''}</p><ol class="plan">${c.steps.map(([a, b, n, p]) => `<li><b>${a}</b><span>${n ? `<button type="button" class="linkb" data-act="plan" data-n="${esc(n)}">${esc(b)}</button>` : esc(b)}${p && !n ? placeLine(p) : ''}</span></li>`).join('')}</ol><div class="route" hidden></div><div class="row"><button type="button" class="btn" data-act="event" data-id="${id}">일정 고치기</button></div></form>`);
+  openDlg(`<form data-form="none"><div class="row between"><h2>${esc(e.title)}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="cvcap" data-id="${id}" aria-label="사진에 저장">${icon('capture')}</button><button type="button" class="sq" data-act="cvcap" data-id="${id}" aria-label="공유하기" data-share="1">${icon('share')}</button></span></div><p class="sub">${kd(e.date)}${c.base ? ' · ' + esc(c.base) + ' 근처' : ''}</p><ol class="plan">${c.steps.map(([a, b, n, p]) => `<li><b>${a}</b><span>${n ? `<button type="button" class="linkb" data-act="plan" data-n="${esc(n)}">${esc(b)}</button>` : esc(b)}${p && !n ? placeLine(p) : ''}</span></li>`).join('')}</ol><div class="route" hidden></div><div class="row"><button type="button" class="btn main" data-act="cedit" data-id="${id}">코스 고치기</button><button type="button" class="btn" data-act="event" data-id="${id}">일정 고치기</button></div></form>`);
   if (c.steps.some(st => st[3])) kmap().then(() => drawRoute(dlg.querySelector('.route'), { out: c.steps.map(st => ({ p: st[3] })) })).catch(() => { });
+}
+// ── 저장한 코스 고치기: 시간·할 일·장소 바꾸기, 단계 더하기·빼기
+let ced = null, cedHits = [];
+function cedOpen(id) { const e = db.events.find(x => x.id === id); if (!e || !e.course) return; ced = { id, title: e.title, base: e.course.base, steps: JSON.parse(JSON.stringify(e.course.steps)) }; cedShow(); }
+function cedSync() { const f = dlg.querySelector('form[data-form=cedit]'); if (!f) return; ced.title = f.elements.title.value.trim() || ced.title; ced.steps.forEach((st, i) => { st[0] = f.elements['t' + i].value || st[0]; st[1] = f.elements['b' + i].value.trim() || st[1]; }); }
+function cedShow() {
+  openDlg(`<form data-form="cedit"><h2>코스 고치기</h2><label class="f">제목<input name="title" maxlength="40" value="${esc(ced.title)}"></label><div class="stack" style="gap:12px">${ced.steps.map(([a, b, n, p], i) => `<div class="cedrow"><div class="two" style="grid-template-columns:110px 1fr"><input type="time" name="t${i}" value="${a}" aria-label="시간"><input name="b${i}" maxlength="60" value="${esc(b)}" aria-label="할 일"></div><div class="row" style="gap:6px">${p ? `<span class="chip">${esc(p.place_name)}</span>` : n ? `<span class="chip">${esc(n)}</span>` : '<span class="sub">장소 없음</span>'}<button type="button" class="btn" data-act="cedplace" data-i="${i}">${p || n ? '장소 바꾸기' : '장소 넣기'}</button>${p && !n ? `<button type="button" class="btn" data-act="cednoplace" data-i="${i}">장소 빼기</button>` : ''}<button type="button" class="btn danger" data-act="ceddel" data-i="${i}">단계 지우기</button></div></div>`).join('')}</div><button type="button" class="btn" data-act="cedadd">+ 단계 더하기</button><p class="sub">저장하면 시간 순서대로 정리되고, 경로 지도도 바뀐 장소로 다시 그려요.</p>${acts()}</form>`);
+}
+// 장소 바꾸기: 코스 근처에서 검색(카카오 장소 검색)
+const cedCenter = () => { const p = ced.steps.map(st => st[3]).find(Boolean); return p ? { x: p.x, y: p.y } : null; };
+function cedPlaceDlg(i) { cedSync(); openDlg(`<form data-form="cedsearch" data-i="${i}"><h2>장소 찾기</h2><p class="sub">${esc(ced.steps[i][1])}</p><div class="addrow"><input name="q" maxlength="40" autocomplete="off" placeholder="예: 파스타, 카페, 공방 이름" required><button class="btn main">찾기</button></div><div id="cedres" class="list"></div><button type="button" class="btn" data-act="cedback">돌아가기</button></form>`); }
+async function cedSearch(i, q) {
+  const box = $('#cedres'); box.innerHTML = '<p class="sub">찾는 중이에요</p>';
+  try {
+    await kmap(); const P = new kakao.maps.services.Places(), c = cedCenter(), o = c ? { location: new kakao.maps.LatLng(c.y, c.x), radius: 3000, sort: kakao.maps.services.SortBy.ACCURACY } : {};
+    cedHits = await new Promise(r => P.keywordSearch(q, (d, st) => r(st === kakao.maps.services.Status.OK ? d.slice(0, 12) : []), o));
+    box.innerHTML = cedHits.map((p, k) => `<button type="button" class="item" data-act="cedpick" data-i="${i}" data-k="${k}" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${esc(p.place_name)}</b><span class="when">${esc((p.category_name || '').split(' > ').pop())}${p.distance ? ' · ' + (p.distance >= 1000 ? (p.distance / 1000).toFixed(1) + 'km' : p.distance + 'm') : ''} · ${esc(p.road_address_name || p.address_name || '')}</span></span><span class="chip">고르기</span></button>`).join('') || '<p class="sub">찾은 곳이 없어요. 다른 말로 찾아보세요.</p>';
+  } catch { box.innerHTML = '<p class="sub">지금은 장소를 찾을 수 없어요.</p>'; }
+}
+async function cedSave() {
+  cedSync(); ced.steps.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+  if (!ced.steps.length) return toast('단계가 하나는 있어야 해요');
+  const id = ced.id, c = { base: ced.base, steps: ced.steps };
+  if (await save(x => { const e = x.events.find(y => y.id === id); if (e) Object.assign(e, { title: ced.title, time: ced.steps[0][0], course: c }); })) { ced = null; toast('코스를 고쳤어요'); render(); courseView(id); }
 }
 // 홈: 오늘 코스가 있으면 위에 보여 준다
 const todayCourses = k => db.events.filter(e => e.course && e.date === today() && (!e.kid || e.kid === k.id));
@@ -1162,6 +1186,13 @@ async function moreActs(act, b, id) {
   else if (act === 'plan') { planRes = null; planDlgFor(d.n); }
   else if (act === 'planpick') { const keep = planRes; planPickDlg(d.n); planRes = keep; }
   else if (act === 'courseview') courseView(id);
+  else if (act === 'cedit') cedOpen(id);
+  else if (act === 'cedplace') cedPlaceDlg(Number(d.i));
+  else if (act === 'cednoplace') { cedSync(); ced.steps[Number(d.i)][3] = null; cedShow(); }
+  else if (act === 'ceddel') { cedSync(); ced.steps.splice(Number(d.i), 1); cedShow(); }
+  else if (act === 'cedadd') { cedSync(); const last = ced.steps[ced.steps.length - 1], t = last ? Math.min(23 * 60, Couple.mins(last[0]) + 60) : 720; ced.steps.push([`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`, '새 일정', '', null]); cedShow(); }
+  else if (act === 'cedback') cedShow();
+  else if (act === 'cedpick') { const st = ced.steps[Number(d.i)]; st[3] = slimP(cedHits[Number(d.k)]); st[2] = ''; cedShow(); }
   else if (act === 'cvcopy') { const e = db.events.find(x => x.id === id); try { await navigator.clipboard.writeText(cvText(e)); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
   else if (act === 'cvcap') { shotMode = d.share ? 'share' : 'save'; { const e = db.events.find(x => x.id === id); courseShot({ title: e.title, sub: kd(e.date) + (e.course.base ? ' · ' + e.course.base + ' 근처' : ''), steps: e.course.steps, file: `${e.date}-데이트코스.png` }); } }
   else if (act === 'plancopy') { const x = Couple.SPOTS.find(y => y.name === d.n); try { const p = Couple.plan(x); await navigator.clipboard.writeText(Couple.planText(x, planRes && planRes.base && dlg.open ? Object.assign({}, p, { steps: withPlaces(p.steps.map(st => [st[0], st[1], st[1].startsWith(x.name) ? x.name : '']), planRes) }) : p)); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
@@ -1437,6 +1468,8 @@ document.addEventListener('submit', async ev => {
     ok = await save(x => { const k = x.kids.find(y => y.id === K().id), g = grapeOf(k); g.custom = [m].concat(g.custom || []).slice(0, 30); g.mi = 0; k.grape = g; });
   }
   if (kind === 'rdc') { const ok2 = f.querySelector('.btn.main'); if (!Number(v.nights) && v.to <= v.from) return toast('끝 시간이 시작보다 늦어야 해요'); ok2.disabled = true; ok2.textContent = '날씨를 보고 있어요'; rdcSetup(v); await rdcWeather(); rdcRoll(); rdcShow(); return; }
+  if (kind === 'cedit') return cedSave();
+  if (kind === 'cedsearch') return cedSearch(Number(f.dataset.i), v.q);
   if (kind === 'planpick') {
     const n = f.dataset.n, x = Couple.SPOTS.find(y => y.name === n), p = Couple.plan(x), steps = p.steps.map(st => [st[0], st[1], st[1].startsWith(n) ? n : '']);
     if (await save(dd => dd.events.push({ id: uid(), title: `${n} 데이트`, date: v.date, time: steps[0][0], memo: '', course: courseData(steps, planRes, n), kid: K().id }))) { dlg.close(); toast('달력에 넣었어요. 그날 달력과 홈에서 코스를 볼 수 있어요'); render(); }

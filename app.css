@@ -300,3 +300,4 @@ nav div{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minma
 .route{height:240px;border-radius:18px;overflow:hidden;margin:6px 0}.rnum{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#b87324;color:#fff;font-weight:800;font-size:13px;border:2px solid #fff;box-shadow:0 2px 6px rgb(0 0 0/.3)}.pl{display:block;margin-top:2px;font-size:14px}.pl a{font-weight:700}.pl em{font-style:normal;color:var(--sub);margin-left:6px;font-size:12.5px}
 .rday{display:grid;gap:8px;padding-top:10px;border-top:1px solid var(--line)}.rday h3{font-size:16px}
 .plan li{align-items:start}.plan li>span{display:block;min-width:0;line-height:1.45}.plan li>b{line-height:1.45}.linkb{display:inline;min-height:0;height:auto;line-height:inherit;border-radius:0;box-shadow:none}
+.cedrow{display:grid;gap:8px;padding:12px;border-radius:16px;background:var(--soft)}.cedrow input{width:100%}
