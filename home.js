@@ -247,7 +247,7 @@ async function sendInvite(role, other) {
     const url = `${Share.APP}?join=${h.id}.${r.code}`, kid = K(), name = kid.name + '네';
     const title = role === 'editor' ? `${name} 수첩에 함께 기록해요` : `${name}에 놀러 오세요`, desc = role === 'editor' ? `${myNick()}가 ${CAT[c]} 수첩을 같이 쓰자고 초대했어요` : `${myNick()}가 ${CAT[c]} 수첩의 일기와 사진을 보여 드리고 싶대요`;
     busyOff(); famUpload();
-    if (!other) { try { await loadKakao(); const link = { mobileWebUrl: url, webUrl: url }; Kakao.Share.sendDefault({ objectType: 'feed', content: { title, description: desc, imageUrl: Share.APP + 'icon-512.png?v=3', imageWidth: 512, imageHeight: 512, link }, buttons: [{ title: role === 'editor' ? '함께 쓰기' : '놀러 가기', link }] }); return; } catch { toast('카카오톡을 열지 못했어요. 다른 앱으로 보내기를 눌러 주세요.'); return; } }
+    if (!other && !noKakaoLink()) { try { await loadKakao(); const link = { mobileWebUrl: url, webUrl: url }; Kakao.Share.sendDefault({ objectType: 'feed', content: { title, description: desc, imageUrl: Share.APP + 'icon-512.png?v=3', imageWidth: 512, imageHeight: 512, link }, buttons: [{ title: role === 'editor' ? '함께 쓰기' : '놀러 가기', link }] }); return; } catch { toast('카카오톡을 열지 못했어요. 다른 앱으로 보내기를 눌러 주세요.'); return; } }
     if (navigator.share) return navigator.share({ title, text: desc, url }).catch(() => { });
     await navigator.clipboard.writeText(`${title}\n${desc}\n${url}`); toast('초대 링크를 복사했어요');
   } catch (e) { busyOff(); toast(e.message); }
@@ -501,6 +501,7 @@ async function famActs(act, b) {
   else if (act === 'waitnow') waitPoll(true);
   else if (act === 'waitkakao') { // 승인해 달라고 카톡으로 직접 보낸다(받는 사람은 내가 고른다)
     const a = Social.account() || {}, url = `${Share.APP}?talk=${join.home}`, link = { mobileWebUrl: url, webUrl: url };
+    if (noKakaoLink()) { navigator.share({ title: `${join.name}에 들어가고 싶어요`, text: `${join.nick || '가족'}${a.name ? `(${a.name})` : ''}가 승인을 기다리고 있어요`, url }).catch(() => { }); return; }
     try { await loadKakao(); Kakao.Share.sendDefault({ objectType: 'feed', content: { title: `${join.name}에 들어가고 싶어요`, description: `${join.nick || '가족'}${a.name ? `(${a.name})` : ''}가 승인을 기다리고 있어요`, imageUrl: Share.APP + 'icon-512.png?v=3', imageWidth: 512, imageHeight: 512, link }, buttons: [{ title: '승인하러 가기', link }] }); }
     catch { toast('카카오톡을 열지 못했어요'); }
   }

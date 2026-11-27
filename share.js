@@ -32,7 +32,9 @@ async function shareDlg() {
   try { await loadKakao(); const b = dlg.querySelector('[data-act=sendkakao]'); if (b) b.disabled = false; } catch { toast('카카오톡을 불러오지 못했어요. 다른 앱으로 보내기를 눌러 주세요.'); }
 }
 const shareNow = () => shareOf(dlg.querySelector('[name=sh]:checked').value);
-function sendKakao() { try { Kakao.Share.sendDefault(Share.message(shareNow())); } catch (e) { console.error(e); toast('카카오톡으로 보내지 못했어요. 다른 앱으로 보내기를 눌러 주세요.'); } }
+// 아이폰 홈 화면 앱에서는 카카오 공유가 카카오톡 앱을 열지 못하고 안내 페이지만 뜬다. 그때는 휴대폰 공유 창(카카오톡 포함)을 쓴다.
+const noKakaoLink = () => /iPhone|iPad|iPod/.test(navigator.userAgent) && navigator.standalone === true && Boolean(navigator.share);
+function sendKakao() { if (noKakaoLink()) return shareLink(); try { Kakao.Share.sendDefault(Share.message(shareNow())); } catch (e) { console.error(e); toast('카카오톡으로 보내지 못했어요. 다른 앱으로 보내기를 눌러 주세요.'); } }
 async function shareLink() {
   const t = shareNow(), s = `${t.title}\n${t.description}`;
   if (navigator.share) return navigator.share({ title: '우리 수첩', text: s, url: Share.APP }).catch(e => { if (e.name !== 'AbortError') toast('공유 창을 열지 못했어요.'); });
