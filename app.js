@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.18.12';
+const APP_VERSION = '0.19.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -348,13 +348,22 @@ function coupleTips() {
   const s = Couple.SEASON[Couple.season(today())];
   return tipSeg() + `<section class="stack"><h2>${s}에 가기 좋은 데이트 코스</h2>${Couple.courses(today()).map(x => plainCard(x.tag, x.title, x.body)).join('')}</section><section class="stack"><h2>오래 사랑하는 팁</h2>${Couple.TIPS.map(x => plainCard(x.topic, x.title, x.body)).join('')}</section>`;
 }
+// 데이트 명소: 지역(전국·시도·해외)과 검색으로 고른다. 고른 지역은 이 기기에만 둔다.
+let spotQ = '';
+const spotArea = () => { const a = localStorage.getItem('baby-spot-area'); return a == null ? db.sido || '' : a; };
+const spotCard = x => plainCard(x.c || x.sido.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주'), x.name, x.desc, nmapBtn(x.name));
+function spotList() {
+  const a = spotArea(), q = spotQ.trim().toLowerCase();
+  const l = Couple.SPOTS.filter(x => q ? (x.name + x.desc + x.sido + (x.c || '')).toLowerCase().includes(q) : !a || x.sido === a);
+  return (l.map(spotCard).join('') || '<p class="sub">찾는 명소가 목록에 없어요.</p>') + (q ? `<div class="row"><button type="button" class="btn main" data-act="nmap" data-q="${esc(spotQ.trim())}">네이버 지도에서 '${esc(spotQ.trim())}' 찾기</button></div>` : '');
+}
+document.addEventListener('input', e => { if (e.target.id === 'spotq') { spotQ = e.target.value; const l = $('#spotlist'); if (l) l.innerHTML = spotList(); } });
+document.addEventListener('change', e => { if (e.target.id === 'spotarea') { localStorage.setItem('baby-spot-area', e.target.value); render(); } });
 function coupleMoney() {
-  const sido = db.sido, mine = Couple.SPOTS.filter(x => x.sido === sido), rest = Couple.SPOTS.filter(x => x.sido !== sido);
-  const spot = x => plainCard(x.sido.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주'), x.name, x.desc, nmapBtn(x.name));
-  const q = (sido || '') + ' 축제';
-  return tipSeg() + `<section class="stack"><div class="row between"><h2>${sido ? esc(sido) + ' 데이트 명소' : '전국 데이트 명소'}</h2><button class="btn" data-act="region">${sido ? '지역 바꾸기' : '지역 고르기'}</button></div>${mine.map(spot).join('')}</section>
-    <section class="stack"><h2>행사</h2>${plainCard('행사', `${sido ? esc(sido) + ' ' : ''}이번 달 축제와 행사`, '지역 축제, 공연, 빛축제 일정을 찾아봐요.', src(Couple.searchUrl(q), '일정 찾아보기'))}${plainCard('행사', '이번 주말 전시·팝업', '데이트하기 좋은 전시와 팝업 스토어를 찾아봐요.', src(Couple.searchUrl((sido ? sido + ' ' : '') + '이번 주말 전시 팝업'), '찾아보기'))}</section>
-    <section class="stack"><h2>${sido ? '다른 지역 명소' : ''}</h2>${rest.map(spot).join('')}</section><p class="sub">명소와 행사는 바뀔 수 있어요. 가기 전에 운영 시간을 확인하세요.</p>`;
+  const sido = spotArea(), abroad = sido === '해외';
+  const q = abroad ? '해외 축제' : (sido || '전국') + ' 축제';
+  return tipSeg() + `<section class="stack"><div class="row between"><h2>데이트 명소</h2><select id="spotarea" class="areasel" aria-label="지역"><option value="">전국</option>${SIDO.map(x => `<option ${x === sido ? 'selected' : ''}>${x}</option>`).join('')}<option value="해외" ${abroad ? 'selected' : ''}>해외</option></select></div><input id="spotq" type="search" class="spotq" placeholder="명소 이름이나 지역으로 찾기" value="${esc(spotQ)}" autocomplete="off"><div id="spotlist" class="stack">${spotList()}</div></section>
+    <section class="stack"><h2>행사</h2>${plainCard('행사', `${sido && !abroad ? esc(sido) + ' ' : ''}이번 달 축제와 행사`, '지역 축제, 공연, 빛축제 일정을 찾아봐요.', src(Couple.searchUrl(q), '일정 찾아보기'))}${plainCard('행사', '이번 주말 전시·팝업', '데이트하기 좋은 전시와 팝업 스토어를 찾아봐요.', src(Couple.searchUrl((sido && !abroad ? sido + ' ' : '') + '이번 주말 전시 팝업'), '찾아보기'))}</section><p class="sub">명소와 행사는 바뀔 수 있어요. 가기 전에 운영 시간을 확인하세요.</p>`;
 }
 
 // 개인·솔로: 건강, 생활, 연애 팁 / 재테크, 여행, 만남
