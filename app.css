@@ -298,3 +298,4 @@ nav div{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minma
 .linkb{background:none;border:0;padding:0;font:inherit;color:var(--link,#2f6ea8);text-decoration:underline;text-align:left}
 .nearby{display:flex;flex-wrap:wrap;gap:8px}
 .route{height:240px;border-radius:18px;overflow:hidden;margin:6px 0}.rnum{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#b87324;color:#fff;font-weight:800;font-size:13px;border:2px solid #fff;box-shadow:0 2px 6px rgb(0 0 0/.3)}.pl{display:block;margin-top:2px;font-size:14px}.pl a{font-weight:700}.pl em{font-style:normal;color:var(--sub);margin-left:6px;font-size:12.5px}
+.rday{display:grid;gap:8px;padding-top:10px;border-top:1px solid var(--line)}.rday h3{font-size:16px}
