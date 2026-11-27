@@ -194,7 +194,7 @@ const MISSIONS = {
 };
 const grapeOf = k => k.grape || { n: 0, mi: 0, custom: [], log: [] };
 const missionList = k => (grapeOf(k).custom || []).concat(MISSIONS[Couple.is(k) ? 'couple' : 'me']);
-const missionNow = k => { const l = missionList(k); return l[grapeOf(k).mi % l.length]; };
+const missionNow = k => (grapeOf(k).custom || [])[0] || ''; // 직접 쓴 미션 하나만(고정)
 function grapeSvg(filled) {
   let i = 0, out = '<path d="M100 6c-4 10-4 18 0 24" fill="none" stroke="#6b8f3a" stroke-width="4" stroke-linecap="round"/><path d="M104 14c14-10 34-8 44 2-14 8-30 8-44-2z" fill="#7fae45"/>';
   GRAPE_ROWS.forEach((n, r) => { for (let j = 0; j < n; j++) { i++; const x = 100 + (j - (n - 1) / 2) * 25, y = 44 + r * 21, on = i <= filled; out += `<circle cx="${x}" cy="${y}" r="11.5" fill="${on ? '#7b3fa0' : '#fff'}" stroke="${on ? '#5d2b7d' : '#c9b4d6'}" stroke-width="2"/>${on ? `<circle cx="${x - 4}" cy="${y - 4}" r="3" fill="#fff" opacity=".45"/>` : `<text x="${x}" y="${y + 4}" text-anchor="middle" font-size="10" fill="#a58bb8">${i}</text>`}`; } });
@@ -203,5 +203,5 @@ function grapeSvg(filled) {
 function grapeCard(k) {
   if (!Couple.is(k) && !Me.is(k)) return '';
   const g = grapeOf(k), now = g.n % GRAPE_N, bunch = Math.floor(g.n / GRAPE_N);
-  return `<section class="grapecard"><div class="row between"><h3>${Couple.is(k) ? '우리들만 아는 시크릿 미션' : '혼자만의 미션'}</h3><span class="chip">${bunch ? `송이 ${bunch}개 완성 · ` : ''}${now}/${GRAPE_N}</span></div>${grapeSvg(now)}<p class="mis">${esc(missionNow(k))}</p><div class="row"><button class="btn main" data-act="grapeok">성공</button><button class="btn" data-act="grapenext">다른 미션</button><button class="btn" data-act="grapeown">직접 쓰기</button></div></section>`;
+  return `<section class="grapecard"><div class="row between"><h3>${Couple.is(k) ? '우리들만 아는 시크릿 미션' : '혼자만의 미션'}</h3><span class="chip">${bunch ? `송이 ${bunch}개 완성 · ` : ''}${now}/${GRAPE_N}</span></div>${grapeSvg(now)}${missionNow(k) ? `<p class="mis">${esc(missionNow(k))}</p><div class="row"><button class="btn main" data-act="grapeok">성공</button><button class="btn" data-act="grapeown">미션 바꾸기</button></div>` : `<p class="sub" style="text-align:center">${Couple.is(k) ? '둘만 아는 미션을 정해 보세요. 성공할 때마다 포도 한 알을 채워요.' : '나만의 미션을 정해 보세요. 성공할 때마다 포도 한 알을 채워요.'}</p><div class="row"><button class="btn main" data-act="grapeown">미션 쓰기</button></div>`}</section>`;
 }

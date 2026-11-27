@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.34.2';
+const APP_VERSION = '0.35.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -1268,8 +1268,7 @@ async function moreActs(act, b, id) {
   else if (act === 'rdcadd') { const trip = rdc.days.length > 1 ? uid() : '';
     if (await save(x => rdc.days.forEach((d, i) => x.events.push({ id: uid(), trip, day: i + 1, title: ((rdc.theme || d.concept) ? Couple.THEMES[rdc.theme || d.concept].name + ' ' : '') + (rdc.days.length > 1 ? `데이트 ${i + 1}일차` : '데이트'), date: d.date, time: dayFull(d)[0] ? dayFull(d)[0][0] : d.from, memo: '', course: { base: baseName(d.base), steps: dayFull(d) }, kid: K().id })))) { dlg.close(); toast('달력에 넣었어요'); } }
   else if (act === 'grapeok') openDlg(`<form data-form="grape"><h2>정말 성공하셨나요?</h2><p><b>${esc(missionNow(K()))}</b></p><p class="sub">네를 누르면 포도 한 알을 채워요.</p><div class="row"><button class="btn main" value="ok">네</button><button type="button" class="btn" data-act="close">아니요</button></div></form>`);
-  else if (act === 'grapenext') await save(x => { const k = x.kids.find(y => y.id === K().id); k.grape = Object.assign(grapeOf(k), { mi: grapeOf(k).mi + 1 }); });
-  else if (act === 'grapeown') openDlg(`<form data-form="grapeown"><h2>미션 직접 쓰기</h2><label class="f">미션<input name="m" required maxlength="40" autocomplete="off" placeholder="예: 둘만의 암호 만들기"></label><p class="sub">쓴 미션은 이 수첩을 함께 쓰는 사람만 볼 수 있어요.</p>${acts()}</form>`);
+  else if (act === 'grapeown') openDlg(`<form data-form="grapeown"><h2>${missionNow(K()) ? '미션 바꾸기' : '미션 쓰기'}</h2><label class="f">미션<input name="m" required maxlength="40" value="${esc(missionNow(K()))}" autocomplete="off" placeholder="예: 둘만의 암호 만들기"></label><p class="sub">쓴 미션은 이 수첩을 함께 쓰는 사람만 볼 수 있어요.</p>${acts()}</form>`);
   else if (act === 'mkcat') ({ baby: addKidDlg, pet: addPetDlg, couple: () => coupleDlg(), me: () => meDlg() })[d.c]();
   else if (act === 'addme') meDlg();
   else if (act === 'vethosp') window.open('https://map.kakao.com/?q=' + encodeURIComponent('동물병원'), '_blank', 'noopener');
@@ -1525,12 +1524,12 @@ document.addEventListener('submit', async ev => {
   }
   if (kind === 'grape') {
     const m = missionNow(K()); let full = false;
-    ok = await save(x => { const k = x.kids.find(y => y.id === K().id), g = grapeOf(k); g.n++; g.mi++; g.log = (g.log || []).concat({ d: today(), m }).slice(-200); full = g.n % GRAPE_N === 0; k.grape = g; });
-    if (ok) { dlg.close(); render(); return toast(full ? '포도송이 하나를 다 채웠어요! 축하해요' : '포도 한 알을 채웠어요'); }
+    ok = await save(x => { const k = x.kids.find(y => y.id === K().id), g = grapeOf(k); g.n++; g.log = (g.log || []).concat({ d: today(), m }).slice(-200); full = g.n % GRAPE_N === 0; k.grape = g; });
+    if (ok) { dlg.close(); render(); if (full) { const b = Math.floor(grapeOf(K()).n / GRAPE_N); return openDlg(`<form data-form="none" class="grapedone"><div class="burst">🍇🎉</div><h2>포도송이 완성! 축하해요</h2><p>${Couple.is(K()) ? '둘이 함께' : ''} 미션을 30번 해냈어요.${b > 1 ? ` 벌써 ${b}번째 송이예요.` : ''}</p><p class="sub">새 포도송이가 시작돼요. 미션을 바꾸고 싶으면 '미션 바꾸기'를 눌러 주세요.</p><div class="row"><button type="button" class="btn main" data-act="close">고마워요</button></div></form>`); } return toast('포도 한 알을 채웠어요'); }
   }
   if (kind === 'grapeown') {
     const m = (v.m || '').trim(); if (!m) return;
-    ok = await save(x => { const k = x.kids.find(y => y.id === K().id), g = grapeOf(k); g.custom = [m].concat(g.custom || []).slice(0, 30); g.mi = 0; k.grape = g; });
+    ok = await save(x => { const k = x.kids.find(y => y.id === K().id), g = grapeOf(k); g.custom = [m]; k.grape = g; });
   }
   if (kind === 'rdc') { const ok2 = f.querySelector('.btn.main'); if (!Number(v.nights) && v.to <= v.from) return toast('끝 시간이 시작보다 늦어야 해요'); if (v.theme === 'memory' && !(v.place || '').trim()) return toast('옛날 살던 동네를 적어 주세요'); ok2.disabled = true; if (v.theme === 'hot') { hot = null; await loadHot(); if (!(hot.items || []).length) { ok2.disabled = false; return toast('지금은 핫플 목록을 불러오지 못했어요'); } } ok2.textContent = '날씨를 보고 있어요'; rdcSetup(v); if (rdc.near) { ok2.textContent = '내 위치를 찾는 중이에요'; await rdcNear(); } await rdcWeather(); rdcRoll(); rdcShow(); return; }
   if (kind === 'cedit') return cedSave();

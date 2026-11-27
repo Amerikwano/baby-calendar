@@ -305,3 +305,4 @@ nav div{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minma
 .plan li{grid-template-columns:64px 1fr auto}.plan .cost{font-style:normal;color:var(--sub);font-size:13px;white-space:nowrap}.ctotal{display:flex;justify-content:space-between;align-items:center;background:var(--soft);border-radius:16px;padding:12px 16px;margin:6px 0}.ctotal b{font-size:18px}
 .costin{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--sub)}.costin input{width:130px!important;flex:none}
 .opts.themes{display:flex;flex-wrap:wrap;gap:8px}.opts.themes label{flex:0 0 auto}
+.grapedone{text-align:center}.grapedone .burst{font-size:64px;animation:pop .6s ease-out}.grapedone .row{justify-content:center}@keyframes pop{0%{transform:scale(.3);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1)}}
