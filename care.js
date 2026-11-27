@@ -67,9 +67,10 @@ function alerts(k) {
   const late = k.born ? its.filter(i => st(i) === 'late' && !/^(flu|phw|cp)/.test(i.id) && !Me.is(k)) : [], open = its.filter(i => st(i) === 'open').sort((a, b) => (a.hard || a.end) < (b.hard || b.end) ? -1 : 1);
   return { late, open: k.born ? open : [], next: its.filter(i => st(i) === 'next').slice(0, 5), miss: logsOf(k).filter(l => l.date === t && Care.state(l, nowText()) === 'miss'), events: Family.forKid(db.events, k.id).filter(e => !e.done && e.date >= t && e.date <= S.addDays(t, 1)) };
 }
+const todayText = () => { const [, m, x] = today().split('-').map(Number); return `${m}월 ${x}일 (${'일월화수목금토'[new Date(today() + 'T12:00').getDay()]})`; };
 function topBar() {
   const k = K(), hot = bellNew() || !k.born && today() >= k.birth;
-  return `<div><button class="me" data-act="kids" aria-label="${esc(k.name)}, 수첩 고르기">${face(k)}<span><b>${esc(k.name)}${Me.is(k) ? icon('user', k.sex) : Couple.is(k) ? icon('heart', 'girl') : Pet.isPet(k) ? icon('paw', k.sex || 'unk') : icon('baby', k.sex || 'unk')}${k.sex ? `<span class="vh">${Pet.isPet(k) ? Pet.SEX[k.sex] : Me.is(k) ? Family.SEX[k.sex] : Family.SEX[k.sex] + '아이'}</span>` : ''}${many() ? icon('down', 's') : ''}</b><em>${ageLine(k)}</em></span></button>${visits.length ? `<button class="sq" data-act="visits" aria-label="놀러가기">${icon('visit')}</button>` : ''}<button class="sq" data-act="report" aria-label="하루 요약">${icon('pie')}</button><button class="sq" data-act="alerts" aria-label="알림${hot ? ', 확인할 것이 있어요' : ''}">${icon('bell')}${hot ? '<i></i>' : ''}</button></div>`;
+  return `<div><button class="me" data-act="kids" aria-label="${esc(k.name)}, 수첩 고르기">${face(k)}<span><b><span class="nm">${esc(k.name)}</span>${Me.is(k) ? icon('user', k.sex) : Couple.is(k) ? icon('heart', 'girl') : Pet.isPet(k) ? icon('paw', k.sex || 'unk') : icon('baby', k.sex || 'unk')}${k.sex ? `<span class="vh">${Pet.isPet(k) ? Pet.SEX[k.sex] : Me.is(k) ? Family.SEX[k.sex] : Family.SEX[k.sex] + '아이'}</span>` : ''}${many() ? icon('down', 's') : ''}</b><em>${ageLine(k)}</em></span></button></div><div class="hbar"><span class="todayd">${todayText()}</span><span class="hbtn">${visits.length ? `<button class="sq" data-act="visits" aria-label="놀러가기">${icon('visit')}</button>` : ''}<button class="sq" data-act="report" aria-label="하루 요약">${icon('pie')}</button><button class="sq" data-act="alerts" aria-label="알림${hot ? ', 확인할 것이 있어요' : ''}">${icon('bell')}${hot ? '<i></i>' : ''}</button></span></div>`;
 }
 function navBar() {
   const M = { home: 'home', cal: 'cal', diary: 'diary', album: 'album', grow: 'album', tips: 'tips', money: 'tips' };
@@ -107,8 +108,7 @@ function home() {
   const strip = !k.born && today() >= k.birth ? `<div class="notice hot"><b>예정일이 되었어요. 아기가 태어났나요?</b><div class="row"><button class="btn main" data-act="born">생일 넣기</button></div></div>`
     : first ? `<details class="acc" ${localStorage.getItem('baby-acc-vax') === '0' ? '' : 'open'}><summary>${icon('shield')}<b>${Me.is(k) ? '올해 챙길 검진' : Couple.is(k) ? '다가오는 기념일' : '지금 받을 것'} ${n}개</b>${icon('down', 's')}</summary><div class="list">${a.open.map(itemRow).join('')}</div><button class="accall" data-act="vaxnow">전체 일정 보기${icon('right', 's')}</button></details>` : '';
   const ev = a.events.map(e => `<button class="strip" data-act="event" data-id="${e.id}">${icon('cal')}<span><b>${esc(e.title)}</b><em>${e.date === today() ? '오늘' : '내일'}${e.time ? ' ' + Care.clock(e.time) : ''}</em></span>${icon('right', 's')}</button>`).join('');
-  const [, m, x] = today().split('-').map(Number), wd = '일월화수목금토'[new Date(today() + 'T12:00').getDay()];
-  return inAppCard() + syncCard() + `<p class="todayd">${m}월 ${x}일 (${wd})</p>` + quickRow(k) + (k.born ? '' : hero()) + growCar(k) + `<div class="stack">${strip}${ev}${missionStrip(k)}</div>` + (k.born ? '' : mission()) + grapeCard(k) + `<section class="logs">${timeline(k)}</section>` + loginCard();
+  return inAppCard() + syncCard() + quickRow(k) + (k.born ? '' : hero()) + growCar(k) + `<div class="stack">${strip}${ev}${missionStrip(k)}</div>` + (k.born ? '' : mission()) + grapeCard(k) + `<section class="logs">${timeline(k)}</section>` + loginCard();
 }
 
 // 홈 위쪽: 성장 앨범 사진을 날짜 순서로 옆으로 넘기며 보여 준다
