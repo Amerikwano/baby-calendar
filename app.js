@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.13.1';
+const APP_VERSION = '0.14.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -108,7 +108,7 @@ function pickFiles(o, done) {
   if (o.busy) { const back = () => { if (picker === i) { clearTimeout(busyWait); busyWait = setTimeout(() => { if (picker === i) busy(o.busy, '휴대폰이 사진과 동영상을 준비하고 있어요. 잠시 기다려 주세요'); }, 300); } }; window.addEventListener('focus', back, { once: true }); document.addEventListener('visibilitychange', () => { if (!document.hidden) back(); }, { once: true }); }
 }
 const isPet = k => Pet.isPet(k);
-const items = (k = K()) => (isPet(k) ? Pet.build(k.kind, k.birth, k.records, { since: k.since, today: today() }) : Couple.is(k) ? Couple.build(k.birth, k.records, { since: k.since }) : S.build(k.birth, k.options, k.records)).map(i => Object.assign(i, { kid: k.id }));
+const items = (k = K()) => (isPet(k) ? Pet.build(k.kind, k.birth, k.records, { since: k.since, today: today() }) : Couple.is(k) ? Couple.build(k.birth, k.records, { since: k.since }) : Me.is(k) ? Me.build(k.birth, k.sex, k.records, { today: today() }) : S.build(k.birth, k.options, k.records)).map(i => Object.assign(i, { kid: k.id }));
 const famItems = () => db.kids.flatMap(k => items(k)).sort((a, b) => a.start < b.start ? -1 : a.start > b.start ? 1 : 0);
 const tag = id => many() ? `<span class="chip">${id ? esc(kidOf(id).name) : '모두'}</span>` : '';
 
@@ -205,6 +205,12 @@ function petDateProblem(d) {
   const n = S.diffDays(today(), d);
   return n > 0 ? '생일이 오늘보다 뒤예요.' : n < -365 * 30 ? '생일을 확인해 주세요.' : '';
 }
+// 개인 수첩: 이름, 생일, 성별, 솔로인지
+const meFields = v => `<label class="f">이름<input name="name" maxlength="20" placeholder="예: 나" autocomplete="off" value="${esc(v.name || '')}"></label><label class="f">생일<input type="date" name="birth" required max="${today()}" value="${v.birth || ''}"></label>${sexOpts('sex', v.sex || '', true)}<div class="f"><span>지금은</span><div class="opts"><label><input type="radio" name="solo" value="1" ${v.solo !== false ? 'checked' : ''}><span>솔로예요</span></label><label><input type="radio" name="solo" value="" ${v.solo === false ? 'checked' : ''}><span>연애 중·결혼했어요</span></label></div></div><p class="sub">솔로면 혼자 사는 팁, 여행, 만남 팁을 더 보여 드려요. 나이와 성별에 맞는 건강검진도 챙겨 드려요.</p>`;
+function meDlg(id) {
+  const k = id ? kidOf(id) : null;
+  openDlg(`<form data-form="${k ? 'me' : 'addme'}" data-id="${k ? k.id : ''}"><h2>${k ? esc(k.name) + ' 정보' : '개인 수첩 더하기'}</h2>${k ? `<button type="button" class="avpick" data-act="avatar" data-id="${k.id}">${face(k, 'xl')}<span>${icon('cam', 's')}사진 ${k.photo ? '바꾸기' : '넣기'}</span></button>` : ''}${meFields(k || {})}${acts(k && many() && ['kid', k.id, '이 수첩 빼기'])}</form>`);
+}
 // 연애 수첩: 이름과 사귄 날
 const coupleFields = v => `<label class="f">수첩 이름<input name="name" maxlength="20" placeholder="예: 우리 둘" autocomplete="off" value="${esc(v.name || '')}"></label><label class="f">사귄 날<input type="date" name="birth" required max="${today()}" value="${v.birth || ''}"></label><p class="sub">사귄 날이 1일이에요. 100일, 주년 같은 기념일을 챙겨 드려요.</p>`;
 function coupleDlg(id) {
@@ -298,6 +304,7 @@ function aiBox(kind, title, desc, label) {
 function tips() {
   if (isPet(K())) return petTips();
   if (Couple.is(K())) return coupleTips();
+  if (Me.is(K())) return meTips();
   const t = today(), m = K().born ? S.ageMonths(K().birth, t) : -1, mm = Math.min(m, 71), d = aiData.tips;
   return tipSeg() + `<section class="stack"><h2>${m < 0 ? '출산을 앞두고' : ageText(t) + ' 육아'}</h2><p class="sub">${m < 0 ? '태어나면 개월 수를 확인해 그때 필요한 팁으로 바꿔 보여줘요.' : m > 71 ? '자료가 만 5세까지라 마지막 시기의 팁을 보여줘요.' : '앱이 개월 수를 확인해 지금 필요한 팁을 골랐어요.'}</p>${aiBox('tips', 'AI 육아 제안', '개월 수를 확인해 지금 필요한 육아법과 곧 준비할 것을 찾아요. AI에는 개월 수만 보내요.', '이번 달 제안 받기')}</section>`
     + (d ? `<section class="stack"><p>${esc(d.summary)}</p>${d.tips.map(tipCard).join('')}${d.doctor.length ? `<div class="notice hot"><b>이럴 땐 소아과에 상의하세요</b>${d.doctor.map(x => `<p>${esc(x)}</p>`).join('')}</div>` : ''}</section>` : '')
@@ -335,6 +342,18 @@ function coupleMoney() {
     <section class="stack"><h2>${sido ? '다른 지역 명소' : ''}</h2>${rest.map(spot).join('')}</section><p class="sub">명소와 행사는 바뀔 수 있어요. 가기 전에 운영 시간을 확인하세요.</p>`;
 }
 
+// 개인·솔로: 건강, 생활, 연애 팁 / 재테크, 여행, 만남
+const tipList = (h, l) => l.length ? `<section class="stack"><h2>${h}</h2>${l.map(x => plainCard(x.topic, x.title, x.body)).join('')}</section>` : '';
+function meTips() {
+  const k = K(), d = Me.tips(k, today()), solo = Me.isSolo(k);
+  return tipSeg() + `<p class="sub">만 ${Me.age(k.birth, today())}세 ${k.sex === 'girl' ? '여성' : '남성'}에게 맞춰 골랐어요.</p>` + tipList('건강', d.health) + (solo ? tipList('혼자 사는 팁', Me.SOLO_LIVE) + tipList('연애를 시작하는 팁', Me.DATE_TIPS) : '');
+}
+function meMoney() {
+  const k = K(), d = Me.tips(k, today()), solo = Me.isSolo(k), place = x => plainCard('추천', x.name, x.desc, src(Me.searchUrl(x.name), '찾아보기'));
+  return tipSeg() + tipList('재테크', d.money) + '<p class="sub">일반적인 안내이고 투자 권유가 아니에요. 상품 조건은 바뀔 수 있으니 가입 전에 확인하세요.</p>' + tipList('여행 팁', d.travel)
+    + `<section class="stack"><h2>${solo ? '혼자 가기 좋은 여행지' : '가 볼 만한 여행지'}</h2>${Me.SOLO_TRIP.map(place).join('')}</section>` + (solo ? `<section class="stack"><h2>새 인연을 만나기 좋은 곳</h2>${Me.MEET.map(place).join('')}</section>` : '');
+}
+
 /* ── 혜택 ── */
 function dueOf(b) { return b.deadlineMonths != null ? S.addMonths(K().birth, b.deadlineMonths) : b.deadlineDays != null ? S.addDays(K().birth, b.deadlineDays) : null; }
 function moneyCard(b, key) {
@@ -360,6 +379,7 @@ const nationalList = () => `<section class="stack"><h2>전국 공통 혜택</h2>
 function money() {
   if (isPet(K())) return petMoney();
   if (Couple.is(K())) return coupleMoney();
+  if (Me.is(K())) return meMoney();
   if (!db.sido) return tipSeg() + `<section class="notice"><b>사는 지역의 혜택을 볼까요?</b><p class="sub">위치를 허용하면 그 지역에서 주는 혜택을 먼저 보여줘요.</p><div class="row"><button class="btn main" data-act="locate">현재 위치로 찾기</button><button class="btn" data-act="region">직접 고르기</button></div></section>` + nationalList();
   loadRegion();
   const d = regionData, show = x => !cashOnly || /현금|이용권/.test(x.k), cash = x => /현금|이용권/.test(x.k) ? 0 : 1;
@@ -459,7 +479,7 @@ const whoField = v => many() ? `<label class="f">누구의 기록인가요<selec
 function itemDlg(id, kid) {
   const k = kidOf(kid), it = items(k).find(i => i.id === id); if (!it) return;
   openDlg(`<form data-form="item" data-id="${id}" data-kid="${k.id}"><div class="row between"><div><h3>${many() ? esc(k.name) + ', ' : ''}${TYPE[it.type]}</h3><h2>${esc(it.title)}</h2></div>${it.done ? chipOf(it) : ''}</div><p>권장 시기: ${esc(it.age)}<br><span class="sub">${kd(it.start, true)} ~ ${kd(it.end, true)}${k.born ? '' : ' (예정일 기준)'}</span></p>${it.hard && it.hard !== it.end ? `<p>지원 기한: ${kd(it.hard, true)}까지</p>` : ''}${it.note ? `<p class="sub">${esc(it.note)}</p>` : ''}
-  <div class="two"><label class="f">예약한 날<input type="date" name="appt" value="${it.appt || ''}"></label><label class="f">받은 날<input type="date" name="done" value="${it.done || ''}" max="${today()}"></label></div>${k.born ? '<button type="button" class="btn" data-act="donetoday">오늘 했어요</button>' : ''}${acts()}${Couple.is(k) ? '' : isPet(k) ? '<button type="button" class="btn" data-act="vethosp">가까운 동물병원 찾기</button>' : ['vaccine', 'check'].includes(it.type) ? `<section class="stack" id="near"><h2>${it.type === 'vaccine' ? '가까운 접종 병원' : '가까운 소아청소년과'}</h2><p class="sub">불러오는 중</p></section>` : ''}</form>`);
+  <div class="two"><label class="f">예약한 날<input type="date" name="appt" value="${it.appt || ''}"></label><label class="f">받은 날<input type="date" name="done" value="${it.done || ''}" max="${today()}"></label></div>${k.born ? '<button type="button" class="btn" data-act="donetoday">오늘 했어요</button>' : ''}${acts()}${k.kind && !isPet(k) ? '' : isPet(k) ? '<button type="button" class="btn" data-act="vethosp">가까운 동물병원 찾기</button>' : ['vaccine', 'check'].includes(it.type) ? `<section class="stack" id="near"><h2>${it.type === 'vaccine' ? '가까운 접종 병원' : '가까운 소아청소년과'}</h2><p class="sub">불러오는 중</p></section>` : ''}</form>`);
   if ($('#near')) fillNear($('#near'), 3);
 }
 function eventDlg(id) {
@@ -471,7 +491,7 @@ const draftGrid = () => draft.map(id => `<button type="button" data-act="undraft
 function writeDlg(id) {
   const x = db.diary.find(d => d.id === id) || { date: tab === 'cal' ? sel : today(), body: '', photos: [], kid: K().id };
   draft = [...x.photos];
-  openDlg(`<form data-form="diary" data-id="${id || ''}"><h2>${id ? '일기 고치기' : '일기 쓰기'}</h2><div class="two"><label class="f">날짜<input type="date" name="date" required value="${x.date}"></label>${whoField(x.kid)}</div><label class="f">내용<textarea name="body" maxlength="10000" placeholder="${Couple.is(K()) ? '오늘 우리는 어땠나요?' : isPet(K()) ? `오늘 ${esc(K().name)}${josa(K().name) === '이' ? '은' : '는'} 어땠나요?` : K().born ? '오늘 아기는 어땠나요?' : '아기를 기다리는 오늘, 어떤 하루였나요?'}">${esc(x.body)}</textarea></label><label class="f">사진<input type="file" id="dfile" accept="image/*" multiple></label><div class="grid" id="dgrid">${draftGrid()}</div><p class="sub">넣은 사진은 사진첩에도 이 날짜로 저장돼요.</p>${acts(id && ['diary', id, '일기 지우기'])}</form>`);
+  openDlg(`<form data-form="diary" data-id="${id || ''}"><h2>${id ? '일기 고치기' : '일기 쓰기'}</h2><div class="two"><label class="f">날짜<input type="date" name="date" required value="${x.date}"></label>${whoField(x.kid)}</div><label class="f">내용<textarea name="body" maxlength="10000" placeholder="${Me.is(K()) ? '오늘 하루는 어땠나요?' : Couple.is(K()) ? '오늘 우리는 어땠나요?' : isPet(K()) ? `오늘 ${esc(K().name)}${josa(K().name) === '이' ? '은' : '는'} 어땠나요?` : K().born ? '오늘 아기는 어땠나요?' : '아기를 기다리는 오늘, 어떤 하루였나요?'}">${esc(x.body)}</textarea></label><label class="f">사진<input type="file" id="dfile" accept="image/*" multiple></label><div class="grid" id="dgrid">${draftGrid()}</div><p class="sub">넣은 사진은 사진첩에도 이 날짜로 저장돼요.</p>${acts(id && ['diary', id, '일기 지우기'])}</form>`);
 }
 function photoDlg(id) {
   const p = db.photos.find(x => x.id === id); if (!p) return;
@@ -479,7 +499,7 @@ function photoDlg(id) {
 }
 function settingsDlg() {
   openDlg(`<form data-form="settings"><h2>설정</h2>
-  <fieldset><legend>수첩</legend><div class="list">${db.kids.map(k => `<button type="button" class="item" data-act="kidedit" data-id="${k.id}" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${esc(k.name)}</b><span class="when">${kd(k.birth, true)}${k.time ? ' ' + Family.timeText(k.time) : ''} ${Couple.is(k) ? '사귄 날' : isPet(k) ? Pet.KINDS[k.kind] + ' 생일' : k.born ? '출생' : '예정'}</span></span><span class="chip">고치기</span></button>`).join('')}</div>${addBtns()}</fieldset>
+  <fieldset><legend>수첩</legend><div class="list">${db.kids.map(k => `<button type="button" class="item" data-act="kidedit" data-id="${k.id}" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${esc(k.name)}</b><span class="when">${kd(k.birth, true)}${k.time ? ' ' + Family.timeText(k.time) : ''} ${Me.is(k) ? '생일' : Couple.is(k) ? '사귄 날' : isPet(k) ? Pet.KINDS[k.kind] + ' 생일' : k.born ? '출생' : '예정'}</span></span><span class="chip">고치기</span></button>`).join('')}</div>${addBtns()}</fieldset>
   <div class="f"><span style="font-weight:600;font-size:13.5px">지역</span><div class="row" style="margin-top:5px"><span>${esc((db.sido + " " + db.sigungu).trim() || "아직 안 정했어요")}</span><button type="button" class="btn" data-act="region">바꾸기</button></div></div>
   <fieldset><legend>알림 (당일 알림은 항상 포함)</legend><div class="row">${[14, 7, 3, 1].map(n => `<label class="ck"><input type="checkbox" name="lead" value="${n}" ${db.leads.includes(n) ? 'checked' : ''}>${n}일 전</label>`).join('')}</div><label class="f">알림 시각<select name="hour">${[7, 8, 9, 10, 12, 18, 20].map(h => `<option value="${h}" ${db.hour === h ? 'selected' : ''}>${h}시</option>`).join('')}</select></label></fieldset>
   ${local ? `${AI_URL ? `<fieldset><legend>AI 연결</legend><label class="f">접근 코드<input name="aiCode" id="aiCode" type="password" autocomplete="off" maxlength="100" value="${esc(conf.code)}"></label><p class="sub">이 기기에만 저장되고 백업 파일에는 들어가지 않아요.</p></fieldset>` : ''}<fieldset><legend>백업</legend><p class="sub">일기와 사진은 이 기기에 저장돼요. 휴대폰을 바꾸거나 브라우저 기록을 지우기 전에 꼭 백업하세요. 아이폰에서는 '파일에 저장'을 골라 iCloud Drive에 둘 수 있어요.</p><div class="row"><button type="button" class="btn" data-act="backup">백업 파일 만들기</button><button type="button" class="btn" data-act="restore">백업 되돌리기</button></div></fieldset>` : ''}${acts()}<p class="sub">버전 ${APP_VERSION}</p></form>`);
@@ -901,16 +921,17 @@ async function moreActs(act, b, id) {
   else if (act === 'dropkid') b.closest('[data-kidbox]').remove();
   else if (act === 'evdone') await save(x => { const e = x.events.find(y => y.id === id); if (e) e.done = !e.done; });
   else if (act === 'evdel') { if (d.sure !== '1') { d.sure = '1'; b.textContent = '지우기'; } else if (await save(x => { x.events = x.events.filter(y => y.id !== id); })) toast('일정을 지웠어요'); }
-  else if (act === 'kidedit') isPet(kidOf(id)) ? petDlg(id) : Couple.is(kidOf(id)) ? coupleDlg(id) : kidDlg(id);
+  else if (act === 'kidedit') isPet(kidOf(id)) ? petDlg(id) : Couple.is(kidOf(id)) ? coupleDlg(id) : Me.is(kidOf(id)) ? meDlg(id) : kidDlg(id);
   else if (act === 'addkid') addKidDlg();
   else if (act === 'addpet') addPetDlg();
   else if (act === 'addcouple') coupleDlg();
+  else if (act === 'addme') meDlg();
   else if (act === 'vethosp') window.open('https://map.kakao.com/?q=' + encodeURIComponent('동물병원'), '_blank', 'noopener');
   else if (act === 'grow') { tab = 'grow'; render(); scrollTo(0, 0); }
   else if (act === 'external') location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(location.origin + location.pathname);
   else if (act === 'handoffnew') { handoff = ''; render(); }
   else if (act === 'obstep') { ob.step = d.s; render(); scrollTo(0, 0); }
-  else if (act === 'obpick') { ob.born = d.b === '1'; ob.step = d.b === 'pet' ? 'pet' : d.b === 'couple' ? 'couple' : 'form'; ob.photo = {}; render(); scrollTo(0, 0); }
+  else if (act === 'obpick') { ob.born = d.b === '1'; ob.step = d.b === 'pet' ? 'pet' : d.b === 'couple' ? 'couple' : d.b === 'me' ? 'me' : 'form'; ob.photo = {}; render(); scrollTo(0, 0); }
   else if (act === 'obphoto') pickAvatar(bl => { ob.photo[d.i] = bl; const s = document.querySelector(`[data-kidbox="${d.i}"] .av`); if (s) s.innerHTML = `<img src="${URL.createObjectURL(bl)}" alt="">`; });
   else if (act === 'avatar') pickAvatar(bl => setAvatar(id, bl));
   else if (act === 'avatardel') { const old = kidOf(id).photo; if (await save(x => { x.kids.find(k => k.id === id).photo = ''; })) { api('/api/photos/' + old, { method: 'DELETE' }).catch(() => { }); kidDlg(id); } }
@@ -1115,6 +1136,18 @@ document.addEventListener('submit', async ev => {
       const nid = uid();
       ok = await save(d => { d.kids.push(Family.newKid(nid, Object.assign({}, { born: list[0].born, birth: list[0].birth, time: list[0].time, sex: list[0].sex, since: today() }, { name: list[0].name || '아기 ' + (d.kids.length + 1), options: Object.assign({}, S.DEFAULT_OPTIONS) }))); d.cur = nid; Family.rank(d.kids); });
     }
+  }
+  if (['mestart', 'addme', 'me'].includes(kind)) {
+    if (!isDate(v.birth) || v.birth > today()) return toast('생일을 확인해 주세요.');
+    if (!Family.SEX[v.sex]) { flagSex(sexBoxOf(f, 'sex')); return toast('성별을 골라 주세요.'); }
+    const p = { kind: 'me', name: (v.name || '').trim() || '나', birth: v.birth, sex: v.sex, solo: v.solo === '1', born: true, time: '' };
+    if (kind === 'me') ok = await save(d => Object.assign(d.kids.find(x => x.id === id), p));
+    else {
+      const nid = kind === 'mestart' ? 'k1' : uid(), kid = Family.newKid(nid, Object.assign(p, { since: today() }));
+      if (kind === 'mestart') { started = true; ok = await save(d => { d.kids = [kid]; d.cur = nid; }); if (!ok) { started = false; render(); return; } tab = 'home'; scrollTo(0, 0); await showSplash(`${kid.name} 수첩을 준비하고 있어요`); }
+      else ok = await save(d => { d.kids.push(kid); d.cur = nid; });
+    }
+    if (ok && p.solo && ['album', 'grow'].includes(tab)) tab = 'home';
   }
   if (['couplestart', 'addcouple', 'couple'].includes(kind)) {
     if (!isDate(v.birth) || v.birth > today()) return toast('사귄 날을 확인해 주세요.');
