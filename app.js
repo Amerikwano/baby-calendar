@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.24.0';
+const APP_VERSION = '0.24.1';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -372,7 +372,7 @@ async function realPlaces(base, steps) {
     if (st[2]) { out.push(Object.assign({ step: st }, { p: b })); continue; }
     const m = STEP_Q.find(([re]) => re.test(st[1])); if (!m) { out.push({ step: st }); continue; }
     const k = m[1]; got[k] = got[k] || (m[2] ? await q(P.categorySearch, k, o) : await q(P.keywordSearch, k, o));
-    const pool = got[k].slice(0, 8).filter(x => !seen.has(x.id)), p = pool[Math.floor(Math.random() * Math.min(3, pool.length))];
+    const pool = got[k].filter(x => !seen.has(x.id) && !(k === 'CE7' && /보드게임|방탈출|만화|PC방|스터디/.test(x.category_name + x.place_name))).slice(0, 8), p = pool[Math.floor(Math.random() * Math.min(3, pool.length))];
     if (p) seen.add(p.id); out.push({ step: st, p });
   }
   const res = { base: b, out }; placeCache.set(key, res); return res;
