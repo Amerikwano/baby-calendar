@@ -185,10 +185,26 @@
     e('해외', '송크란', [4], '태국 새해 물 축제.', '', '태국'), e('해외', '러이끄라통', [11], '강에 꽃배를 띄우고 소원을 빌어요.', '', '태국'), e('해외', '옥토버페스트', [9, 10], '뮌헨 맥주 축제.', 'Theresienwiese Munich', '독일'),
     e('해외', '라 토마티나', [8], '토마토를 던지는 스페인 축제.', 'Buñol Spain', '스페인'), e('해외', '시드니 새해 불꽃', [12], '하버 브리지 위 새해 불꽃.', 'Sydney Harbour Bridge', '호주'), e('해외', '리우 카니발', [2, 3], '삼바 퍼레이드.', 'Sambadrome Marquês de Sapucaí', '브라질'),
   ];
+  // 공연장: 지역마다 큰 공연장. 공연 일정은 찾아보기로 본다.
+  const v = (sido, name, desc, c) => ({ sido, name, desc, c });
+  const HALLS = [
+    v('서울특별시', '예술의전당', '오페라·클래식·전시까지 한곳에서.'), v('서울특별시', '세종문화회관', '광화문 한가운데 대표 공연장.'), v('서울특별시', '블루스퀘어', '대형 뮤지컬을 주로 해요.'), v('서울특별시', '샤롯데씨어터', '잠실의 뮤지컬 전용 극장.'), v('서울특별시', '대학로 소극장 거리', '연극·소극장 뮤지컬이 모여 있어요.'), v('서울특별시', 'KSPO DOME', '올림픽공원의 대형 콘서트장.'),
+    v('부산광역시', '부산문화회관', '클래식과 국악 공연.'), v('부산광역시', '드림씨어터', '부산의 뮤지컬 전용 극장.'),
+    v('대구광역시', '대구오페라하우스', '오페라 축제로 유명해요.'), v('대구광역시', '계명아트센터', '대형 뮤지컬 공연장.'),
+    v('인천광역시', '인스파이어 아레나', '영종도의 대형 공연장.'), v('인천광역시', '아트센터 인천', '송도의 클래식 공연장.'),
+    v('대전광역시', '대전예술의전당', '대전 대표 공연장.'), v('세종특별자치시', '세종예술의전당', '세종시 공연장.'), v('울산광역시', '울산문화예술회관', '울산 대표 공연장.'),
+    v('경기도', '고양아람누리', '일산의 공연장과 도서관.'), v('경기도', '성남아트센터', '분당의 클래식·뮤지컬 공연장.'), v('경기도', '경기아트센터', '수원의 도립 공연장.'),
+    v('강원특별자치도', '강릉아트센터', '강릉의 공연장.'), v('강원특별자치도', '춘천문화예술회관', '춘천의 공연장.'),
+    v('충청북도', '청주예술의전당', '청주의 공연장.'), v('충청남도', '천안예술의전당', '천안의 공연장.'), v('전북특별자치도', '한국소리문화의전당', '전주의 대표 공연장.'),
+    v('전남광주통합특별시', '국립아시아문화전당', '광주의 공연·전시 복합 공간.'), v('전남광주통합특별시', '광주문화예술회관', '광주의 공연장.'),
+    v('경상북도', '경주예술의전당', '경주의 공연장.'), v('경상남도', '성산아트홀', '창원의 공연장.'), v('제주특별자치도', '제주아트센터', '제주의 공연장.'),
+    v('해외', 'Broadway', '뉴욕 브로드웨이 뮤지컬 극장가.', '미국'), v('해외', 'West End', '런던 웨스트엔드 뮤지컬 극장가.', '영국'), v('해외', 'Sydney Opera House', '시드니 오페라하우스.', '호주'),
+  ];
+  const hallsFor = area => HALLS.filter(x => area ? x.sido === area : x.sido !== '해외');
   // 지금 달부터 가까운 순서
   const festsFor = (area, month) => FESTS.filter(x => area ? x.sido === area : x.sido !== '해외').map(x => [x, Math.min(...x.months.map(m => (m - month + 12) % 12))]).sort((a, b) => a[1] - b[1]).map(a => a[0]);
   const mapUrl = name => 'https://map.naver.com/p/search/' + encodeURIComponent(name);
   const searchUrl = q => 'https://search.naver.com/search.naver?query=' + encodeURIComponent(q);
-  const out = { FESTS, festsFor, randomCourse, mins, plan, planText, IMG, is, LOGS, build, TIPS, COURSES, courses, season, SEASON, SPOTS, mapUrl, searchUrl };
+  const out = { HALLS, hallsFor, FESTS, festsFor, randomCourse, mins, plan, planText, IMG, is, LOGS, build, TIPS, COURSES, courses, season, SEASON, SPOTS, mapUrl, searchUrl };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Couple = out;
 })(typeof window !== 'undefined' ? window : globalThis);

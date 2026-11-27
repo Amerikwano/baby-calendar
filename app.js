@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.21.0';
+const APP_VERSION = '0.21.1';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -426,7 +426,8 @@ function coupleEvents() {
   const card = x => { const g = x.sido === '해외', soon = x.months.includes(now) ? '<span class="chip hot">이번 달</span>' : ''; return `<article class="paper"><div class="hosp" style="border:0;padding:0"><span><span class="row" style="gap:6px"><span class="chip">${esc(x.c || x.sido.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주'))}</span><span class="chip">보통 ${x.months.join('·')}월</span>${soon}</span><b style="margin-top:8px;font-size:17px">${esc(x.name)}</b><span class="sub">${esc(x.desc)}</span><span style="display:block;margin-top:6px">${src(Couple.searchUrl(x.name + ' ' + today().slice(0, 4)), '올해 일정 찾아보기')}</span></span>${x.at ? (g ? gmapBtn(x.at) : nmapBtn(x.at)) : ''}</div></article>`; };
   const list = Couple.festsFor(sido, now);
   return tipSeg() + `<section class="stack"><div class="row between"><h2>축제</h2><select id="evtarea" class="areasel" aria-label="지역"><option value="">전국</option>${SIDO.map(x => `<option ${x === sido ? 'selected' : ''}>${x}</option>`).join('')}<option value="해외" ${abroad ? 'selected' : ''}>해외</option></select></div>${list.map(card).join('') || '<p class="sub">이 지역은 아직 정리한 축제가 없어요. 아래에서 찾아보세요.</p>'}</section>
-    <section class="stack"><h2>더 찾아보기</h2>${plainCard('행사', `${sido && !abroad ? esc(sido) + ' ' : abroad ? '해외 ' : ''}이번 달 축제와 행사`, '지역 축제, 공연, 빛축제 일정을 찾아봐요.', src(Couple.searchUrl(q), '일정 찾아보기'))}${abroad ? '' : plainCard('행사', '이번 주말 전시·팝업', '데이트하기 좋은 전시와 팝업 스토어를 찾아봐요.', src(Couple.searchUrl((sido ? sido + ' ' : '') + '이번 주말 전시 팝업'), '찾아보기'))}</section><p class="sub">축제는 보통 열리는 달이에요. 해마다 날짜가 바뀌니 가기 전에 올해 일정을 확인하세요.</p>`;
+    <section class="stack"><h2>공연장</h2>${Couple.hallsFor(sido).map(x => { const g = x.sido === '해외'; return `<article class="paper"><div class="hosp" style="border:0;padding:0"><span><span class="chip">${esc(x.c || x.sido.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주'))}</span><b style="margin-top:8px;font-size:17px">${esc(x.name)}</b><span class="sub">${esc(x.desc)}</span><span style="display:block;margin-top:6px">${src(Couple.searchUrl(x.name + ' 공연 일정'), '지금 하는 공연 보기')}</span></span>${g ? gmapBtn(x.name) : nmapBtn(x.name)}</div></article>`; }).join('') || '<p class="sub">이 지역은 아직 정리한 공연장이 없어요.</p>'}</section>
+    <section class="stack"><h2>더 찾아보기</h2>${plainCard('행사', `${sido && !abroad ? esc(sido) + ' ' : abroad ? '해외 ' : ''}이번 달 축제와 행사`, '지역 축제, 공연, 빛축제 일정을 찾아봐요.', src(Couple.searchUrl(q), '일정 찾아보기'))}${plainCard('공연', `${sido && !abroad ? esc(sido) + ' ' : abroad ? '해외 ' : ''}이번 주 공연`, '뮤지컬, 연극, 콘서트, 클래식 일정을 찾아봐요.', src(Couple.searchUrl((sido && !abroad ? sido + ' ' : abroad ? '해외 ' : '') + '공연 일정'), '공연 찾아보기'))}${abroad ? '' : plainCard('행사', '이번 주말 전시·팝업', '데이트하기 좋은 전시와 팝업 스토어를 찾아봐요.', src(Couple.searchUrl((sido ? sido + ' ' : '') + '이번 주말 전시 팝업'), '찾아보기'))}</section><p class="sub">축제는 보통 열리는 달이에요. 해마다 날짜가 바뀌니 가기 전에 올해 일정을 확인하세요.</p>`;
 }
 function coupleMoney() {
   const sido = spotArea(), abroad = sido === '해외';
