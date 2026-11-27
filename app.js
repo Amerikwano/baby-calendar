@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.19.5';
+const APP_VERSION = '0.20.1';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -356,22 +356,52 @@ function planDlgFor(n) {
   openDlg(`<form data-form="none"><div class="row between"><h2>${esc(p.title)}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="plancap" data-n="${esc(n)}" aria-label="이미지로 저장">${icon('capture')}</button><button type="button" class="sq" data-act="plancopy" data-n="${esc(n)}" aria-label="글로 복사">${icon('copy')}</button></span></div>${spotImg(n)}<p class="sub">${esc(x.desc)}</p><ol class="plan">${p.steps.map(([a, b]) => `<li><b>${a}</b><span>${esc(b)}</span></li>`).join('')}</ol><p class="notice">${esc(p.tip)}</p><div class="row">${g ? `<a class="btn" data-act="ext" href="${gmapUrl(x.c + ' ' + n)}" target="_blank" rel="noopener noreferrer">구글 지도</a>` : `<button type="button" class="btn" data-act="nmap" data-q="${esc(n)}">네이버 지도</button><button type="button" class="btn" data-act="nmap" data-q="${esc(n + ' 맛집')}">근처 맛집</button>`}</div><p class="sub">장소 성격에 맞춰 만든 추천 코스예요. 운영 시간은 가기 전에 확인하세요.</p></form>`);
 }
 // 코스를 그림으로 만들어 저장·공유한다(사진은 위키미디어에서 받아 그린다)
-async function planImage(n) {
-  const x = Couple.SPOTS.find(y => y.name === n), p = Couple.plan(x), W = 1080, c = document.createElement('canvas'), g = c.getContext('2d'), im = Couple.IMG[n];
-  let pic = null; if (im) pic = await new Promise(r => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => r(i); i.onerror = () => r(null); i.src = im[1]; });
-  const ph = pic ? 608 : 0, H = ph + 260 + p.steps.length * 96 + 220; c.width = W; c.height = H;
+async function courseImage(o) { // o: { title, sub, steps:[[시각, 할 일]], tip, img:[파일, 주소], file }
+  const W = 1080, c = document.createElement('canvas'), g = c.getContext('2d');
+  let pic = null; if (o.img) pic = await new Promise(r => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => r(i); i.onerror = () => r(null); i.src = o.img[1]; });
+  const ph = pic ? 608 : 0, H = ph + 260 + o.steps.length * 96 + 220; c.width = W; c.height = H;
   g.fillStyle = '#faf5ee'; g.fillRect(0, 0, W, H);
   if (pic) { const s = Math.max(W / pic.width, ph / pic.height), w = pic.width * s, h = pic.height * s; g.drawImage(pic, (W - w) / 2, (ph - h) / 2, w, h); }
   const F = (sz, wt) => `${wt || 400} ${sz}px "Apple SD Gothic Neo","Noto Sans KR",sans-serif`; let y = ph + 90;
-  g.fillStyle = '#4f3f3a'; g.font = F(54, 800); g.fillText(p.title, 64, y); y += 60; g.font = F(34); g.fillStyle = '#7a685d'; g.fillText(x.desc, 64, y); y += 80;
-  p.steps.forEach(([a, b]) => { g.fillStyle = '#b87324'; g.font = F(36, 800); g.fillText(a, 64, y); g.fillStyle = '#4f3f3a'; g.font = F(38, 600); g.fillText(b, 220, y); y += 96; });
-  g.fillStyle = '#7a685d'; g.font = F(30); const tip = '팁: ' + p.tip; let line = ''; for (const ch of tip) { if (g.measureText(line + ch).width > W - 128) { g.fillText(line, 64, y); y += 44; line = ''; } line += ch; } g.fillText(line, 64, y);
-  g.fillStyle = '#b87324'; g.font = F(30, 800); g.fillText('우리 수첩', 64, H - 50); if (im) { g.fillStyle = '#a59585'; g.font = F(22); g.textAlign = 'right'; g.fillText('사진 위키미디어 공용', W - 64, H - 50); }
+  g.fillStyle = '#4f3f3a'; g.font = F(54, 800); g.fillText(o.title, 64, y); y += 60; g.font = F(34); g.fillStyle = '#7a685d'; g.fillText(o.sub, 64, y); y += 80;
+  o.steps.forEach(([a, b]) => { g.fillStyle = '#b87324'; g.font = F(36, 800); g.fillText(a, 64, y); g.fillStyle = '#4f3f3a'; g.font = F(38, 600); g.fillText(b, 220, y); y += 96; });
+  g.fillStyle = '#7a685d'; g.font = F(30); let line = ''; for (const ch of o.tip) { if (g.measureText(line + ch).width > W - 128) { g.fillText(line, 64, y); y += 44; line = ''; } line += ch; } g.fillText(line, 64, y);
+  g.fillStyle = '#b87324'; g.font = F(30, 800); g.fillText('우리 수첩', 64, H - 50); if (pic) { g.fillStyle = '#a59585'; g.font = F(22); g.textAlign = 'right'; g.fillText('사진 위키미디어 공용', W - 64, H - 50); }
   const blob = await new Promise(r => { try { c.toBlob(r, 'image/png'); } catch { r(null); } }); if (!blob) return toast('이미지를 만들지 못했어요');
-  const file = new File([blob], `${n}-데이트코스.png`, { type: 'image/png' });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) return navigator.share({ files: [file], title: p.title }).catch(() => { });
+  const file = new File([blob], o.file, { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) return navigator.share({ files: [file], title: o.title }).catch(() => { });
   const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('이미지를 저장했어요');
 }
+function planImage(n) { const x = Couple.SPOTS.find(y => y.name === n), p = Couple.plan(x); return courseImage({ title: p.title, sub: x.desc, steps: p.steps, tip: '팁: ' + p.tip, img: Couple.IMG[n], file: `${n}-데이트코스.png` }); }
+
+/* ── 랜덤 데이트 코스(연애 수첩 홈) ── */
+// 시·도 대표 좌표: 날씨를 물을 때 이 좌표만 보낸다(내 위치는 보내지 않는다).
+const SIDO_XY = { 서울특별시: [37.57, 126.98], 부산광역시: [35.18, 129.08], 대구광역시: [35.87, 128.6], 인천광역시: [37.46, 126.71], 대전광역시: [36.35, 127.38], 울산광역시: [35.54, 129.31], 세종특별자치시: [36.48, 127.29], 경기도: [37.27, 127.01], 강원특별자치도: [37.88, 127.73], 충청북도: [36.64, 127.49], 충청남도: [36.66, 126.67], 전북특별자치도: [35.82, 127.15], 전남광주통합특별시: [35.16, 126.85], 경상북도: [36.57, 128.73], 경상남도: [35.23, 128.68], 제주특별자치도: [33.5, 126.53] };
+let rdc = null;
+const nextSat = () => { const d = new Date(); d.setDate(d.getDate() + (6 - d.getDay() + 7) % 7); return d.toLocaleDateString('sv-SE'); };
+const hourOpts = (a, b, v) => Array.from({ length: b - a + 1 }, (_, i) => a + i).map(h => `<option value="${String(h).padStart(2, '0')}:00" ${v === String(h).padStart(2, '0') + ':00' ? 'selected' : ''}>${h}시</option>`).join('');
+function rdcDlg() {
+  const v = rdc || { date: nextSat(), from: '11:00', to: '21:00', area: SIDO_XY[spotArea()] ? spotArea() : SIDO_XY[db.sido] ? db.sido : '서울특별시' };
+  openDlg(`<form data-form="rdc"><h2>랜덤 데이트 코스 짜기</h2><p class="sub">날짜와 시간대를 고르면 그 안에서 코스를 뽑아요. 비가 오면 실내 위주로 짜요.</p><label class="f">날짜<input type="date" name="date" required min="${today()}" value="${v.date}"></label><div class="two"><label class="f">시작<select name="from">${hourOpts(8, 20, v.from)}</select></label><label class="f">끝<select name="to">${hourOpts(11, 23, v.to)}</select></label></div><label class="f">지역<select name="area">${Object.keys(SIDO_XY).map(x => `<option ${x === v.area ? 'selected' : ''}>${x}</option>`).join('')}</select></label><button class="btn main big">코스 뽑기</button><p class="sub">날씨는 Open-Meteo에서 고른 지역의 대표 좌표로 알아와요. 2주 안의 날짜만 알 수 있어요.</p></form>`);
+}
+const WX = c => c == null ? '' : c === 0 ? '맑음' : c <= 3 ? '구름' : c <= 48 ? '안개' : c <= 67 ? '비' : c <= 77 ? '눈' : c <= 82 ? '소나기' : '뇌우';
+async function rdcWeather(v) {
+  const [la, lo] = SIDO_XY[v.area]; if (S.diffDays(today(), v.date) > 15) return null;
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&hourly=precipitation_probability,weather_code,temperature_2m&timezone=Asia%2FSeoul&start_date=${v.date}&end_date=${v.date}`, { signal: AbortSignal.timeout(10000) });
+    const h = (await r.json()).hourly, a = Number(v.from.slice(0, 2)), b = Number(v.to.slice(0, 2)), idx = h.time.map((t, i) => i).filter(i => { const x = Number(h.time[i].slice(11, 13)); return x >= a && x < b; });
+    const pr = Math.max(...idx.map(i => h.precipitation_probability[i] || 0)), codes = idx.map(i => h.weather_code[i]), tmp = idx.map(i => h.temperature_2m[i]), worst = Math.max(...codes);
+    return { rain: pr >= 50 || codes.some(c => c >= 51), pr, hi: Math.round(Math.max(...tmp)), lo: Math.round(Math.min(...tmp)), sky: WX(worst) };
+  } catch { return null; }
+}
+function rdcRoll() { const w = rdc.w || {}; rdc.course = Couple.randomCourse({ from: rdc.from, to: rdc.to, rain: w.rain, hot: w.hi >= 28, cold: w.lo <= 3, spots: Couple.SPOTS.filter(x => x.sido === rdc.area) }); }
+const rdcTitle = () => { const [, m, d] = rdc.date.split('-').map(Number); return `${m}월 ${d}일 데이트 코스`; };
+const rdcSub = () => { const w = rdc.w; return w ? `${rdc.area.replace(/(특별자치|광역|특별)?(시|도)$/, '')} 날씨 ${w.sky}, ${w.lo}~${w.hi}°, 비 올 확률 ${w.pr}%${w.rain ? ' · 실내 위주로 짰어요' : ''}` : '날씨는 2주 안의 날짜만 알 수 있어요'; };
+const rdcText = () => `[우리 수첩] ${rdcTitle()}\n${rdcSub()}\n\n${rdc.course.map(([a, b]) => `${a}  ${b}`).join('\n')}`;
+function rdcShow() {
+  openDlg(`<form data-form="none"><div class="row between"><h2>${rdcTitle()}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="rdccap" aria-label="이미지로 저장">${icon('capture')}</button><button type="button" class="sq" data-act="rdccopy" aria-label="글로 복사">${icon('copy')}</button></span></div><p class="notice${rdc.w && rdc.w.rain ? ' hot' : ''}">${esc(rdcSub())}</p><ol class="plan">${rdc.course.map(([a, b, n]) => `<li><b>${a}</b><span>${n ? `<button type="button" class="linkb" data-act="plan" data-n="${esc(n)}">${esc(b)}</button>` : esc(b)}</span></li>`).join('')}</ol><div class="row"><button type="button" class="btn main" data-act="rdcroll">다시 뽑기</button><button type="button" class="btn" data-act="rdcadd">달력에 넣기</button><button type="button" class="btn" data-act="rdc">조건 바꾸기</button></div><p class="sub">명소 이름을 누르면 그곳 코스를 볼 수 있어요.</p></form>`);
+}
+const rdcCard = () => `<button class="strip" data-act="rdc">${icon('heart')}<span><b>랜덤 데이트 코스 짜기</b><em>날짜와 시간만 고르면 날씨에 맞춰 뽑아 드려요</em></span>${icon('right', 's')}</button>`;
 const plainCard = (chip, title, body, link) => `<article class="paper"><div class="row"><span class="chip">${esc(chip)}</span></div><h2>${esc(title)}</h2><p>${esc(body)}</p>${link ? `<div class="row">${link}</div>` : ''}</article>`;
 function coupleTips() {
   const s = Couple.SEASON[Couple.season(today())];
@@ -990,6 +1020,11 @@ async function moreActs(act, b, id) {
   else if (act === 'plan') planDlgFor(d.n);
   else if (act === 'plancopy') { const x = Couple.SPOTS.find(y => y.name === d.n); try { await navigator.clipboard.writeText(Couple.planText(x, Couple.plan(x))); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
   else if (act === 'plancap') planImage(d.n);
+  else if (act === 'rdc') rdcDlg();
+  else if (act === 'rdcroll') { rdcRoll(); rdcShow(); }
+  else if (act === 'rdccopy') { try { await navigator.clipboard.writeText(rdcText()); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
+  else if (act === 'rdccap') courseImage({ title: rdcTitle(), sub: rdcSub(), steps: rdc.course.map(x => [x[0], x[1]]), tip: '우리 수첩 랜덤 데이트 코스', file: `${rdc.date}-데이트코스.png` });
+  else if (act === 'rdcadd') { if (await save(x => x.events.push({ id: uid(), title: '데이트', date: rdc.date, time: rdc.from, memo: rdcText(), kid: K().id }))) { dlg.close(); toast('달력에 넣었어요'); } }
   else if (act === 'grapeok') openDlg(`<form data-form="grape"><h2>정말 성공하셨나요?</h2><p><b>${esc(missionNow(K()))}</b></p><p class="sub">네를 누르면 포도 한 알을 채워요.</p><div class="row"><button class="btn main" value="ok">네</button><button type="button" class="btn" data-act="close">아니요</button></div></form>`);
   else if (act === 'grapenext') await save(x => { const k = x.kids.find(y => y.id === K().id); k.grape = Object.assign(grapeOf(k), { mi: grapeOf(k).mi + 1 }); });
   else if (act === 'grapeown') openDlg(`<form data-form="grapeown"><h2>미션 직접 쓰기</h2><label class="f">미션<input name="m" required maxlength="40" autocomplete="off" placeholder="예: 둘만의 암호 만들기"></label><p class="sub">쓴 미션은 이 수첩을 함께 쓰는 사람만 볼 수 있어요.</p>${acts()}</form>`);
@@ -1255,6 +1290,7 @@ document.addEventListener('submit', async ev => {
     const m = (v.m || '').trim(); if (!m) return;
     ok = await save(x => { const k = x.kids.find(y => y.id === K().id), g = grapeOf(k); g.custom = [m].concat(g.custom || []).slice(0, 30); g.mi = 0; k.grape = g; });
   }
+  if (kind === 'rdc') { const ok2 = f.querySelector('.btn.main'); if (v.to <= v.from) return toast('끝 시간이 시작보다 늦어야 해요'); ok2.disabled = true; ok2.textContent = '날씨를 보고 있어요'; rdc = { date: v.date, from: v.from, to: v.to, area: v.area }; rdc.w = await rdcWeather(rdc); rdcRoll(); rdcShow(); return; }
   if (kind === 'none') return;
   if (kind === 'quick') { if (!v.title.trim()) return toast('일정을 적어 주세요'); if (await save(d => d.events.push({ id: uid(), title: v.title.trim(), date: sel, time: '', memo: '', kid: '' }))) toast(push.state === 'ask' && PUSH_URL ? '추가했어요. 종 모양에서 알림을 켜면 휴대폰으로 알려드려요.' : '일정을 추가했어요'); return; }
   if (kind === 'crop') { const ok = f.querySelector('[value=ok]'); ok.disabled = true; await saveFace(v.date); ok.disabled = false; return; }

@@ -137,8 +137,37 @@
     return { title: `${n} 데이트 코스`, about: x.desc, steps: S[kind], tip };
   }
   const planText = (x, p) => `[우리 수첩] ${p.title}\n${x.desc}\n\n${p.steps.map(([a, b]) => `${a}  ${b}`).join('\n')}\n\n팁: ${p.tip}`;
+  // ── 랜덤 데이트 코스: 날짜·시간대 안에서 고르고, 비가 오면 실내만.
+  const ACT = [
+    // [이름, 실내?, 분, 저녁 이후에 어울림?]
+    ['영화 보기', 1, 150], ['보드게임 카페', 1, 90], ['방탈출 카페', 1, 90], ['전시·팝업 구경', 1, 90], ['공방 체험(반지·향수·도자기)', 1, 120],
+    ['볼링이나 포켓볼', 1, 90, 1], ['코인 노래방', 1, 60, 1], ['실내 쇼핑몰 구경', 1, 90], ['아쿠아리움', 1, 120], ['서점 데이트', 1, 60], ['찜질방·스파', 1, 120],
+    ['공원 산책', 0, 60], ['자전거 타기', 0, 90], ['강변·호숫가 피크닉', 0, 120], ['시장 구경과 길거리 음식', 0, 90], ['근교 드라이브', 0, 120], ['야경 보러 가기', 0, 60, 1], ['사진 찍기 좋은 골목 걷기', 0, 60],
+  ];
+  const mins = s => { const [h, m] = s.split(':').map(Number); return h * 60 + m; }, hhmm = n => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
+  // o: { from:'11:00', to:'20:00', rain:bool, hot:bool, cold:bool, spots:[명소] }, rnd: 0~1 난수 함수
+  function randomCourse(o, rnd) {
+    rnd = rnd || Math.random; const pick = l => l[Math.floor(rnd() * l.length)];
+    const end = mins(o.to), out = [], used = new Set(); let t = mins(o.from), lunch = false, dinner = false, cafe = false, spot = false;
+    const outdoorOk = !o.rain, s0 = o.spots && o.spots.length ? pick(o.spots) : null, nightSpot = s0 && /야경|빛|분수|타워|전망|밤/.test(s0.name + s0.desc); // 야경 명소는 저녁 뒤에
+    while (t < end - 30) {
+      const left = end - t;
+      if (!lunch && t >= 660 && t < 840) { out.push([hhmm(t), '근처 맛집에서 점심']); lunch = true; t += 60; continue; }
+      if (!dinner && t >= 1020 && t < 1200) { out.push([hhmm(t), '분위기 좋은 곳에서 저녁']); dinner = true; t += 90; continue; }
+      // 식사 시간을 건너뛰지 않게 그 전까지만 쓸 수 있는 시간
+      let room = left; if (!lunch && t < 660 && end > 720) room = Math.min(room, 780 - t); if (!dinner && t < 1020 && end > 1080) room = Math.min(room, 1140 - t);
+      if (!spot && outdoorOk && s0 && (nightSpot ? t >= 1110 && left >= 60 : t < 1080 && room >= 120)) { out.push([hhmm(t), nightSpot ? `${s0.name}에서 야경 보기` : `${s0.name} 가기`, s0.name]); spot = true; t += nightSpot ? 90 : 120; continue; }
+      if (!cafe && t >= 840 && t < 1050) { out.push([hhmm(t), o.hot ? '시원한 디저트 카페' : '분위기 좋은 카페에서 쉬기']); cafe = true; t += 60; continue; }
+      const night = t >= 1140;
+      const ok = ACT.filter(a => !used.has(a[0]) && (outdoorOk || a[1]) && a[2] <= room && (!night || a[3] || a[1]) && !(o.cold && !a[1] && rnd() < .5) && !(a[0] === '야경 보러 가기' && t < 1080));
+      if (!ok.length) { if (room < left) { out.push([hhmm(t), '근처 산책하며 쉬기']); t += Math.max(30, room - 60 > 0 ? Math.min(60, room) : 30); continue; } break; }
+      const a = pick(ok); used.add(a[0]); out.push([hhmm(t), a[0]]); t += a[2];
+    }
+    if (!out.length) out.push([o.from, '근처 카페에서 만나기']);
+    return out;
+  }
   const mapUrl = name => 'https://map.naver.com/p/search/' + encodeURIComponent(name);
   const searchUrl = q => 'https://search.naver.com/search.naver?query=' + encodeURIComponent(q);
-  const out = { plan, planText, IMG, is, LOGS, build, TIPS, COURSES, courses, season, SEASON, SPOTS, mapUrl, searchUrl };
+  const out = { randomCourse, mins, plan, planText, IMG, is, LOGS, build, TIPS, COURSES, courses, season, SEASON, SPOTS, mapUrl, searchUrl };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Couple = out;
 })(typeof window !== 'undefined' ? window : globalThis);

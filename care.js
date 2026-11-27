@@ -108,7 +108,7 @@ function home() {
   const strip = !k.born && today() >= k.birth ? `<div class="notice hot"><b>예정일이 되었어요. 아기가 태어났나요?</b><div class="row"><button class="btn main" data-act="born">생일 넣기</button></div></div>`
     : first ? `<details class="acc" ${localStorage.getItem('baby-acc-vax') === '0' ? '' : 'open'}><summary>${icon('shield')}<b>${Me.is(k) ? '올해 챙길 검진' : Couple.is(k) ? '다가오는 기념일' : '지금 받을 것'} ${n}개</b>${icon('down', 's')}</summary><div class="list">${a.open.map(itemRow).join('')}</div><button class="accall" data-act="vaxnow">전체 일정 보기${icon('right', 's')}</button></details>` : '';
   const ev = a.events.map(e => `<button class="strip" data-act="event" data-id="${e.id}">${icon('cal')}<span><b>${esc(e.title)}</b><em>${e.date === today() ? '오늘' : '내일'}${e.time ? ' ' + Care.clock(e.time) : ''}</em></span>${icon('right', 's')}</button>`).join('');
-  return inAppCard() + syncCard() + quickRow(k) + (k.born ? '' : hero()) + growCar(k) + `<div class="stack">${strip}${ev}${missionStrip(k)}</div>` + (k.born ? '' : mission()) + grapeCard(k) + `<section class="logs">${timeline(k)}</section>` + loginCard();
+  return inAppCard() + syncCard() + quickRow(k) + (k.born ? '' : hero()) + growCar(k) + `<div class="stack">${strip}${ev}${missionStrip(k)}</div>` + (k.born ? '' : mission()) + (Couple.is(k) ? `<div class="stack">${rdcCard()}</div>` : '') + grapeCard(k) + `<section class="logs">${timeline(k)}</section>` + loginCard();
 }
 
 // 홈 위쪽: 성장 앨범 사진을 날짜 순서로 옆으로 넘기며 보여 준다
