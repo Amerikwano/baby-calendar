@@ -294,3 +294,4 @@ nav div{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minma
 .areasel{padding:8px 12px;border-radius:14px;border:1.5px solid var(--line);background:var(--card);font:inherit;font-weight:600}
 .spotq{width:100%;padding:12px 14px;border-radius:16px;border:1.5px solid var(--line);background:var(--card);font:inherit}
 .spotimg{position:relative;margin:-4px -4px 12px;border-radius:18px;overflow:hidden;background:var(--soft)}.spotimg img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}.spotimg a{position:absolute;right:8px;bottom:6px;font-size:10.5px;color:#fff;text-shadow:0 1px 3px rgb(0 0 0/.7);text-decoration:none;opacity:.85}
+.tapcard{cursor:pointer}.plan{list-style:none;margin:4px 0;padding:0;display:grid;gap:10px}.plan li{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:baseline}.plan b{color:#b87324;font-variant-numeric:tabular-nums}

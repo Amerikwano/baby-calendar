@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.19.4';
+const APP_VERSION = '0.19.5';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -340,15 +340,37 @@ const nmapBtn = q => `<button type="button" class="pin" data-act="nmap" data-q="
 // 지도 단추가 오른쪽에 붙는 카드(병원 목록과 같은 모양)
 // 해외는 구글 지도(앱이 있으면 앱으로 열린다)
 const gmapUrl = q => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
-const gmapBtn = q => `<a class="pin" href="${gmapUrl(q)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(q)} 구글 지도에서 보기">${PIN}</a>`;
+const gmapBtn = q => `<a class="pin" data-act="ext" href="${gmapUrl(q)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(q)} 구글 지도에서 보기">${PIN}</a>`;
 // 명소 사진(위키미디어 공용, 출처 표시)
-const spotImg = n => { const i = Couple.IMG[n]; return i ? `<figure class="spotimg"><img src="${esc(i[1])}" alt="${esc(n)}" loading="lazy" referrerpolicy="no-referrer"><a href="https://commons.wikimedia.org/wiki/File:${encodeURIComponent(i[0])}" target="_blank" rel="noopener noreferrer">사진 위키미디어 공용</a></figure>` : ''; };
+const spotImg = n => { const i = Couple.IMG[n]; return i ? `<figure class="spotimg"><img src="${esc(i[1])}" alt="${esc(n)}" loading="lazy" referrerpolicy="no-referrer"><a data-act="ext" href="https://commons.wikimedia.org/wiki/File:${encodeURIComponent(i[0])}" target="_blank" rel="noopener noreferrer">사진 위키미디어 공용</a></figure>` : ''; };
 const pinCard = (chip, title, body, q, g, n) => `<article class="paper">${spotImg(n || title)}<div class="hosp" style="border:0;padding:0"><span><span class="chip">${esc(chip)}</span><b style="margin-top:8px;font-size:17px">${esc(title)}</b><span class="sub">${esc(body)}</span></span>${g ? gmapBtn(q) : nmapBtn(q)}</div></article>`;
 function openNmap(q) {
   const web = Couple.mapUrl(q); if (!/iPhone|iPad|iPod|Android/.test(navigator.userAgent)) return window.open(web, '_blank', 'noopener');
   let gone = false; const off = () => { gone = true; }; document.addEventListener('visibilitychange', off, { once: true }); window.addEventListener('pagehide', off, { once: true });
   location.href = 'nmap://search?query=' + encodeURIComponent(q) + '&appname=' + encodeURIComponent(location.hostname);
   setTimeout(() => { if (!gone && !document.hidden) window.open(web, '_blank', 'noopener'); }, 1500);
+}
+// 명소 데이트 코스 창
+function planDlgFor(n) {
+  const x = Couple.SPOTS.find(y => y.name === n); if (!x) return; const p = Couple.plan(x), g = x.sido === '해외';
+  openDlg(`<form data-form="none"><div class="row between"><h2>${esc(p.title)}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="plancap" data-n="${esc(n)}" aria-label="이미지로 저장">${icon('capture')}</button><button type="button" class="sq" data-act="plancopy" data-n="${esc(n)}" aria-label="글로 복사">${icon('copy')}</button></span></div>${spotImg(n)}<p class="sub">${esc(x.desc)}</p><ol class="plan">${p.steps.map(([a, b]) => `<li><b>${a}</b><span>${esc(b)}</span></li>`).join('')}</ol><p class="notice">${esc(p.tip)}</p><div class="row">${g ? `<a class="btn" data-act="ext" href="${gmapUrl(x.c + ' ' + n)}" target="_blank" rel="noopener noreferrer">구글 지도</a>` : `<button type="button" class="btn" data-act="nmap" data-q="${esc(n)}">네이버 지도</button><button type="button" class="btn" data-act="nmap" data-q="${esc(n + ' 맛집')}">근처 맛집</button>`}</div><p class="sub">장소 성격에 맞춰 만든 추천 코스예요. 운영 시간은 가기 전에 확인하세요.</p></form>`);
+}
+// 코스를 그림으로 만들어 저장·공유한다(사진은 위키미디어에서 받아 그린다)
+async function planImage(n) {
+  const x = Couple.SPOTS.find(y => y.name === n), p = Couple.plan(x), W = 1080, c = document.createElement('canvas'), g = c.getContext('2d'), im = Couple.IMG[n];
+  let pic = null; if (im) pic = await new Promise(r => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => r(i); i.onerror = () => r(null); i.src = im[1]; });
+  const ph = pic ? 608 : 0, H = ph + 260 + p.steps.length * 96 + 220; c.width = W; c.height = H;
+  g.fillStyle = '#faf5ee'; g.fillRect(0, 0, W, H);
+  if (pic) { const s = Math.max(W / pic.width, ph / pic.height), w = pic.width * s, h = pic.height * s; g.drawImage(pic, (W - w) / 2, (ph - h) / 2, w, h); }
+  const F = (sz, wt) => `${wt || 400} ${sz}px "Apple SD Gothic Neo","Noto Sans KR",sans-serif`; let y = ph + 90;
+  g.fillStyle = '#4f3f3a'; g.font = F(54, 800); g.fillText(p.title, 64, y); y += 60; g.font = F(34); g.fillStyle = '#7a685d'; g.fillText(x.desc, 64, y); y += 80;
+  p.steps.forEach(([a, b]) => { g.fillStyle = '#b87324'; g.font = F(36, 800); g.fillText(a, 64, y); g.fillStyle = '#4f3f3a'; g.font = F(38, 600); g.fillText(b, 220, y); y += 96; });
+  g.fillStyle = '#7a685d'; g.font = F(30); const tip = '팁: ' + p.tip; let line = ''; for (const ch of tip) { if (g.measureText(line + ch).width > W - 128) { g.fillText(line, 64, y); y += 44; line = ''; } line += ch; } g.fillText(line, 64, y);
+  g.fillStyle = '#b87324'; g.font = F(30, 800); g.fillText('우리 수첩', 64, H - 50); if (im) { g.fillStyle = '#a59585'; g.font = F(22); g.textAlign = 'right'; g.fillText('사진 위키미디어 공용', W - 64, H - 50); }
+  const blob = await new Promise(r => { try { c.toBlob(r, 'image/png'); } catch { r(null); } }); if (!blob) return toast('이미지를 만들지 못했어요');
+  const file = new File([blob], `${n}-데이트코스.png`, { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) return navigator.share({ files: [file], title: p.title }).catch(() => { });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('이미지를 저장했어요');
 }
 const plainCard = (chip, title, body, link) => `<article class="paper"><div class="row"><span class="chip">${esc(chip)}</span></div><h2>${esc(title)}</h2><p>${esc(body)}</p>${link ? `<div class="row">${link}</div>` : ''}</article>`;
 function coupleTips() {
@@ -358,7 +380,7 @@ function coupleTips() {
 // 데이트 명소: 지역(전국·시도·해외)과 검색으로 고른다. 고른 지역은 이 기기에만 둔다.
 let spotQ = '';
 const spotArea = () => { const a = localStorage.getItem('baby-spot-area'); return a == null ? db.sido || '' : a; };
-const spotCard = x => pinCard(x.c || x.sido.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주'), x.name, x.desc, x.c ? x.c + ' ' + x.name : x.name, x.sido === '해외');
+const spotCard = x => `<div data-act="plan" data-n="${esc(x.name)}" class="tapcard">` + pinCard(x.c || x.sido.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주'), x.name, x.desc, x.c ? x.c + ' ' + x.name : x.name, x.sido === '해외') + '</div>';
 function spotList() {
   const a = spotArea(), q = spotQ.trim().toLowerCase();
   const l = Couple.SPOTS.filter(x => q ? (x.name + x.desc + x.sido + (x.c || '')).toLowerCase().includes(q) : !a || x.sido === a);
@@ -965,6 +987,9 @@ async function moreActs(act, b, id) {
   else if (act === 'addcouple') coupleDlg();
   else if (act === 'newcat') newCatDlg();
   else if (act === 'nmap') openNmap(d.q);
+  else if (act === 'plan') planDlgFor(d.n);
+  else if (act === 'plancopy') { const x = Couple.SPOTS.find(y => y.name === d.n); try { await navigator.clipboard.writeText(Couple.planText(x, Couple.plan(x))); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
+  else if (act === 'plancap') planImage(d.n);
   else if (act === 'grapeok') openDlg(`<form data-form="grape"><h2>정말 성공하셨나요?</h2><p><b>${esc(missionNow(K()))}</b></p><p class="sub">네를 누르면 포도 한 알을 채워요.</p><div class="row"><button class="btn main" value="ok">네</button><button type="button" class="btn" data-act="close">아니요</button></div></form>`);
   else if (act === 'grapenext') await save(x => { const k = x.kids.find(y => y.id === K().id); k.grape = Object.assign(grapeOf(k), { mi: grapeOf(k).mi + 1 }); });
   else if (act === 'grapeown') openDlg(`<form data-form="grapeown"><h2>미션 직접 쓰기</h2><label class="f">미션<input name="m" required maxlength="40" autocomplete="off" placeholder="예: 둘만의 암호 만들기"></label><p class="sub">쓴 미션은 이 수첩을 함께 쓰는 사람만 볼 수 있어요.</p>${acts()}</form>`);

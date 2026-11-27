@@ -122,8 +122,23 @@
     "여수": ["Yeosu_Odongdo_20180929_002.jpg", "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2a/Yeosu_Odongdo_20180929_002.jpg/960px-Yeosu_Odongdo_20180929_002.jpg?utm_source=ko.wikipedia.org&utm_campaign=api&utm_content=thumbnail"],
     "속초": ["Korea_Seoraksan.jpg", "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/32/Korea_Seoraksan.jpg/960px-Korea_Seoraksan.jpg?utm_source=ko.wikipedia.org&utm_campaign=api&utm_content=thumbnail"]
   };
+  // 명소 데이트 코스: 장소 성격(야경·바다·골목·해외)에 맞춰 시간표를 만든다. AI 없이 규칙으로.
+  function plan(x) {
+    const t = x.name + ' ' + x.desc, n = x.name, abroad = x.sido === '해외';
+    const kind = abroad ? 'abroad' : /야경|빛|분수|타워|전망|밤/.test(t) ? 'night' : /해변|해수욕장|바다|노을|일몰|일출|곶|해안/.test(t) ? 'sea' : /한옥|골목|마을|거리|길|카페/.test(t) ? 'street' : 'day';
+    const S = {
+      abroad: [['10:00', '숙소에서 여유롭게 출발'], ['11:00', `${n} 둘러보기`], ['13:00', '근처 현지 맛집에서 점심'], ['15:00', '주변 골목 산책과 카페'], ['18:00', '해 질 녘 풍경 보며 사진 찍기'], ['19:30', '분위기 좋은 곳에서 저녁']],
+      night: [['16:00', '근처 카페에서 만나기'], ['17:30', '주변 산책'], ['18:30', '근처 맛집에서 저녁'], ['20:00', `${n}에서 야경 보기`], ['21:30', '디저트 먹고 천천히 귀가']],
+      sea: [['13:00', '출발'], ['14:30', `${n} 산책`], ['16:00', '바다가 보이는 카페'], ['17:30', '노을 보며 사진 찍기'], ['19:00', '근처에서 해산물 저녁']],
+      street: [['12:00', '근처 맛집에서 점심'], ['13:30', `${n} 골목 산책하며 사진 찍기`], ['15:30', '분위기 좋은 카페에서 쉬기'], ['17:00', '소품 가게·공방 구경'], ['18:30', '저녁 먹고 마무리']],
+      day: [['11:00', '출발'], ['12:30', '근처에서 점심'], ['14:00', `${n} 둘러보기`], ['16:00', '근처 카페에서 쉬기'], ['18:00', '저녁 먹고 마무리']],
+    };
+    const tip = { abroad: '현지 교통 앱과 환전·유심을 미리 챙기세요.', night: '해 지는 시간을 확인하고 30분 먼저 도착하면 노을과 야경을 같이 볼 수 있어요.', sea: '바닷바람이 차니 겉옷을 챙기고, 일몰 시간을 미리 확인하세요.', street: '주말 오후엔 붐비니 점심 전에 가면 사진 찍기 좋아요.', day: '운영 시간과 휴무일을 가기 전에 확인하세요.' }[kind];
+    return { title: `${n} 데이트 코스`, about: x.desc, steps: S[kind], tip };
+  }
+  const planText = (x, p) => `[우리 수첩] ${p.title}\n${x.desc}\n\n${p.steps.map(([a, b]) => `${a}  ${b}`).join('\n')}\n\n팁: ${p.tip}`;
   const mapUrl = name => 'https://map.naver.com/p/search/' + encodeURIComponent(name);
   const searchUrl = q => 'https://search.naver.com/search.naver?query=' + encodeURIComponent(q);
-  const out = { IMG, is, LOGS, build, TIPS, COURSES, courses, season, SEASON, SPOTS, mapUrl, searchUrl };
+  const out = { plan, planText, IMG, is, LOGS, build, TIPS, COURSES, courses, season, SEASON, SPOTS, mapUrl, searchUrl };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Couple = out;
 })(typeof window !== 'undefined' ? window : globalThis);
