@@ -279,3 +279,4 @@ nav button{text-shadow:0 0 3px rgb(255 255 255/.85)}nav button .ic{filter:drop-s
 :root{--prev:#4a8a45;--care:#b87324}
 .t-prev{--c:var(--prev)}.t-care{--c:var(--care)}
 .av.pet{background:#fff4e0;color:#b87324}.av.pet svg{width:60%;height:60%}
+.vcat{margin:14px 4px 2px;font-size:15px;color:var(--sub)}

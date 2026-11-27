@@ -40,10 +40,33 @@ export { parentNick };
 const nickOk = s => typeof s === 'string' && s.trim().length >= 1 && s.trim().length <= 12;
 const idOk = s => typeof s === 'string' && /^[0-9a-f]{24}$/.test(s);
 const targetOk = s => typeof s === 'string' && /^[pd]:[\w-]{1,40}$/.test(s);
+// 수첩 종류: 아기, 반려동물, 연애, 개인. 초대는 종류별로 받는다(cats가 없으면 모든 수첩).
+export const CATS = ['baby', 'pet', 'couple', 'me'];
+export const catOf = k => k && (k.kind === 'dog' || k.kind === 'cat') ? 'pet' : k && (k.kind === 'couple' || k.kind === 'me') ? k.kind : 'baby';
+const LISTS = ['events', 'diary', 'photos', 'faces', 'logs'];
+const inCats = (k, cats) => !cats || cats.includes(catOf(k));
+// 그 사람이 볼 수 있는 수첩만 남긴다. '모두'의 기록(kid 없음)은 모든 수첩을 보는 사람만 본다.
+export function scope(data, cats) {
+  if (!cats || !data) return data;
+  const kids = (data.kids || []).filter(k => inCats(k, cats)), ids = new Set(kids.map(k => k.id)), out = Object.assign({}, data, { kids });
+  LISTS.forEach(n => { if (Array.isArray(data[n])) out[n] = data[n].filter(x => ids.has(x.kid)); });
+  return out;
+}
+// 일부 수첩만 쓰는 사람이 저장하면 그 수첩만 바꾸고 나머지는 그대로 둔다.
+export function unscope(stored, mine, cats) {
+  if (!cats) return mine;
+  stored = stored || {}; const out = Object.assign({}, stored);
+  const myKids = (mine.kids || []).filter(k => inCats(k, cats)), ids = new Set(myKids.map(k => k.id).concat((stored.kids || []).filter(k => inCats(k, cats)).map(k => k.id)));
+  out.kids = (stored.kids || []).filter(k => !inCats(k, cats)).concat(myKids);
+  const first = myKids[0] && myKids[0].id;
+  LISTS.forEach(n => { out[n] = (stored[n] || []).filter(x => !ids.has(x.kid)).concat((mine[n] || []).map(x => x.kid ? x : Object.assign({}, x, { kid: first })).filter(x => ids.has(x.kid))); });
+  return out;
+}
+const nameFor = (data, cats) => homeName(scope(data, cats));
 // 열람하는 사람에게는 보여 줄 것만 남긴다. 알림 설정, 지역, 육아 기록, 일정은 빼고, 아이 정보도 필요한 것만.
 export function forViewer(data) {
   const out = {}; VIEW_KEYS.forEach(k => { if (data && data[k] !== undefined) out[k] = data[k]; });
-  out.kids = (out.kids || []).map(k => ({ id: k.id, name: k.name, birth: k.birth, born: k.born, sex: k.sex, photo: k.photo, order: k.order }));
+  out.kids = (out.kids || []).map(k => ({ id: k.id, kind: k.kind, name: k.name, birth: k.birth, born: k.born, sex: k.sex, photo: k.photo, order: k.order }));
   return out;
 }
 const homeName = data => { const k = data && Array.isArray(data.kids) && data.kids[0]; return k && k.name ? String(k.name).slice(0, 20) + '네' : '아기네'; };
@@ -73,7 +96,7 @@ export class HomeCore {
     return m ? Object.assign(m, { h }) : null;
   }
   // 카카오 이름과 사진은 함께 쓰는 가족에게만 보인다.
-  async members(full) { return [...(await this.s.list({ prefix: 'm:' })).values()].map(m => Object.assign({ id: m.id, nick: m.nick, role: m.role }, full && m.k ? { kname: m.kname || '', kimg: m.kimg || '', kp: m.kp } : {})); }
+  async members(full) { return [...(await this.s.list({ prefix: 'm:' })).values()].map(m => Object.assign({ id: m.id, nick: m.nick, role: m.role, cats: m.cats || null }, full && m.k ? { kname: m.kname || '', kimg: m.kimg || '', kp: m.kp } : {})); }
   async byWho(k) { for (const [key, m] of await this.s.list({ prefix: 'm:' })) if (m.k === k) return Object.assign(m, { h: key.slice(2) }); return null; }
   async addMember(role, nick, who) {
     const token = rand(32), id = rand(6), h = await sha(token);
@@ -89,9 +112,11 @@ export class HomeCore {
     const w = await this.who(tok), m = await this.addMember('owner', nick, w);
     return [200, Object.assign({ token: m.token, id: m.id, role: 'owner', rev: 1, name: homeName(data) }, w ? { _link: { k: w.k, role: 'owner', name: homeName(data) } } : {})];
   }
-  async invite(me, role) {
+  async invite(me, role, cat) {
     if (!['editor', 'viewer'].includes(role)) return [400, { error: 'role' }];
-    const code = rand(12); await this.s.put('inv:' + await sha(code), { role, by: me.id, at: this.now }); return [200, { code }];
+    if (cat != null && !CATS.includes(cat)) return [400, { error: 'cat' }];
+    if (me.cats && !(cat && me.cats.includes(cat))) return [403, { error: 'cat' }];
+    const code = rand(12); await this.s.put('inv:' + await sha(code), Object.assign({ role, by: me.id, at: this.now }, cat ? { cat } : {})); return [200, { code }];
   }
   async peekInvite(code) {
     if (typeof code !== 'string' || !/^[0-9a-f]{24}$/.test(code)) return null;
@@ -99,12 +124,12 @@ export class HomeCore {
   }
   async peek(code) {
     const i = await this.peekInvite(code), meta = await this.meta(); if (!i || !meta) return [404, { error: 'invite' }];
-    const by = (await this.members()).find(m => m.id === i.by); return [200, { name: meta.name, role: i.role, by: by ? by.nick : '', used: Boolean(i.used) }];
+    const by = (await this.members()).find(m => m.id === i.by), name = i.cat ? nameFor(await this.data(), [i.cat]) : meta.name; return [200, { name, ...(i.cat ? { cat: i.cat } : {}), role: i.role, by: by ? by.nick : '', used: Boolean(i.used) }];
   }
   // 아직 아무도 안 쓴 초대 (끝난 것은 지운다)
   async invites() {
     const out = [], old = [];
-    for (const [k, i] of await this.s.list({ prefix: 'inv:' })) { if (this.now - i.at >= INVITE_DAYS * DAY) old.push(k); else if (!i.used) out.push({ id: k.slice(4, 20), role: i.role, at: i.at, by: i.by }); }
+    for (const [k, i] of await this.s.list({ prefix: 'inv:' })) { if (this.now - i.at >= INVITE_DAYS * DAY) old.push(k); else if (!i.used) out.push({ id: k.slice(4, 20), role: i.role, cat: i.cat || null, at: i.at, by: i.by }); }
     if (old.length) await this.s.delete(old); return out;
   }
   async uninvite(b) {
@@ -117,28 +142,33 @@ export class HomeCore {
     const m = await this.byWho(w.k); if (!m) return [404, { error: 'member' }];
     const token = rand(32); await this.s.put('tk:' + await sha(token), m.h);
     if (w.kname !== m.kname || w.kimg !== m.kimg) { const x = await this.s.get('m:' + m.h); x.kname = w.kname; x.kimg = w.kimg; await this.s.put('m:' + m.h, x); }
-    const meta = await this.meta(); return [200, { token, id: m.id, role: m.role, nick: m.nick, name: meta.name, _link: { k: w.k, role: m.role, name: meta.name } }];
+    const name = nameFor(await this.data(), m.cats); return [200, { token, id: m.id, role: m.role, nick: m.nick, name, _link: { k: w.k, role: m.role, name } }];
   }
+  async data() { return JSON.parse(new TextDecoder().decode(await this.getBig('state'))); }
   // 초대 링크로 들어오기. 로그인한 확인표가 있어야 하고, 처음이면 승인을 기다린다.
   async join(code, nick, tok) {
     const w = await this.who(tok); if (!w) return [401, { error: 'login' }];
-    if (await this.byWho(w.k)) return this.back(tok);
-    const i = await this.peekInvite(code); if (!i) return [404, { error: 'invite' }];
+    const old = await this.byWho(w.k), i = await this.peekInvite(code);
+    if (old) { // 이미 가족이면 새 수첩 종류만 더한다
+      if (i && !i.used && old.cats) { const x = await this.s.get('m:' + old.h); x.cats = i.cat ? [...new Set(x.cats.concat(i.cat))] : undefined; if (!i.cat) delete x.cats; await this.s.put('m:' + old.h, x); i.used = w.k; await this.s.put('inv:' + i.h, (({ h, ...y }) => y)(i)); }
+      return this.back(tok);
+    }
+    if (!i) return [404, { error: 'invite' }];
     if (i.used && i.used !== w.k) return [410, { error: 'used' }];
     if (!nickOk(nick)) return [400, { error: 'nick' }];
     if (i.role === 'viewer' && parentNick(nick)) return [400, { error: 'parent' }];
     if ((await this.members()).length + (await this.pendings()).length >= MAX_MEMBERS) return [503, { error: 'full' }];
     const rid = w.k.slice(0, 16), ticket = rand(24), meta = await this.meta();
     const was = await this.s.get('pend:' + rid); // 같은 사람이 다시 열면 기다리던 것을 이어 간다
-    await this.s.put('pend:' + rid, { rid, role: i.role, nick: nick.trim(), k: w.k, kname: w.kname, kimg: w.kimg, kp: w.kp, at: was ? was.at : this.now, t: await sha(ticket), by: i.by, inv: i.h, ok: Boolean(was && was.ok) });
+    await this.s.put('pend:' + rid, { rid, role: i.role, cat: i.cat || null, nick: nick.trim(), k: w.k, kname: w.kname, kimg: w.kimg, kp: w.kp, at: was ? was.at : this.now, t: await sha(ticket), by: i.by, inv: i.h, ok: Boolean(was && was.ok) });
     i.used = w.k; await this.s.put('inv:' + i.h, (({ h, ...x }) => x)(i));
     if (!was) await this.ping({ id: '' }, true); // 함께 쓰는 가족에게 승인 요청 알림
-    return [202, { wait: true, ticket, name: meta.name, role: i.role }];
+    return [202, { wait: true, ticket, name: i.cat ? nameFor(await this.data(), [i.cat]) : meta.name, role: i.role }];
   }
   // 승인을 기다리는 사람들 (오래된 것은 지운다)
   async pendings() {
     const out = [], old = [];
-    for (const [k, x] of await this.s.list({ prefix: 'pend:' })) { if (this.now - x.at >= WAIT_DAYS * DAY) old.push(k); else if (!x.no && !x.ok) out.push({ rid: x.rid, role: x.role, nick: x.nick, kname: x.kname, kimg: x.kimg, kp: x.kp, at: x.at, by: x.by }); }
+    for (const [k, x] of await this.s.list({ prefix: 'pend:' })) { if (this.now - x.at >= WAIT_DAYS * DAY) old.push(k); else if (!x.no && !x.ok) out.push({ rid: x.rid, role: x.role, cat: x.cat || null, nick: x.nick, kname: x.kname, kimg: x.kimg, kp: x.kp, at: x.at, by: x.by }); }
     if (old.length) await this.s.delete(old); return out;
   }
   async approve(b) {
@@ -158,13 +188,13 @@ export class HomeCore {
       if (x.no) { await this.s.delete(k); return [200, { stage: 'no' }]; }
       if (!x.ok) return [200, { stage: 'wait' }];
       // 승인된 뒤 처음 물으면 가족으로 넣는다. 응답이 끊겨 다시 물어도 같은 사람의 새 열쇠를 준다(며칠 동안).
-      const meta = await this.meta(), link = { k: x.k, role: x.role, name: meta.name };
+      const cats = x.cat ? [x.cat] : undefined, meta = { name: nameFor(await this.data(), cats) }, link = { k: x.k, role: x.role, name: meta.name };
       if (x.mh) {
         const m = await this.s.get('m:' + x.mh); if (!m) { await this.s.delete(k); return [200, { stage: 'none' }]; }
         const token = rand(32); await this.s.put('tk:' + await sha(token), x.mh);
         return [200, { stage: 'ok', token, id: m.id, role: m.role, nick: m.nick, name: meta.name, _link: link }];
       }
-      const m = await this.addMember(x.role, x.nick, { k: x.k, kname: x.kname, kimg: x.kimg, kp: x.kp });
+      const m = await this.addMember(x.role, x.nick, Object.assign({ k: x.k, kname: x.kname, kimg: x.kimg, kp: x.kp }, cats ? { cats } : {}));
       x.mh = await sha(m.token); await this.s.put(k, x);
       return [200, { stage: 'ok', token: m.token, id: m.id, role: x.role, nick: x.nick, name: meta.name, _link: link }];
     }
@@ -178,10 +208,10 @@ export class HomeCore {
     const meta = await this.meta(); return [200, { ok: true, _link: { k: w.k, role: x.role, name: meta.name } }];
   }
   async state(me, have) {
-    const meta = await this.meta(), edit = EDIT.includes(me.role), base = { rev: meta.rev, name: meta.name, me: { id: me.id, nick: me.nick, role: me.role, linked: Boolean(me.k) }, members: await this.members(edit) };
+    const meta = await this.meta(), edit = EDIT.includes(me.role), all = await this.data(), base = { rev: meta.rev, name: me.cats ? nameFor(all, me.cats) : meta.name, me: { id: me.id, nick: me.nick, role: me.role, cats: me.cats || null, linked: Boolean(me.k) }, members: await this.members(edit) };
     if (edit) Object.assign(base, { pending: await this.pendings(), invites: await this.invites() });
     if (Number(have) === meta.rev) return [200, Object.assign(base, { same: true })];
-    const data = JSON.parse(new TextDecoder().decode(await this.getBig('state')));
+    const data = scope(all, me.cats);
     return [200, Object.assign(base, { data: me.role === 'viewer' ? forViewer(data) : data })];
   }
   async write(me, body) {
@@ -189,8 +219,9 @@ export class HomeCore {
     if (!body || typeof body.data !== 'object' || !body.data) return [400, { error: 'data' }];
     const meta = await this.meta();
     if (body.rev !== meta.rev) return this.state(me, -1).then(([, s]) => [409, s]);
-    const text = JSON.stringify(body.data); if (text.length > MAX_STATE) return [413, { error: 'size' }];
-    await this.putBig('state', enc.encode(text)); meta.rev++; meta.name = homeName(body.data); await this.s.put('meta', meta);
+    const next = me.cats ? unscope(await this.data(), body.data, me.cats) : body.data;
+    const text = JSON.stringify(next); if (text.length > MAX_STATE) return [413, { error: 'size' }];
+    await this.putBig('state', enc.encode(text)); meta.rev++; meta.name = homeName(next); await this.s.put('meta', meta);
     return [200, { rev: meta.rev }];
   }
   async putPhoto(me, id, thumb, type, bytes) {
@@ -210,8 +241,13 @@ export class HomeCore {
     const notes = [...(await this.s.list({ prefix: 'note:' })).values()], likes = {};
     for (const k of (await this.s.list({ prefix: 'like:' })).keys()) { const [t, who] = k.slice(5).split('|'); (likes[t] = likes[t] || []).push(who); }
     const nicks = Object.fromEntries((await this.members()).map(m => [m.id, m.nick]));
+    let ns = notes;
+    if (me && me.cats) { // 볼 수 있는 수첩의 일기·사진에 달린 것만
+      const d = scope(await this.data(), me.cats), ok = new Set((d.diary || []).map(x => 'd:' + x.id).concat((d.photos || []).concat(d.faces || []).map(x => 'p:' + x.id)));
+      ns = notes.filter(n => ok.has(n.target)); Object.keys(likes).forEach(t => { if (!ok.has(t)) delete likes[t]; });
+    }
     // 함께 쓰는 가족에게는 승인을 기다리는 사람도 알려 준다(휴대폰 알림용)
-    return [200, Object.assign({ notes: notes.sort((a, b) => a.at - b.at), likes, nicks }, me && EDIT.includes(me.role) ? { pending: (await this.pendings()).map(p => ({ rid: p.rid, nick: p.nick, kname: p.kname, role: p.role })) } : {})];
+    return [200, Object.assign({ notes: ns.sort((a, b) => a.at - b.at), likes, nicks }, me && EDIT.includes(me.role) ? { pending: (await this.pendings()).map(p => ({ rid: p.rid, nick: p.nick, kname: p.kname, role: p.role })) } : {})];
   }
   async like(me, b) {
     if (!b || !targetOk(b.target)) return [400, { error: 'target' }];
@@ -282,7 +318,7 @@ export class HomeCore {
       if (this.now - me.seen > 3600000) { const k = 'm:' + me.h, x = await this.s.get(k); x.seen = this.now; await this.s.put(k, x); }
       if (what === 'state' && m === 'GET') return this.state(me, url.searchParams.get('have'));
       if (what === 'state' && m === 'PUT') return this.write(me, await body());
-      if (what === 'invite' && m === 'POST') { if (!EDIT.includes(me.role)) return [403, { error: 'role' }]; return this.invite(me, (await body()).role); }
+      if (what === 'invite' && m === 'POST') { if (!EDIT.includes(me.role)) return [403, { error: 'role' }]; { const b = await body(); return this.invite(me, b.role, b.cat); } }
       if (what === 'photo' && m === 'PUT') { const len = Number(req.headers.get('content-length') || 0); if (len > MAX_PHOTO) return [413, { error: 'size' }]; return this.putPhoto(me, p[3], url.searchParams.get('t') === '1', (req.headers.get('content-type') || '').split(';')[0], new Uint8Array(await req.arrayBuffer())); }
       if (what === 'photo' && m === 'GET') { const r = await this.getPhoto(p[3], url.searchParams.get('t') === '1'); return r ? [200, r] : [404, { error: 'photo' }]; }
       if (what === 'approve' && m === 'POST') { if (!EDIT.includes(me.role)) return [403, { error: 'role' }]; return this.approve(await body()); }
