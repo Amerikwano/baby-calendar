@@ -178,9 +178,12 @@ function famUpload(onStep, thumbsOnly) {
     const h = bound, done = { t: new Set(jget(upKey(h, 'upt')) || []), f: new Set(jget(upKey(h, 'up')) || []) };
     const keep = k => jput(upKey(h, k === 't' ? 'upt' : 'up'), [...done[k]]);
     const kinds = thumbsOnly ? ['t'] : ['t', 'f'], wait = p => p.type === 'video' && p.th !== 1; // 썸네일을 아직 못 만든 동영상은 만든 뒤에 올린다
-    famUp = { done: 0, total: kinds.reduce((a, k) => a + drivePhotos().filter(p => !done[k].has(p.id) && !wait(p)).length, 0) }; upShow();
+    // 이 기기에 있는 사진만 센다(없는 사진은 가진 사람이 올린다). 예전에는 없는 사진까지 세어 20초마다 '올리는 중'이 잠깐 떴다 사라졌다.
+    const mine = []; for (const p of drivePhotos()) if (!wait(p) && await Local.has(p.id).catch(() => false)) mine.push(p);
+    famUp = { done: 0, total: kinds.reduce((a, k) => a + mine.filter(p => !done[k].has(p.id)).length, 0), at: Date.now() };
+    if (famUp.total) setTimeout(upShow, 1500); // 금방 끝나면 띄우지 않는다
     for (const k of kinds) {
-      const list = drivePhotos().filter(p => !done[k].has(p.id) && !wait(p)); let n = 0;
+      const list = mine.filter(p => !done[k].has(p.id)); let n = 0;
       for (const p of list) {
         if (bound !== h) return;
         try {

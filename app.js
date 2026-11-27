@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.18.7';
+const APP_VERSION = '0.18.8';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -890,7 +890,7 @@ async function uploadAll() {
 let upPill = null;
 function upShow() {
   if (typeof document === 'undefined') return;
-  const fam = typeof famUp !== 'undefined' && famUp.total ? famUp : null;
+  const fam = typeof famUp !== 'undefined' && famUp.total && Date.now() - (famUp.at || 0) >= 1400 ? famUp : null;
   const t = job.on ? `구글 드라이브에 올리는 중 ${job.done}/${job.total}` : fam ? `가족 수첩에 올리는 중 ${fam.done}/${fam.total}` : '';
   if (!upPill) { upPill = document.createElement('div'); upPill.className = 'uppill'; upPill.setAttribute('role', 'status'); document.body.append(upPill); }
   upPill.hidden = !t || !started; upPill.innerHTML = t ? `<i class="spin" aria-hidden="true"></i>${esc(t)}` : '';
