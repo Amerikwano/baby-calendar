@@ -108,7 +108,7 @@ function home() {
     : first ? `<details class="acc" ${localStorage.getItem('baby-acc-vax') === '0' ? '' : 'open'}><summary>${icon('shield')}<b>${Me.is(k) ? '올해 챙길 검진' : Couple.is(k) ? '다가오는 기념일' : '지금 받을 것'} ${n}개</b>${icon('down', 's')}</summary><div class="list">${a.open.map(itemRow).join('')}</div><button class="accall" data-act="vaxnow">전체 일정 보기${icon('right', 's')}</button></details>` : '';
   const ev = a.events.map(e => `<button class="strip" data-act="event" data-id="${e.id}">${icon('cal')}<span><b>${esc(e.title)}</b><em>${e.date === today() ? '오늘' : '내일'}${e.time ? ' ' + Care.clock(e.time) : ''}</em></span>${icon('right', 's')}</button>`).join('');
   const [, m, x] = today().split('-').map(Number), wd = '일월화수목금토'[new Date(today() + 'T12:00').getDay()];
-  return inAppCard() + syncCard() + `<p class="todayd">${m}월 ${x}일 (${wd})</p>` + quickRow(k) + (k.born ? '' : hero()) + growCar(k) + `<div class="stack">${strip}${ev}${missionStrip(k)}</div>` + (k.born ? '' : mission()) + `<section class="logs">${timeline(k)}</section>` + loginCard();
+  return inAppCard() + syncCard() + `<p class="todayd">${m}월 ${x}일 (${wd})</p>` + quickRow(k) + (k.born ? '' : hero()) + growCar(k) + `<div class="stack">${strip}${ev}${missionStrip(k)}</div>` + (k.born ? '' : mission()) + grapeCard(k) + `<section class="logs">${timeline(k)}</section>` + loginCard();
 }
 
 // 홈 위쪽: 성장 앨범 사진을 날짜 순서로 옆으로 넘기며 보여 준다
@@ -184,4 +184,24 @@ const backRow = (t, to) => `<div class="backrow"><button data-tab="${to || (subF
 function vax() {
   const a = alerts(K()), sec = (t, l) => l.length ? `<section class="stack"><h2>${t}</h2><div class="list">${l.map(itemRow).join('')}</div></section>` : '';
   return backRow(Me.is(K()) ? '건강검진' : Couple.is(K()) ? '기념일' : Pet.isPet(K()) ? '접종·건강' : '접종·검진') + sec('지금 받을 것', a.open) + sec(K().born ? '다음 일정' : '태어나면 바로 챙길 것', a.next) + sec('시기가 지난 일정', a.late) + sec('전체', items());
+}
+
+/* ── 포도송이 미션(연애: 우리들만 아는 시크릿 미션, 개인: 혼자만의 미션) ── */
+const GRAPE_N = 30, GRAPE_ROWS = [7, 6, 5, 4, 3, 2, 2, 1];
+const MISSIONS = {
+  couple: ['서로의 장점 3개 말해 주기', '손 잡고 30분 산책하기', '처음 만난 날 이야기 나누기', '상대 사진 몰래 예쁘게 찍어 주기', '하루 동안 존댓말 쓰기', '상대가 좋아하는 간식 깜짝 선물', '같이 셀카 10장 찍기', '손편지 한 장 건네기', '같이 요리해서 먹기', '서로 어깨 안마 5분', '오늘 "고마워" 5번 말하기', '우리 노래 정해서 같이 듣기', '처음 가 보는 동네 같이 걷기', '서로의 버킷리스트 하나 이루기', '뜬금없이 칭찬 문자 보내기'],
+  me: ['물 2리터 마시기', '만 보 걷기', '책 10쪽 읽기', '휴대폰 없이 30분 쉬기', '방 하나 정리하기', '처음 먹어 보는 음식 도전', '혼자 영화 보기', '밤 11시 전에 자기', '감사한 일 3개 적기', '스트레칭 10분', '안 가 본 카페 가 보기', '오늘 쓴 돈 기록하기', '오랜 친구에게 안부 묻기', '아침 챙겨 먹기', '30분 운동하기'],
+};
+const grapeOf = k => k.grape || { n: 0, mi: 0, custom: [], log: [] };
+const missionList = k => (grapeOf(k).custom || []).concat(MISSIONS[Couple.is(k) ? 'couple' : 'me']);
+const missionNow = k => { const l = missionList(k); return l[grapeOf(k).mi % l.length]; };
+function grapeSvg(filled) {
+  let i = 0, out = '<path d="M100 6c-4 10-4 18 0 24" fill="none" stroke="#6b8f3a" stroke-width="4" stroke-linecap="round"/><path d="M104 14c14-10 34-8 44 2-14 8-30 8-44-2z" fill="#7fae45"/>';
+  GRAPE_ROWS.forEach((n, r) => { for (let j = 0; j < n; j++) { i++; const x = 100 + (j - (n - 1) / 2) * 25, y = 44 + r * 21, on = i <= filled; out += `<circle cx="${x}" cy="${y}" r="11.5" fill="${on ? '#7b3fa0' : '#fff'}" stroke="${on ? '#5d2b7d' : '#c9b4d6'}" stroke-width="2"/>${on ? `<circle cx="${x - 4}" cy="${y - 4}" r="3" fill="#fff" opacity=".45"/>` : `<text x="${x}" y="${y + 4}" text-anchor="middle" font-size="10" fill="#a58bb8">${i}</text>`}`; } });
+  return `<svg class="grape" viewBox="0 0 200 212" role="img" aria-label="포도 ${filled}알 / ${GRAPE_N}알">${out}</svg>`;
+}
+function grapeCard(k) {
+  if (!Couple.is(k) && !Me.is(k)) return '';
+  const g = grapeOf(k), now = g.n % GRAPE_N, bunch = Math.floor(g.n / GRAPE_N);
+  return `<section class="grapecard"><div class="row between"><h3>${Couple.is(k) ? '우리들만 아는 시크릿 미션' : '혼자만의 미션'}</h3><span class="chip">${bunch ? `송이 ${bunch}개 완성 · ` : ''}${now}/${GRAPE_N}</span></div>${grapeSvg(now)}<p class="mis">${esc(missionNow(k))}</p><div class="row"><button class="btn main" data-act="grapeok">성공</button><button class="btn" data-act="grapenext">다른 미션</button><button class="btn" data-act="grapeown">직접 쓰기</button></div></section>`;
 }

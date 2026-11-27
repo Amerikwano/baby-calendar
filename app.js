@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.15.1';
+const APP_VERSION = '0.16.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -926,6 +926,9 @@ async function moreActs(act, b, id) {
   else if (act === 'addpet') addPetDlg();
   else if (act === 'addcouple') coupleDlg();
   else if (act === 'newcat') newCatDlg();
+  else if (act === 'grapeok') openDlg(`<form data-form="grape"><h2>정말 성공하셨나요?</h2><p><b>${esc(missionNow(K()))}</b></p><p class="sub">네를 누르면 포도 한 알을 채워요.</p><div class="row"><button class="btn main" value="ok">네</button><button type="button" class="btn" data-act="close">아니요</button></div></form>`);
+  else if (act === 'grapenext') await save(x => { const k = x.kids.find(y => y.id === K().id); k.grape = Object.assign(grapeOf(k), { mi: grapeOf(k).mi + 1 }); });
+  else if (act === 'grapeown') openDlg(`<form data-form="grapeown"><h2>미션 직접 쓰기</h2><label class="f">미션<input name="m" required maxlength="40" autocomplete="off" placeholder="예: 둘만의 암호 만들기"></label><p class="sub">쓴 미션은 이 수첩을 함께 쓰는 사람만 볼 수 있어요.</p>${acts()}</form>`);
   else if (act === 'mkcat') ({ baby: addKidDlg, pet: addPetDlg, couple: () => coupleDlg(), me: () => meDlg() })[d.c]();
   else if (act === 'addme') meDlg();
   else if (act === 'vethosp') window.open('https://map.kakao.com/?q=' + encodeURIComponent('동물병원'), '_blank', 'noopener');
@@ -1176,6 +1179,15 @@ document.addEventListener('submit', async ev => {
         tab = 'home'; scrollTo(0, 0); await showSplash(`${kid.name} 수첩을 준비하고 있어요`, photo);
       } else ok = await save(d => { d.kids.push(kid); d.cur = nid; });
     }
+  }
+  if (kind === 'grape') {
+    const m = missionNow(K()); let full = false;
+    ok = await save(x => { const k = x.kids.find(y => y.id === K().id), g = grapeOf(k); g.n++; g.mi++; g.log = (g.log || []).concat({ d: today(), m }).slice(-200); full = g.n % GRAPE_N === 0; k.grape = g; });
+    if (ok) { dlg.close(); render(); return toast(full ? '포도송이 하나를 다 채웠어요! 축하해요' : '포도 한 알을 채웠어요'); }
+  }
+  if (kind === 'grapeown') {
+    const m = (v.m || '').trim(); if (!m) return;
+    ok = await save(x => { const k = x.kids.find(y => y.id === K().id), g = grapeOf(k); g.custom = [m].concat(g.custom || []).slice(0, 30); g.mi = 0; k.grape = g; });
   }
   if (kind === 'none') return;
   if (kind === 'quick') { if (!v.title.trim()) return toast('일정을 적어 주세요'); if (await save(d => d.events.push({ id: uid(), title: v.title.trim(), date: sel, time: '', memo: '', kid: '' }))) toast(push.state === 'ask' && PUSH_URL ? '추가했어요. 종 모양에서 알림을 켜면 휴대폰으로 알려드려요.' : '일정을 추가했어요'); return; }
