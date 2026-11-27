@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.21.1';
+const APP_VERSION = '0.22.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -350,10 +350,60 @@ function openNmap(q) {
   location.href = 'nmap://search?query=' + encodeURIComponent(q) + '&appname=' + encodeURIComponent(location.hostname);
   setTimeout(() => { if (!gone && !document.hidden) window.open(web, '_blank', 'noopener'); }, 1500);
 }
+// ── 진짜 가게 추천과 경로 지도: 카카오 지도·장소 검색(카카오 개발자 콘솔에서 '카카오맵'이 켜져 있어야 한다)
+let kmapP = null;
+const kmap = () => kmapP || (kmapP = new Promise((ok, no) => {
+  if (window.kakao && kakao.maps && kakao.maps.services) return ok();
+  const s = document.createElement('script'); s.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS}&libraries=services&autoload=false`;
+  s.onload = () => { try { kakao.maps.load(ok); } catch (e) { kmapP = null; no(e); } }; s.onerror = () => { kmapP = null; no(new Error('kakao')); }; document.head.append(s);
+}));
+// 할 일 문구로 무엇을 찾을지 고른다: [분류 코드 또는 검색어, 카테고리 검색인지]
+const STEP_Q = [[/점심|저녁|맛집|해산물/, 'FD6', 1], [/카페|디저트|만나기/, 'CE7', 1], [/공방/, '공방'], [/방탈출/, '방탈출카페'], [/보드게임/, '보드게임카페'], [/영화/, '영화관'], [/볼링|포켓볼/, '볼링장'], [/노래방/, '코인노래방'], [/서점/, '서점'], [/전시|팝업/, '전시'], [/아쿠아리움/, '아쿠아리움'], [/찜질방|스파/, '찜질방'], [/소품|가게/, '소품샵'], [/시장/, '시장'], [/공원|피크닉|산책/, '공원']];
+const placeCache = new Map();
+// base: 기준 장소 이름. steps: [[시각, 할 일, 명소이름?]] → 각 단계에 가게를 붙여 돌려준다.
+async function realPlaces(base, steps) {
+  const key = base + '|' + steps.map(s => s[1]).join('/'); if (placeCache.has(key)) return placeCache.get(key);
+  await kmap(); const P = new kakao.maps.services.Places(), OK = kakao.maps.services.Status.OK;
+  const q = (fn, a, o) => new Promise(r => fn.call(P, a, (d, st) => r(st === OK ? d : []), o));
+  const b = (await q(P.keywordSearch, base))[0]; if (!b) return null;
+  const o = { location: new kakao.maps.LatLng(b.y, b.x), radius: 1500, sort: kakao.maps.services.SortBy.ACCURACY }, seen = new Set([b.id]), got = {};
+  const out = [];
+  for (const st of steps) {
+    if (st[2]) { out.push(Object.assign({ step: st }, { p: b })); continue; }
+    const m = STEP_Q.find(([re]) => re.test(st[1])); if (!m) { out.push({ step: st }); continue; }
+    const k = m[1]; got[k] = got[k] || (m[2] ? await q(P.categorySearch, k, o) : await q(P.keywordSearch, k, o));
+    const pool = got[k].slice(0, 8).filter(x => !seen.has(x.id)), p = pool[Math.floor(Math.random() * Math.min(3, pool.length))];
+    if (p) seen.add(p.id); out.push({ step: st, p });
+  }
+  const res = { base: b, out }; placeCache.set(key, res); return res;
+}
+const placeLine = p => p ? `<span class="pl"><a data-act="ext" href="${esc(p.place_url)}" target="_blank" rel="noopener noreferrer">${esc(p.place_name)}</a><em>${esc((p.category_name || '').split(' > ').pop())}${p.distance ? ' · ' + (p.distance >= 1000 ? (p.distance / 1000).toFixed(1) + 'km' : p.distance + 'm') : ''}</em></span>` : '';
+// 지도에 순서대로 번호를 찍고 선으로 잇는다
+function drawRoute(el, res) {
+  if (!el || !res) return; const pts = res.out.filter(x => x.p).map(x => x.p); if (!pts.length) return;
+  el.hidden = false; const ll = p => new kakao.maps.LatLng(p.y, p.x), map = new kakao.maps.Map(el, { center: ll(pts[0]), level: 5 }), bd = new kakao.maps.LatLngBounds();
+  pts.forEach((p, i) => { bd.extend(ll(p)); new kakao.maps.CustomOverlay({ map, position: ll(p), content: `<span class="rnum">${i + 1}</span>` }); });
+  new kakao.maps.Polyline({ map, path: pts.map(ll), strokeWeight: 4, strokeColor: '#b87324', strokeOpacity: .85, strokeStyle: 'shortdash' });
+  map.setBounds(bd, 40, 40, 40, 40);
+}
+// 코스 창 안의 목록·지도를 진짜 가게로 채운다
+async function fillCourse(box, base, steps, after) {
+  if (!box) return;
+  try {
+    const res = await realPlaces(base, steps); if (!box.isConnected) return;
+    if (!res) { box.querySelector('.plnote').textContent = '이 장소를 지도에서 찾지 못해 가게 추천은 빠졌어요.'; return; }
+    res.out.forEach((x, i) => { const li = box.querySelectorAll('.plan li')[i]; if (li && x.p && !x.step[2]) li.querySelector('span').insertAdjacentHTML('beforeend', placeLine(x.p)); });
+    box.querySelector('.plnote').textContent = '가게는 카카오 지도에서 이 근처를 찾아 골랐어요. 누르면 가게 정보가 열려요.';
+    drawRoute(box.querySelector('.route'), res); if (after) after(res);
+  } catch { if (box.isConnected) box.querySelector('.plnote').textContent = '지금은 가게 추천과 지도를 불러올 수 없어요.'; }
+}
+const withPlaces = (steps, res) => steps.map((s, i) => { const p = res && res.out[i] && res.out[i].p; return [s[0], s[1] + (p && !s[2] ? ` - ${p.place_name}` : '')]; });
 // 명소 데이트 코스 창
+let planRes = null;
 function planDlgFor(n) {
   const x = Couple.SPOTS.find(y => y.name === n); if (!x) return; const p = Couple.plan(x), g = x.sido === '해외';
-  openDlg(`<form data-form="none"><div class="row between"><h2>${esc(p.title)}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="plancap" data-n="${esc(n)}" aria-label="이미지로 저장">${icon('capture')}</button><button type="button" class="sq" data-act="plancopy" data-n="${esc(n)}" aria-label="글로 복사">${icon('copy')}</button></span></div>${spotImg(n)}<p class="sub">${esc(x.desc)}</p><ol class="plan">${p.steps.map(([a, b]) => `<li><b>${a}</b><span>${esc(b)}</span></li>`).join('')}</ol><p class="notice">${esc(p.tip)}</p><div class="row">${g ? `<a class="btn" data-act="ext" href="${gmapUrl(x.c + ' ' + n)}" target="_blank" rel="noopener noreferrer">구글 지도</a>` : `<button type="button" class="btn" data-act="nmap" data-q="${esc(n)}">네이버 지도</button>`}</div><h3 style="margin-top:6px">근처에서 같이 가기 좋은 곳</h3><div class="nearby">${[['meal', '맛집', g ? 'restaurants' : '맛집'], ['cafe', '카페', g ? 'cafe' : '카페'], ['craft', '공방', g ? 'workshop' : '공방'], ['bar', '술집', g ? 'bar' : '분위기 좋은 술집'], ['photo', '사진 명소', g ? 'photo spot' : '사진 명소']].map(([k, t, w]) => g ? `<a class="btn" data-act="ext" href="${gmapUrl(w + ' near ' + n)}" target="_blank" rel="noopener noreferrer">${t}</a>` : `<button type="button" class="btn" data-act="nmap" data-q="${esc(n + ' ' + w)}">${t}</button>`).join('')}</div><p class="sub">누르면 지도에서 이 명소 근처의 맛집·카페·공방을 찾아 보여 줘요.</p><p class="sub">장소 성격에 맞춰 만든 추천 코스예요. 운영 시간은 가기 전에 확인하세요.</p></form>`);
+  openDlg(`<form data-form="none"><div class="row between"><h2>${esc(p.title)}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="plancap" data-n="${esc(n)}" aria-label="이미지로 저장">${icon('capture')}</button><button type="button" class="sq" data-act="plancopy" data-n="${esc(n)}" aria-label="글로 복사">${icon('copy')}</button></span></div>${spotImg(n)}<p class="sub">${esc(x.desc)}</p><ol class="plan">${p.steps.map(([a, b]) => `<li><b>${a}</b><span>${esc(b)}</span></li>`).join('')}</ol>${g ? '' : '<div class="route" hidden></div><p class="sub plnote">근처 가게를 찾는 중이에요</p>'}<p class="notice">${esc(p.tip)}</p><div class="row">${g ? `<a class="btn" data-act="ext" href="${gmapUrl(x.c + ' ' + n)}" target="_blank" rel="noopener noreferrer">구글 지도</a>` : `<button type="button" class="btn" data-act="nmap" data-q="${esc(n)}">네이버 지도</button>`}</div><h3 style="margin-top:6px">근처에서 같이 가기 좋은 곳</h3><div class="nearby">${[['meal', '맛집', g ? 'restaurants' : '맛집'], ['cafe', '카페', g ? 'cafe' : '카페'], ['craft', '공방', g ? 'workshop' : '공방'], ['bar', '술집', g ? 'bar' : '분위기 좋은 술집'], ['photo', '사진 명소', g ? 'photo spot' : '사진 명소']].map(([k, t, w]) => g ? `<a class="btn" data-act="ext" href="${gmapUrl(w + ' near ' + n)}" target="_blank" rel="noopener noreferrer">${t}</a>` : `<button type="button" class="btn" data-act="nmap" data-q="${esc(n + ' ' + w)}">${t}</button>`).join('')}</div><p class="sub">누르면 지도에서 이 명소 근처의 맛집·카페·공방을 찾아 보여 줘요.</p><p class="sub">장소 성격에 맞춰 만든 추천 코스예요. 운영 시간은 가기 전에 확인하세요.</p></form>`);
+  if (!g) fillCourse(dlg.querySelector('form'), n, p.steps.map(st => [st[0], st[1], st[1].startsWith(n) ? n : '']), res => { planRes = res; });
 }
 // 코스를 그림으로 만들어 저장·공유한다(사진은 위키미디어에서 받아 그린다)
 async function courseImage(o) { // o: { title, sub, steps:[[시각, 할 일]], tip, img:[파일, 주소], file }
@@ -372,7 +422,7 @@ async function courseImage(o) { // o: { title, sub, steps:[[시각, 할 일]], t
   if (navigator.canShare && navigator.canShare({ files: [file] })) return navigator.share({ files: [file], title: o.title }).catch(() => { });
   const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('이미지를 저장했어요');
 }
-function planImage(n) { const x = Couple.SPOTS.find(y => y.name === n), p = Couple.plan(x); return courseImage({ title: p.title, sub: x.desc, steps: p.steps, tip: '팁: ' + p.tip, img: Couple.IMG[n], file: `${n}-데이트코스.png` }); }
+function planImage(n) { const x = Couple.SPOTS.find(y => y.name === n), p = Couple.plan(x); return courseImage({ title: p.title, sub: x.desc, steps: planRes ? withPlaces(p.steps.map(st => [st[0], st[1], st[1].startsWith(n) ? n : '']), planRes) : p.steps, tip: '팁: ' + p.tip, img: Couple.IMG[n], file: `${n}-데이트코스.png` }); }
 
 /* ── 랜덤 데이트 코스(연애 수첩 홈) ── */
 // 시·도 대표 좌표: 날씨를 물을 때 이 좌표만 보낸다(내 위치는 보내지 않는다).
@@ -394,12 +444,13 @@ async function rdcWeather(v) {
     return { rain: pr >= 50 || codes.some(c => c >= 51), pr, hi: Math.round(Math.max(...tmp)), lo: Math.round(Math.min(...tmp)), sky: WX(worst) };
   } catch { return null; }
 }
-function rdcRoll() { const w = rdc.w || {}; rdc.course = Couple.randomCourse({ from: rdc.from, to: rdc.to, rain: w.rain, hot: w.hi >= 28, cold: w.lo <= 3, spots: Couple.SPOTS.filter(x => x.sido === rdc.area) }); }
+function rdcRoll() { const w = rdc.w || {}, sp = Couple.SPOTS.filter(x => x.sido === rdc.area); rdc.res = null; rdc.course = Couple.randomCourse({ from: rdc.from, to: rdc.to, rain: w.rain, hot: w.hi >= 28, cold: w.lo <= 3, spots: Couple.SPOTS.filter(x => x.sido === rdc.area) });  const sn = rdc.course.find(x => x[2]); rdc.base = sn ? sn[2] : sp.length ? sp[Math.floor(Math.random() * sp.length)].name : ''; }
 const rdcTitle = () => { const [, m, d] = rdc.date.split('-').map(Number); return `${m}월 ${d}일 데이트 코스`; };
 const rdcSub = () => { const w = rdc.w; return w ? `${rdc.area.replace(/(특별자치|광역|특별)?(시|도)$/, '')} 날씨 ${w.sky}, ${w.lo}~${w.hi}°, 비 올 확률 ${w.pr}%${w.rain ? ' · 실내 위주로 짰어요' : ''}` : '날씨는 2주 안의 날짜만 알 수 있어요'; };
-const rdcText = () => `[우리 수첩] ${rdcTitle()}\n${rdcSub()}\n\n${rdc.course.map(([a, b]) => `${a}  ${b}`).join('\n')}`;
+const rdcText = () => `[우리 수첩] ${rdcTitle()}\n${rdcSub()}${rdc.base ? `\n${rdc.base} 근처` : ''}\n\n${withPlaces(rdc.course, rdc.res).map(([a, b]) => `${a}  ${b}`).join('\n')}`;
 function rdcShow() {
-  openDlg(`<form data-form="none"><div class="row between"><h2>${rdcTitle()}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="rdccap" aria-label="이미지로 저장">${icon('capture')}</button><button type="button" class="sq" data-act="rdccopy" aria-label="글로 복사">${icon('copy')}</button></span></div><p class="notice${rdc.w && rdc.w.rain ? ' hot' : ''}">${esc(rdcSub())}</p><ol class="plan">${rdc.course.map(([a, b, n]) => `<li><b>${a}</b><span>${n ? `<button type="button" class="linkb" data-act="plan" data-n="${esc(n)}">${esc(b)}</button>` : esc(b)}</span></li>`).join('')}</ol><div class="row"><button type="button" class="btn main" data-act="rdcroll">다시 뽑기</button><button type="button" class="btn" data-act="rdcadd">달력에 넣기</button><button type="button" class="btn" data-act="rdc">조건 바꾸기</button></div><p class="sub">명소 이름을 누르면 그곳 코스를 볼 수 있어요.</p></form>`);
+  openDlg(`<form data-form="none"><div class="row between"><h2>${rdcTitle()}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="rdccap" aria-label="이미지로 저장">${icon('capture')}</button><button type="button" class="sq" data-act="rdccopy" aria-label="글로 복사">${icon('copy')}</button></span></div><p class="notice${rdc.w && rdc.w.rain ? ' hot' : ''}">${esc(rdcSub())}${rdc.base ? `<br><b>${esc(rdc.base)} 근처</b>에서 짰어요` : ''}</p><ol class="plan">${rdc.course.map(([a, b, n]) => `<li><b>${a}</b><span>${n ? `<button type="button" class="linkb" data-act="plan" data-n="${esc(n)}">${esc(b)}</button>` : esc(b)}</span></li>`).join('')}</ol>${rdc.base ? '<div class="route" hidden></div><p class="sub plnote">근처 가게를 찾는 중이에요</p>' : ''}<div class="row"><button type="button" class="btn main" data-act="rdcroll">다시 뽑기</button><button type="button" class="btn" data-act="rdcadd">달력에 넣기</button><button type="button" class="btn" data-act="rdc">조건 바꾸기</button></div><p class="sub">명소 이름을 누르면 그곳 코스를 볼 수 있어요.</p></form>`);
+  if (rdc.base) fillCourse(dlg.querySelector('form'), rdc.base, rdc.course, res => { rdc.res = res; });
 }
 const rdcCard = () => `<button class="strip" data-act="rdc">${icon('heart')}<span><b>랜덤 데이트 코스 짜기</b><em>날짜와 시간만 고르면 날씨에 맞춰 뽑아 드려요</em></span>${icon('right', 's')}</button>`;
 const plainCard = (chip, title, body, link) => `<article class="paper"><div class="row"><span class="chip">${esc(chip)}</span></div><h2>${esc(title)}</h2><p>${esc(body)}</p>${link ? `<div class="row">${link}</div>` : ''}</article>`;
@@ -1024,13 +1075,13 @@ async function moreActs(act, b, id) {
   else if (act === 'addcouple') coupleDlg();
   else if (act === 'newcat') newCatDlg();
   else if (act === 'nmap') openNmap(d.q);
-  else if (act === 'plan') planDlgFor(d.n);
-  else if (act === 'plancopy') { const x = Couple.SPOTS.find(y => y.name === d.n); try { await navigator.clipboard.writeText(Couple.planText(x, Couple.plan(x))); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
+  else if (act === 'plan') { planRes = null; planDlgFor(d.n); }
+  else if (act === 'plancopy') { const x = Couple.SPOTS.find(y => y.name === d.n); try { const p = Couple.plan(x); await navigator.clipboard.writeText(Couple.planText(x, planRes && planRes.base && dlg.open ? Object.assign({}, p, { steps: withPlaces(p.steps.map(st => [st[0], st[1], st[1].startsWith(x.name) ? x.name : '']), planRes) }) : p)); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
   else if (act === 'plancap') planImage(d.n);
   else if (act === 'rdc') rdcDlg();
   else if (act === 'rdcroll') { rdcRoll(); rdcShow(); }
   else if (act === 'rdccopy') { try { await navigator.clipboard.writeText(rdcText()); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
-  else if (act === 'rdccap') courseImage({ title: rdcTitle(), sub: rdcSub(), steps: rdc.course.map(x => [x[0], x[1]]), tip: '우리 수첩 랜덤 데이트 코스', file: `${rdc.date}-데이트코스.png` });
+  else if (act === 'rdccap') courseImage({ title: rdcTitle(), sub: rdcSub(), steps: withPlaces(rdc.course, rdc.res), tip: '우리 수첩 랜덤 데이트 코스', file: `${rdc.date}-데이트코스.png` });
   else if (act === 'rdcadd') { if (await save(x => x.events.push({ id: uid(), title: '데이트', date: rdc.date, time: rdc.from, memo: rdcText(), kid: K().id }))) { dlg.close(); toast('달력에 넣었어요'); } }
   else if (act === 'grapeok') openDlg(`<form data-form="grape"><h2>정말 성공하셨나요?</h2><p><b>${esc(missionNow(K()))}</b></p><p class="sub">네를 누르면 포도 한 알을 채워요.</p><div class="row"><button class="btn main" value="ok">네</button><button type="button" class="btn" data-act="close">아니요</button></div></form>`);
   else if (act === 'grapenext') await save(x => { const k = x.kids.find(y => y.id === K().id); k.grape = Object.assign(grapeOf(k), { mi: grapeOf(k).mi + 1 }); });
