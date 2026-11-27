@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.36.2';
+const APP_VERSION = '0.37.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -639,37 +639,53 @@ async function findSpotMe() {
 }
 // 카카오에서 그 지역 가볼 만한 곳을 많이 모은다(관광명소·문화시설, 쪽마다 15곳, 3쪽씩)
 const kspotCache = new Map(), kspots = new Map();
+// 카카오에서 그 지역의 가볼 만한 곳(명소·맛집·카페·놀거리)을 많이 모은다. rank: 검색 결과 순서(인기), d: 기준점에서 거리(m)
+const KINDS = [['', '전체'], ['spot', '명소'], ['food', '맛집'], ['cafe', '카페'], ['play', '놀거리']];
 async function kakaoSpots(sido, gu, me) {
   const key = [sido, gu, me ? me.x + ',' + me.y : ''].join('|'); if (kspotCache.has(key)) return kspotCache.get(key);
-  await kmap(); const P = new kakao.maps.services.Places(), G = new kakao.maps.services.Geocoder(), OK = kakao.maps.services.Status.OK;
+  await kmap(); const P = new kakao.maps.services.Places(), G = new kakao.maps.services.Geocoder(), OK = kakao.maps.services.Status.OK, A = gu || sido;
   let c = me && gu === me.gu ? me : null;
-  if (!c && gu) c = await new Promise(ok => G.addressSearch(`${sido} ${gu}`, (d, st) => ok(st === OK ? { x: d[0].x, y: d[0].y } : null)));
+  if (!c) c = await new Promise(ok => G.addressSearch(`${sido} ${gu}`.trim(), (d, st) => ok(st === OK && d[0] ? { x: d[0].x, y: d[0].y } : null)));
   const run = (fn, a, o) => new Promise(r => fn.call(P, a, (d, st) => r(st === OK ? d : []), o)), got = new Map();
+  const near = c ? { location: new kakao.maps.LatLng(c.y, c.x), radius: 20000, sort: kakao.maps.services.SortBy.ACCURACY } : {};
   // 데이트와 상관없는 산·골짜기·들 같은 지명은 뺀다
-  const dull = x => { const c = (x.category_name || '').split(' > ').pop(); return /^(산|봉우리|고개|골짜기|계곡|저수지|들|바위|자연지명|지명|하천|강|섬)$/.test(c) || /(골|들|봉|고개)$/.test(x.place_name) && !/공원|마을|길|거리/.test(x.place_name); };
-  const add = l => l.forEach(x => { if (['AT4', 'CT1'].includes(x.category_group_code) && !got.has(x.id) && !dull(x)) got.set(x.id, x); });
-  // 인기 순서(검색 결과 순서)를 먼저, 그다음 주변 관광명소
-  for (let page = 1; page <= 3; page++) { add(await run(P.keywordSearch, `${gu || sido} 가볼만한곳`, { page })); add(await run(P.keywordSearch, `${gu || sido} 데이트`, { page })); }
-  for (let page = 1; page <= 3; page++) add(await run(P.keywordSearch, `${gu || sido} 관광명소`, { page }));
-  if (c) for (let page = 1; page <= 3; page++) add(await run(P.categorySearch, 'AT4', { location: new kakao.maps.LatLng(c.y, c.x), radius: 20000, sort: kakao.maps.services.SortBy.ACCURACY, page }));
-  const l = [...got.values()].filter(x => !gu || (x.address_name || '').includes(gu) || (x.road_address_name || '').includes(gu));
+  const dull = x => { const t = (x.category_name || '').split(' > ').pop(); return /^(산|봉우리|고개|골짜기|계곡|저수지|들|바위|자연지명|지명|하천|강|섬)$/.test(t) || /(골|들|봉|고개)$/.test(x.place_name) && !/공원|마을|길|거리/.test(x.place_name); };
+  const kindOf = x => x.category_group_code === 'FD6' ? 'food' : x.category_group_code === 'CE7' ? (/보드게임|방탈출|만화|PC/.test(x.category_name) ? 'play' : 'cafe') : ['AT4', 'CT1'].includes(x.category_group_code) ? 'spot' : 'play';
+  const add = (l, only) => l.forEach(x => { const k = kindOf(x); if ((!only || only.includes(k)) && !got.has(x.id) && !dull(x) && !/^(병원|약국|은행|학교|부동산|주유소|주차장|편의점|마트)/.test(x.category_group_name || '')) got.set(x.id, Object.assign(x, { kind: k, rank: got.size })); });
+  const jobs = [];
+  for (let page = 1; page <= 3; page++) jobs.push([P.keywordSearch, `${A} 가볼만한곳`, { page }, ['spot']], [P.keywordSearch, `${A} 데이트`, { page }], [P.keywordSearch, `${A} 맛집`, { page }, ['food']]);
+  for (let page = 1; page <= 2; page++) jobs.push([P.keywordSearch, `${A} 관광명소`, { page }, ['spot']], [P.keywordSearch, `${A} 카페`, { page }, ['cafe']], [P.keywordSearch, `${A} 놀거리`, { page }, ['play', 'spot']]);
+  if (c) for (let page = 1; page <= 2; page++) jobs.push([P.categorySearch, 'AT4', Object.assign({ page }, near), ['spot']], [P.categorySearch, 'FD6', Object.assign({ page }, near), ['food']], [P.categorySearch, 'CE7', Object.assign({ page }, near), ['cafe', 'play']]);
+  // 여러 검색을 한꺼번에 하고, 순서는 위의 차례(인기)대로
+  const res = await Promise.all(jobs.map(([fn, a, o]) => run(fn, a, o)));
+  res.forEach((l, k) => add(l, jobs[k][3]));
+  const dist = x => c ? Math.round(Math.hypot((x.x - c.x) * 111000 * Math.cos(c.y * Math.PI / 180), (x.y - c.y) * 111000)) : null;
+  const l = [...got.values()].filter(x => !gu || (x.address_name || '').includes(gu) || (x.road_address_name || '').includes(gu)).map(x => Object.assign(x, { d: dist(x) }));
   l.forEach(x => kspots.set(x.place_name, { name: x.place_name, desc: (x.category_name || '').split(' > ').slice(-1)[0] + ' · ' + (x.road_address_name || x.address_name || ''), sido, at: { x: x.x, y: x.y, name: x.place_name } }));
   kspotCache.set(key, l); return l;
 }
-const srow = (n, sub, q, g, img) => `<div class="srow" data-act="plan" data-n="${esc(n)}">${img ? `<img src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="sic">${icon('visit')}</span>`}<span><b>${esc(n)}</b><em>${esc(sub)}</em></span>${g ? gmapBtn(q) : nmapBtn(q)}</div>`;
+const spotKind = () => localStorage.getItem('baby-spot-kind') || '', spotSort = () => localStorage.getItem('baby-spot-sort') || 'pop';
+const km = d => d == null ? '' : d >= 1000 ? (d / 1000).toFixed(1) + 'km' : d + 'm';
 async function fillKSpots() {
   const box = $('#kspots'); if (!box) return; const mode = spotMode();
   if (mode === '해외' || mode === '') { box.innerHTML = ''; return; }
   try {
     const me = mode === '내위치' ? await findSpotMe() : null, sido = spotArea(), gu = spotGu();
-    if (mode === '내위치' && !me) { box.innerHTML = '<p class="sub">위치를 몰라서 내 주변 명소를 못 찾았어요. 위치를 허용하거나 설정에서 사는 지역을 정해 주세요.</p>'; return; }
+    if (mode === '내위치' && !me) { box.innerHTML = '<p class="sub">위치를 몰라서 내 주변을 못 찾았어요. 위치를 허용하거나 설정에서 사는 지역을 정해 주세요.</p>'; return; }
     if (!box.isConnected) return; box.innerHTML = '<p class="sub">카카오 지도에서 가볼 만한 곳을 모으는 중이에요</p>';
     const l = await kakaoSpots(sido, gu, me), b2 = $('#kspots'); if (!b2) return;
-    const q = spotQ.trim().toLowerCase(), f = l.filter(x => !q || (x.place_name + x.category_name + x.address_name).toLowerCase().includes(q));
-    b2.innerHTML = `<h3 class="vcat">${esc(gu || sidoShort(sido))} 가볼 만한 곳 ${f.length}곳 (카카오 지도)</h3>` + (f.map(x => srow(x.place_name, `${(x.category_name || '').split(' > ').slice(-1)[0]}${x.distance ? ' · ' + x.distance + 'm' : ''} · ${(x.road_address_name || x.address_name || '').split(' ').slice(1, 3).join(' ')}`, x.place_name + ' ' + (x.address_name || '').split(' ').slice(0, 2).join(' '))).join('') || '<p class="sub">찾은 곳이 없어요.</p>');
+    const q = spotQ.trim().toLowerCase(), kd2 = spotKind();
+    let f = l.filter(x => (!kd2 || x.kind === kd2) && (!q || (x.place_name + x.category_name + x.address_name).toLowerCase().includes(q)));
+    if (spotSort() === 'dist') f = f.slice().sort((a, b) => (a.d ?? 1e9) - (b.d ?? 1e9));
+    else if (!kd2) { const by = {}; f.forEach(x => (by[x.kind] = by[x.kind] || []).push(x)); f = []; for (let i = 0; Object.values(by).some(a => a[i]); i++) ['spot', 'food', 'cafe', 'play'].forEach(k => by[k] && by[k][i] && f.push(by[k][i])); } // 전체 인기순은 종류를 번갈아
+    const tag = { spot: '명소', food: '맛집', cafe: '카페', play: '놀거리' };
+    b2.innerHTML = `<h3 class="vcat">${esc(gu || sidoShort(sido))} ${kd2 ? tag[kd2] : '가볼 만한 곳'} ${f.length}곳 · ${spotSort() === 'dist' ? '가까운 순' : '인기순'} (카카오 지도)</h3>` + (f.map(x => srow(x.place_name, `${tag[x.kind]} · ${(x.category_name || '').split(' > ').slice(-1)[0]}${x.d != null ? ' · ' + km(x.d) : ''} · ${(x.road_address_name || x.address_name || '').split(' ').slice(1, 3).join(' ')}`, x.place_name + ' ' + (x.address_name || '').split(' ').slice(0, 2).join(' '))).join('') || '<p class="sub">찾은 곳이 없어요.</p>');
     if (mode === '내위치' && me) { const h = $('#spothead'); if (h) h.textContent = `내 위치 · ${sidoShort(me.sido)} ${me.gu}`; }
-  } catch { const b2 = $('#kspots'); if (b2) b2.innerHTML = '<p class="sub">지금은 카카오 지도에서 명소를 불러올 수 없어요.</p>'; }
+  } catch { const b2 = $('#kspots'); if (b2) b2.innerHTML = '<p class="sub">지금은 카카오 지도에서 불러올 수 없어요.</p>'; }
 }
+// 앱을 다시 켜거나 10분 넘게 다른 앱에 있다 오면 지금 위치로 새로
+let spotAt = 0;
+document.addEventListener('visibilitychange', () => { if (document.hidden) { spotAt = Date.now(); return; } if (spotAt && Date.now() - spotAt > 600000) { spotAt = 0; spot = null; spotMe = null; [...kspotCache.keys()].filter(k => /\|[\d.]+,[\d.]+$/.test(k)).forEach(k => kspotCache.delete(k)); if (ready && started && tab === 'money' && Couple.is(K()) && spotMode() === '내위치') render(); } });
 const spotCard = x => srow(x.name, (x.c || sidoShort(x.sido)) + ' · ' + x.desc, x.c ? x.c + ' ' + x.name : x.name, x.sido === '해외', Couple.IMG[x.name] && Couple.IMG[x.name][1]);
 function spotList() {
   const a = spotArea(), q = spotQ.trim().toLowerCase();
@@ -678,7 +694,7 @@ function spotList() {
   return (l.map(spotCard).join('') || '<p class="sub">찾는 명소가 목록에 없어요.</p>') + (q ? `<div class="row">${a === '해외' ? `<a class="btn main" href="${gmapUrl(spotQ.trim())}" target="_blank" rel="noopener noreferrer">구글 지도에서 '${esc(spotQ.trim())}' 찾기</a>` : `<button type="button" class="btn main" data-act="nmap" data-q="${esc(spotQ.trim())}">네이버 지도에서 '${esc(spotQ.trim())}' 찾기</button>`}</div>` : '');
 }
 document.addEventListener('input', e => { if (e.target.id === 'spotq') { spotQ = e.target.value; const l = $('#spotlist'); if (l) l.innerHTML = spotList(); fillKSpots(); } });
-document.addEventListener('change', e => { if (e.target.id === 'spotarea') { localStorage.setItem('baby-spot-area', e.target.value); localStorage.removeItem('baby-spot-gu'); render(); } if (e.target.id === 'spotgu') { localStorage.setItem('baby-spot-gu', e.target.value); render(); } });
+document.addEventListener('change', e => { if (e.target.id === 'spotarea') { localStorage.setItem('baby-spot-area', e.target.value); localStorage.removeItem('baby-spot-gu'); render(); } if (e.target.name === 'spotkind') { localStorage.setItem('baby-spot-kind', e.target.value); render(); } if (e.target.id === 'spotgu') { localStorage.setItem('baby-spot-gu', e.target.value); render(); } });
 // 시·군·구 목록(지역 혜택 자료에서)
 async function fillSpotGu() { const sel = $('#spotgu'), r = Regions.find(spotMode()); if (!sel || !r) return; try { const names = [...new Set((await (await fetch('regions/' + r.file + '.json')).json()).map(x => x.g).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko')), cur = spotGu(); if (sel.isConnected) sel.innerHTML = '<option value="">시·군·구 전체</option>' + names.map(n => `<option ${n === cur ? 'selected' : ''}>${esc(n)}</option>`).join(''); } catch { } }
 // 행사: 지역(전국·시도·해외)별 축제, 가까운 달 순서. 지역은 명소와 따로 고른다.
@@ -705,7 +721,7 @@ function hotList(area) {
 function coupleMoney() {
   const mode = spotMode(), sido = spotArea(), abroad = mode === '해외'; setTimeout(() => { fillSpotGu(); fillKSpots(); });
   const q = abroad ? '해외 축제' : (sido || '전국') + ' 축제';
-  return tipSeg() + `<section class="stack"><div class="row between"><h2 id="spothead">${mode === '내위치' ? '내 위치 명소' : '데이트 명소'}</h2></div><div class="row" style="gap:8px"><select id="spotarea" class="areasel" aria-label="지역"><option value="내위치" ${mode === '내위치' ? 'selected' : ''}>내 위치</option><option value="" ${mode === '' ? 'selected' : ''}>전국</option>${SIDO.map(x => `<option ${x === mode ? 'selected' : ''}>${x}</option>`).join('')}<option value="해외" ${abroad ? 'selected' : ''}>해외</option></select>${SIDO.includes(mode) ? '<select id="spotgu" class="areasel" aria-label="시·군·구"><option value="">시·군·구 전체</option></select>' : ''}</div>${spotQ.trim() ? '' : hotList(sido)}<input id="spotq" type="search" class="spotq" placeholder="명소 이름이나 지역으로 찾기" value="${esc(spotQ)}" autocomplete="off"><div id="spotlist" class="slist">${mode === '내위치' || spotGu() ? '' : spotList()}</div><div id="kspots" class="slist"></div></section><p class="sub">명소와 행사는 바뀔 수 있어요. 가기 전에 운영 시간을 확인하세요.</p>`;
+  return tipSeg() + `<section class="stack"><div class="row between"><h2 id="spothead">${mode === '내위치' ? '내 위치' : '가볼 만한 곳'}</h2><button type="button" class="btn sortb" data-act="spotsort" aria-label="정렬 바꾸기">${icon('sort', 's')}${spotSort() === 'dist' ? '거리순' : '인기순'}</button></div><div class="row" style="gap:8px"><select id="spotarea" class="areasel" aria-label="지역"><option value="내위치" ${mode === '내위치' ? 'selected' : ''}>내 위치</option><option value="" ${mode === '' ? 'selected' : ''}>전국</option>${SIDO.map(x => `<option ${x === mode ? 'selected' : ''}>${x}</option>`).join('')}<option value="해외" ${abroad ? 'selected' : ''}>해외</option></select>${SIDO.includes(mode) ? '<select id="spotgu" class="areasel" aria-label="시·군·구"><option value="">시·군·구 전체</option></select>' : ''}</div>${spotQ.trim() ? '' : hotList(sido)}${abroad || mode === '' ? '' : `<div class="opts kinds">${KINDS.map(([k, n]) => `<label><input type="radio" name="spotkind" value="${k}" ${spotKind() === k ? 'checked' : ''}><span>${n}</span></label>`).join('')}</div>`}<input id="spotq" type="search" class="spotq" placeholder="이름, 종류, 동네로 찾기" value="${esc(spotQ)}" autocomplete="off"><div id="spotlist" class="slist">${mode === '내위치' || spotGu() || ['food', 'cafe', 'play'].includes(spotKind()) ? '' : spotList()}</div><div id="kspots" class="slist"></div></section><p class="sub">명소와 행사는 바뀔 수 있어요. 가기 전에 운영 시간을 확인하세요.</p>`;
 }
 
 // 개인·솔로: 건강, 생활, 연애 팁 / 재테크, 여행, 만남
@@ -1297,6 +1313,7 @@ async function moreActs(act, b, id) {
   else if (act === 'addcouple') coupleDlg();
   else if (act === 'newcat') newCatDlg();
   else if (act === 'nmap') openNmap(d.q);
+  else if (act === 'spotsort') { localStorage.setItem('baby-spot-sort', spotSort() === 'dist' ? 'pop' : 'dist'); render(); }
   else if (act === 'plan') { planRes = null; planDraft = null; planDlgFor(d.n); }
   else if (act === 'planedit') cedWith({ kind: 'plan', n: d.n }, planDraft && planDraft.n === d.n ? planDraft.title : `${d.n} 데이트`, d.n, planSteps(d.n));
   else if (act === 'rdcedit') { const dd = rdc.days[Number(d.i)]; cedWith({ kind: 'rdc', i: Number(d.i) }, rdcTitle(), baseName(dd.base), dayFull(dd)); }

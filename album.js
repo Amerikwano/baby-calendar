@@ -38,7 +38,7 @@ const segTabs = (label, list) => `<div class="albseg" style="grid-template-colum
 const growName = () => Couple.is(K()) || Me.is(K()) ? '하루 한 장' : '성장 앨범'; // 연애 수첩은 이름이 다르다
 const albName = () => Me.is(K()) ? '내 앨범' : Couple.is(K()) ? '우리 앨범' : Pet.isPet(K()) ? '사진 앨범' : '아기 앨범';
 const albSeg = () => Couple.is(K()) ? '' : segTabs('앨범 종류', [['album', Me.is(K()) ? '내 앨범' : Couple.is(K()) ? '우리 앨범' : Pet.isPet(K()) ? '사진 앨범' : '아기 앨범'], ['grow', growName()]]);
-const tipSeg = () => `<div class="albtop">${segTabs('꿀팁 종류', Couple.is(K()) ? [['money', '명소'], ['evt', '행사·공연'], ['tips', '연애 팁']] : [['tips', Me.is(K()) ? '생활 팁' : Couple.is(K()) ? '연애 팁' : Pet.isPet(K()) ? '돌봄 팁' : '육아 팁'], ['money', Me.is(K()) ? '재테크·여행' : Couple.is(K()) ? '명소·행사' : Pet.isPet(K()) ? '혜택·행사' : '혜택']])}</div>`;
+const tipSeg = () => `<div class="albtop">${segTabs('꿀팁 종류', Couple.is(K()) ? [['money', '가볼만한곳'], ['evt', '행사·공연'], ['tips', '연애 팁']] : [['tips', Me.is(K()) ? '생활 팁' : Couple.is(K()) ? '연애 팁' : Pet.isPet(K()) ? '돌봄 팁' : '육아 팁'], ['money', Me.is(K()) ? '재테크·여행' : Couple.is(K()) ? '명소·행사' : Pet.isPet(K()) ? '혜택·행사' : '혜택']])}</div>`;
 function album() {
   if (db.photos.some(p => p.type === 'video' && p.th !== 1)) setTimeout(repairPosters, 500);
   const all = albPhotos(), ys = Album.years(all), ty = today().slice(0, 4);
