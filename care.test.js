@@ -54,7 +54,7 @@ test('성별: 태어난 아이는 남자·여자만, 예정이면 모름도 된�
 test('카카오톡 공유 글에는 사진과 생일이 들어가지 않는다', () => {
   const H = require('./share.js'), k = { name: '콩이', born: true, birth: '2027-01-01', photo: 'x' };
   assert.deepEqual([H.text(k, 100).title, H.text(k, 100).description], ['콩이 태어난 지 100일', '오늘은 백일이에요']);
-  assert.deepEqual([8, 0, -2].map(n => H.text({ name: '콩이', born: false }, n).title), ['콩이 만나기까지 D-8', '콩이 만나는 날이에요', '콩이 예정일 D+2']); assert.equal(H.text(null).title, '우리 아기 수첩');
+  assert.deepEqual([8, 0, -2].map(n => H.text({ name: '콩이', born: false }, n).title), ['콩이 만나기까지 D-8', '콩이 만나는 날이에요', '콩이 예정일 D+2']); assert.equal(H.text(null).title, '우리 수첩');
   const m = JSON.stringify(H.message(H.text(k, 5))); assert.ok(!/2027-01-01|photos/.test(m)); assert.ok(m.includes('https://amerikwano.github.io/baby-calendar/'));
 });
 test('로그인 서버는 준비 여부만 알려 준다', async () => {

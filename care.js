@@ -16,6 +16,11 @@
     kick: { name: '태동', unit: '회', c: '#b95a94' },
     weight: { name: '체중', unit: 'kg', c: '#39808f' },
     memo: { name: '메모', c: '#7a685d' },
+    // 반려동물
+    meal: { name: '밥', sub: ['사료', '습식', '간식', '물'], unit: 'g', c: '#b87324' },
+    walk: { name: '산책', end: true, c: '#4a8a45' },
+    potty: { name: '배변', sub: ['소변', '대변', '둘 다'], c: '#8a6a4f' },
+    groom: { name: '미용·손질', sub: ['빗질', '발톱', '귀 청소', '양치', '미용'], c: '#b95a94' },
   };
   const BORN = ['diaper', 'bottle', 'breast', 'sleep', 'food', 'hospital', 'bath', 'play', 'med', 'temp', 'memo'], WAIT = ['kick', 'hospital', 'med', 'weight', 'memo'];
   const at = l => l.date + 'T' + (l.time || '00:00');
@@ -40,23 +45,25 @@
 let careDays = 3; // 홈에 보여 줄 기록 날짜 수
 const nowText = () => today() + 'T' + new Date().toTimeString().slice(0, 5);
 const logsOf = k => db.logs.filter(l => l.kid === k.id);
-const face = (k, cls) => `<span class="av ${cls || ''}">${k && k.photo ? `<img ${pic(k.photo, 1)} alt="">` : FACE}</span>`;
+const face = (k, cls) => `<span class="av ${cls || ''}${k && !k.photo && Pet.isPet(k) ? ' pet' : ''}">${k && k.photo ? `<img ${pic(k.photo, 1)} alt="">` : Pet.isPet(k) ? icon('paw') : FACE}</span>`;
+// 수첩 더하기 단추: 아기와 반려동물
+const addBtns = () => `<div class="row"><button type="button" class="btn" data-act="addkid">${db.kids.some(k => !Pet.isPet(k)) ? '쌍둥이·형제 더하기' : '아기 수첩 더하기'}</button><button type="button" class="btn" data-act="addpet">${icon('paw', 's')}반려동물 더하기</button></div>`;
 // 2개월 15일 (D+76)
 function ageLine(k) {
   const t = today(), n = S.diffDays(t, k.birth);
   if (!k.born) { const g = 280 - n; return `${n > 0 ? 'D-' + n : n === 0 ? 'D-DAY' : 'D+' + -n}${g >= 0 && g <= 301 ? `, 임신 ${Math.floor(g / 7)}주 ${g % 7}일` : ''}`; }
   const m = S.ageMonths(k.birth, t), d = S.diffDays(S.addMonths(k.birth, m), t);
-  return `${m < 24 ? (m ? m + '개월 ' : '') + d + '일' : `${Math.floor(m / 12)}세 ${m % 12 ? m % 12 + '개월' : ''}`} (D+${1 - n})`;
+  return `${m < 24 ? (m ? m + '개월 ' : '') + d + '일' : `${Math.floor(m / 12)}${Pet.isPet(k) ? '살' : '세'} ${m % 12 ? m % 12 + '개월' : ''}`} (D+${1 - n})`;
 }
 // 지금 챙길 것: 접종·검진, 놓친 기록, 오늘과 내일 일정
 function alerts(k) {
   const t = today(), its = items(k), st = i => S.status(i, t);
-  const late = k.born ? its.filter(i => st(i) === 'late' && !/^flu/.test(i.id)) : [], open = its.filter(i => st(i) === 'open').sort((a, b) => (a.hard || a.end) < (b.hard || b.end) ? -1 : 1);
+  const late = k.born ? its.filter(i => st(i) === 'late' && !/^(flu|phw)/.test(i.id)) : [], open = its.filter(i => st(i) === 'open').sort((a, b) => (a.hard || a.end) < (b.hard || b.end) ? -1 : 1);
   return { late, open: k.born ? open : [], next: its.filter(i => st(i) === 'next').slice(0, 5), miss: logsOf(k).filter(l => l.date === t && Care.state(l, nowText()) === 'miss'), events: Family.forKid(db.events, k.id).filter(e => !e.done && e.date >= t && e.date <= S.addDays(t, 1)) };
 }
 function topBar() {
   const k = K(), hot = bellNew() || !k.born && today() >= k.birth;
-  return `<div><button class="me" data-act="kids" aria-label="${esc(k.name)}, 아이 고르기">${face(k)}<span><b>${esc(k.name)}${icon('baby', k.sex || 'unk')}${k.sex ? `<span class="vh">${Family.SEX[k.sex]}아이</span>` : ''}${many() ? icon('down', 's') : ''}</b><em>${ageLine(k)}</em></span></button>${visits.length ? `<button class="sq" data-act="visits" aria-label="놀러가기">${icon('visit')}</button>` : ''}<button class="sq" data-act="report" aria-label="하루 요약">${icon('pie')}</button><button class="sq" data-act="alerts" aria-label="알림${hot ? ', 확인할 것이 있어요' : ''}">${icon('bell')}${hot ? '<i></i>' : ''}</button></div>`;
+  return `<div><button class="me" data-act="kids" aria-label="${esc(k.name)}, 수첩 고르기">${face(k)}<span><b>${esc(k.name)}${Pet.isPet(k) ? icon('paw', k.sex || 'unk') : icon('baby', k.sex || 'unk')}${k.sex ? `<span class="vh">${Pet.isPet(k) ? Pet.SEX[k.sex] : Family.SEX[k.sex] + '아이'}</span>` : ''}${many() ? icon('down', 's') : ''}</b><em>${ageLine(k)}</em></span></button>${visits.length ? `<button class="sq" data-act="visits" aria-label="놀러가기">${icon('visit')}</button>` : ''}<button class="sq" data-act="report" aria-label="하루 요약">${icon('pie')}</button><button class="sq" data-act="alerts" aria-label="알림${hot ? ', 확인할 것이 있어요' : ''}">${icon('bell')}${hot ? '<i></i>' : ''}</button></div>`;
 }
 function navBar() {
   const M = { home: 'home', cal: 'cal', diary: 'diary', album: 'album', grow: 'album', tips: 'tips', money: 'tips' };
@@ -64,11 +71,11 @@ function navBar() {
   const b = (t, n, i) => `<button data-tab="${t}" ${main === t ? 'aria-current="page"' : ''}>${i}<span>${n}</span></button>`;
   return `<div>${b('home', '홈', `<span class="navface">${face(K())}</span>`)}${b('cal', '달력', icon('cal'))}${b('diary', '일기', icon('diary'))}${b('album', '앨범', icon('album'))}${b('tips', '꿀팁', icon('tips'))}${b('more', '더보기', icon('more'))}</div>`;
 }
-const typesFor = k => k.born ? Care.BORN : Care.WAIT;
+const typesFor = k => Pet.isPet(k) ? Pet.LOGS[k.kind] : k.born ? Care.BORN : Care.WAIT;
 const typeBtn = (t, act) => `<button type="button" data-act="${act}" data-t="${t}" style="--c:${Care.TYPES[t].c}">${icon(t)}<span>${Care.TYPES[t].name}</span></button>`;
 const quickRow = k => `<div class="quick"><button class="round" data-act="planlog" aria-label="예정 일정 넣기">${icon('cal')}</button><div class="pill">${typesFor(k).map(t => typeBtn(t, 'log')).join('')}</div></div>`;
 function logRow(l) {
-  const T = Care.TYPES[l.type] || Care.TYPES.memo, st = Care.state(l, nowText()), name = l.sub && l.type !== 'food' ? (l.type === 'diaper' ? l.sub : `${T.name} ${l.sub}`) : l.sub || T.name;
+  const T = Care.TYPES[l.type] || Care.TYPES.memo, st = Care.state(l, nowText()), name = l.sub && !['food', 'meal', 'groom'].includes(l.type) ? (l.type === 'diaper' ? l.sub : `${T.name} ${l.sub}`) : l.sub || T.name;
   const time = st === 'done' ? `<span class="tm"><b>${Care.clock(l.time)}</b>${l.end ? `<em>${Care.clock(l.end)}</em>` : ''}</span>` : `<span class="tm"><em>${st === 'plan' ? '예정' : '미완료'}</em><b>${Care.clock(l.time)}</b></span>`;
   return `<button class="log ${st}" data-act="editlog" data-id="${l.id}" style="--c:${T.c}">${time}<span class="lic">${icon(l.type)}</span><span class="ln"><b>${esc(name)}</b>${l.amount ? `<em>${esc(l.amount)}${T.unit || ''}</em>` : ''}${l.type === 'sleep' && l.end ? `<em>${Care.hm(Care.minutes(l))}</em>` : ''}${l.memo ? `<small>${esc(l.memo)}</small>` : ''}</span>${icon('right', 's')}</button>`;
 }
@@ -148,20 +155,21 @@ function reportDlg(d) {
   const k = K(), day = d || today(), r = Care.report(logsOf(k).filter(l => l.date === day)), [, m, x] = day.split('-').map(Number);
   const cell = (t, n, v, s) => `<div style="--c:${Care.TYPES[t].c}"><span class="lic">${icon(t)}</span><span>${n}</span><b>${v}</b><em>${s || ''}</em></div>`;
   openDlg(`<form data-form="none"><h2>${m}월 ${x}일 하루 요약</h2><div class="row between"><button type="button" class="btn" data-act="report" data-d="${S.addDays(day, -1)}">전날</button><span class="sub">${esc(k.name)} ${dayLabel(k, day)}</span><button type="button" class="btn" data-act="report" data-d="${S.addDays(day, 1)}" ${day >= today() ? 'disabled' : ''}>다음 날</button></div>
-  ${r.total ? `<div class="rgrid">${k.born ? cell('bottle', '수유', r.feeds + '회', r.ml ? `젖병 ${r.ml}ml` : '') + cell('diaper', '기저귀', r.diaper + '회', r.diaper ? `소변 ${r.pee} 대변 ${r.poo}` : '') + cell('sleep', '수면', r.sleep ? Care.hm(r.sleep) : '-') + cell('food', '이유식', r.food + '회') + (r.temp ? cell('temp', '최고 체온', r.temp + '℃') : '') : typesFor(k).map(t => cell(t, Care.TYPES[t].name, logsOf(k).filter(l => l.date === day && l.type === t && l.done).length + '회')).join('')}</div>` : '<p class="empty">이날은 기록이 없어요.</p>'}</form>`);
+  ${r.total ? `<div class="rgrid">${k.born && !Pet.isPet(k) ? cell('bottle', '수유', r.feeds + '회', r.ml ? `젖병 ${r.ml}ml` : '') + cell('diaper', '기저귀', r.diaper + '회', r.diaper ? `소변 ${r.pee} 대변 ${r.poo}` : '') + cell('sleep', '수면', r.sleep ? Care.hm(r.sleep) : '-') + cell('food', '이유식', r.food + '회') + (r.temp ? cell('temp', '최고 체온', r.temp + '℃') : '') : typesFor(k).map(t => cell(t, Care.TYPES[t].name, logsOf(k).filter(l => l.date === day && l.type === t && l.done).length + '회')).join('')}</div>` : '<p class="empty">이날은 기록이 없어요.</p>'}</form>`);
 }
-const kidsDlg = () => openDlg(`<form data-form="none"><h2>아이</h2><div class="list">${db.kids.map(k => `<div class="kidrow"><button type="button" data-act="pickkid" data-id="${k.id}" ${k.id === K().id ? 'aria-current="true"' : ''}>${face(k)}<span><b>${esc(k.name)}</b><em>${k.sex ? Family.SEX[k.sex] + ', ' : k.born ? '' : '성별 모름, '}${ageLine(k)}</em></span></button><button type="button" class="btn" data-act="kidedit" data-id="${k.id}">고치기</button></div>`).join('')}</div><button type="button" class="btn" data-act="addkid">쌍둥이·형제 더하기</button></form>`);
+const kidsDlg = () => openDlg(`<form data-form="none"><h2>수첩</h2><div class="list">${db.kids.map(k => `<div class="kidrow"><button type="button" data-act="pickkid" data-id="${k.id}" ${k.id === K().id ? 'aria-current="true"' : ''}>${face(k)}<span><b>${esc(k.name)}</b><em>${Pet.isPet(k) ? Pet.KINDS[k.kind] + (k.sex ? ' ' + Pet.SEX[k.sex] : '') + ', ' : k.sex ? Family.SEX[k.sex] + ', ' : k.born ? '' : '성별 모름, '}${ageLine(k)}</em></span></button><button type="button" class="btn" data-act="kidedit" data-id="${k.id}">고치기</button></div>`).join('')}</div>${addBtns()}</form>`);
 
 /* ── 더보기 ── */
 function more() {
   const it = (i, t, s, at) => `<button class="menu" ${at}><span class="lic">${icon(i)}</span><span><b>${t}</b><em>${s}</em></span>${icon('right', 's')}</button>`;
-  return accountCard() + `<section class="menus"><h3>아기</h3>${it('heart', '성장 앨범', '매일 얼굴 사진과 성장 영상', 'data-tab="grow"')}${it('shield', '접종·검진', '전체 일정과 완료 기록', 'data-tab="vax"')}${it('hospital', '인근 병원', '가까운 소아청소년과와 보건소', 'data-act="hospitals"')}${it('bell', '캘린더에 넣기', '일정을 캘린더 파일로 받기', 'data-act="ics"')}</section>
+  const pet = Pet.isPet(K());
+  return accountCard() + `<section class="menus"><h3>${pet ? '반려동물' : '아기'}</h3>${it('heart', '성장 앨범', '매일 얼굴 사진과 성장 영상', 'data-tab="grow"')}${pet ? it('shield', '접종·건강', '접종, 검진, 예방약 일정', 'data-tab="vax"') + it('hospital', '동물병원 찾기', '카카오맵에서 가까운 동물병원', 'data-act="vethosp"') : it('shield', '접종·검진', '전체 일정과 완료 기록', 'data-tab="vax"') + it('hospital', '인근 병원', '가까운 소아청소년과와 보건소', 'data-act="hospitals"')}${it('paw', '수첩 더하기', '아기나 반려동물 수첩을 더 만들어요', 'data-act="kids"')}${it('bell', '캘린더에 넣기', '일정을 캘린더 파일로 받기', 'data-act="ics"')}</section>
   <section class="menus"><h3>가족</h3>${it('diary', '함께 쓰기 초대', '아빠·엄마와 같은 수첩을 같이 기록해요', 'data-act="invite" data-role="editor"')}${it('heart', '보기만 초대', '할머니·이모가 일기와 앨범을 보고 댓글을 달아요', 'data-act="invite" data-role="viewer"')}${it('chat', '초대 링크로 들어가기', '받은 초대 링크를 붙여 넣어요', 'data-act="pastejoin"')}${it('visit', '놀러가기', visits.length ? `초대받은 집 ${visits.length}곳` : '보기만 초대를 받은 집에 놀러 가요', 'data-act="visits"')}${bound ? it('baby', '가족 수첩 보기', esc(bound.name || '') + ' 가족 목록', 'data-act="family"') : ''}${it('gear', '내 별명', myNick() ? esc(myNick()) : '아직 정하지 않았어요', 'data-act="nick"')}</section>
-  <section class="menus"><h3>앱</h3>${it('heart', '카카오톡으로 공유하기', '디데이나 앱 소개 보내기', 'data-act="sharek"')}${it('gear', '설정', '아이 정보, 지역, 백업', 'data-act="settings"')}</section><p class="sub">질병관리청 표준예방접종일정표(2026) 기준이에요. 실제 접종은 병원 안내를 먼저 따르세요. 버전 ${APP_VERSION}</p>`;
+  <section class="menus"><h3>앱</h3>${it('heart', '카카오톡으로 공유하기', '디데이나 앱 소개 보내기', 'data-act="sharek"')}${it('gear', '설정', '아이 정보, 지역, 백업', 'data-act="settings"')}</section><p class="sub">${pet ? '반려동물 일정은 국내 동물병원에서 흔히 쓰는 순서예요. 실제 접종은 동물병원 안내를 먼저 따르세요.' : '질병관리청 표준예방접종일정표(2026) 기준이에요. 실제 접종은 병원 안내를 먼저 따르세요.'} 버전 ${APP_VERSION}</p>`;
 }
 // 들어온 곳(홈, 더보기 …)으로 돌아간다
 const backRow = (t, to) => `<div class="backrow"><button data-tab="${to || (subFrom && subFrom.tab) || 'more'}" data-back="1" aria-label="뒤로">${icon('left')}</button><h2>${t}</h2></div>`;
 function vax() {
   const a = alerts(K()), sec = (t, l) => l.length ? `<section class="stack"><h2>${t}</h2><div class="list">${l.map(itemRow).join('')}</div></section>` : '';
-  return backRow('접종·검진') + sec('지금 받을 것', a.open) + sec(K().born ? '다음 일정' : '태어나면 바로 챙길 것', a.next) + sec('시기가 지난 일정', a.late) + sec('전체', items());
+  return backRow(Pet.isPet(K()) ? '접종·건강' : '접종·검진') + sec('지금 받을 것', a.open) + sec(K().born ? '다음 일정' : '태어나면 바로 챙길 것', a.next) + sec('시기가 지난 일정', a.late) + sec('전체', items());
 }

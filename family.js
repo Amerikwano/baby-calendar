@@ -18,7 +18,7 @@
     return d;
   }
   // 생일이 빠른 순서로 몇째인지 다시 매긴다(쌍둥이는 넣은 순서).
-  function rank(kids) { kids.map((k, i) => [k, i]).sort((a, b) => a[0].birth < b[0].birth ? -1 : a[0].birth > b[0].birth ? 1 : a[1] - b[1]).forEach(([k], i) => { k.order = Math.min(3, i + 1); }); }
+  function rank(kids) { kids.filter(k => !k.kind).map((k, i) => [k, i]).sort((a, b) => a[0].birth < b[0].birth ? -1 : a[0].birth > b[0].birth ? 1 : a[1] - b[1]).forEach(([k], i) => { k.order = Math.min(3, i + 1); }); }
   // 아이를 빼도 일기와 사진은 남겨 '모두의 기록'으로 바꾼다. 얼굴 사진은 다른 아이 영상에 섞이지 않게 사진첩으로 옮긴다.
   function removeKid(d, id) {
     if (d.kids.length < 2) return false;

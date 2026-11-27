@@ -14,7 +14,8 @@
         [[7, '일주일 남았어요'], [1, '하루 남았어요'], [0, '오늘이 예정일이에요']].forEach(([n, t]) => put(`${k.id}:due`, 'due' + n, S.addDays(k.birth, -n), n ? `예정일까지 ${t}` : t, '아기를 만날 준비를 확인해 보세요', S.addDays(k.birth, 30), { type: 'due' }));
         return;
       }
-      S.build(k.birth, k.options, k.records).forEach(it => {
+      const P = root.Pet || (typeof require !== 'undefined' ? require('./pet.js') : null);
+      (P && P.isPet(k) ? P.build(k.kind, k.birth, k.records, { since: k.since, today }) : S.build(k.birth, k.options, k.records)).forEach(it => {
         if (it.done) return;
         const limit = it.hard && it.hard > it.end ? it.hard : it.end, sub = `${k.id}:${it.id}`, ref = { type: 'item', id: it.id };
         if (today > limit && !(it.appt && it.appt >= today)) return; // 시기가 지난 것
@@ -62,7 +63,7 @@
     if (!due.length) return null;
     return { ids: due.map(n => n.id), title: due.length === 1 ? name(due[0]) : `알림 ${due.length}개가 있어요`, body: due.length === 1 ? due[0].body : due.slice(0, 4).map(name).join('\n') + (due.length > 4 ? `\n외 ${due.length - 4}개` : '') };
   }
-  const LOG = { diaper: '기저귀', bottle: '젖병수유', breast: '모유수유', sleep: '수면', food: '이유식', hospital: '병원', bath: '목욕', play: '놀이', med: '약', temp: '체온', kick: '태동', weight: '체중', memo: '메모' };
+  const LOG = { diaper: '기저귀', bottle: '젖병수유', breast: '모유수유', sleep: '수면', food: '이유식', hospital: '병원', bath: '목욕', play: '놀이', med: '약', temp: '체온', kick: '태동', meal: '밥', walk: '산책', potty: '배변', groom: '미용·손질', weight: '체중', memo: '메모' };
   const logName = t => LOG[t] || '기록';
   const title = n => n.ref.type === 'log' ? n.title.replace('LOG', `${logName(n.ref.log)} 시간이에요`) : n.title;
   const out = { REM, build, active, wakes, message, logName, title, at };

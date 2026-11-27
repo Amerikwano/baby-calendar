@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>우리 아기 수첩</title>
+<title>우리 수첩</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png?v=2">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
-<meta name="apple-mobile-web-app-title" content="아기 수첩">
+<meta name="apple-mobile-web-app-title" content="우리 수첩">
 <meta name="theme-color" content="#faf5ee">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="https://cdn.jsdelivr.net/npm/@kfonts/nanum-square-round@0.2.0/NanumSquareRoundR.woff2">
 <style>
@@ -24,7 +24,7 @@ html,body{background:#faf5ee}
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
-<div id="splash" role="status"><div class="ring" id="splashFace"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 12c-3-7 5-10 8-5" fill="none" stroke="#8a6a4f" stroke-width="3.5" stroke-linecap="round"/><circle cx="14" cy="54" r="8" fill="#ffd9c2"/><circle cx="86" cy="54" r="8" fill="#ffd9c2"/><circle cx="50" cy="52" r="37" fill="#ffe6d3"/><circle cx="37" cy="50" r="3.6" fill="#4f3f3a"/><circle cx="63" cy="50" r="3.6" fill="#4f3f3a"/><ellipse cx="28" cy="61" rx="6.5" ry="4.5" fill="#ffb9a3"/><ellipse cx="72" cy="61" rx="6.5" ry="4.5" fill="#ffb9a3"/><path d="M42 62q8 8 16 0" fill="none" stroke="#4f3f3a" stroke-width="3.2" stroke-linecap="round"/></svg></div><b>우리 아기 수첩</b><span id="splashText">오늘도 한 뼘 자랐어요</span></div>
+<div id="splash" role="status"><div class="ring" id="splashFace"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 12c-3-7 5-10 8-5" fill="none" stroke="#8a6a4f" stroke-width="3.5" stroke-linecap="round"/><circle cx="14" cy="54" r="8" fill="#ffd9c2"/><circle cx="86" cy="54" r="8" fill="#ffd9c2"/><circle cx="50" cy="52" r="37" fill="#ffe6d3"/><circle cx="37" cy="50" r="3.6" fill="#4f3f3a"/><circle cx="63" cy="50" r="3.6" fill="#4f3f3a"/><ellipse cx="28" cy="61" rx="6.5" ry="4.5" fill="#ffb9a3"/><ellipse cx="72" cy="61" rx="6.5" ry="4.5" fill="#ffb9a3"/><path d="M42 62q8 8 16 0" fill="none" stroke="#4f3f3a" stroke-width="3.2" stroke-linecap="round"/></svg></div><b>우리 수첩</b><span id="splashText">오늘도 한 뼘 자랐어요</span></div>
 <header id="top" hidden></header>
 <div class="wrap"><main id="main" class="stack"></main></div>
 <nav aria-label="메뉴" hidden></nav>
@@ -35,6 +35,7 @@ html,body{background:#faf5ee}
 <dialog id="busy" aria-labelledby="busyt"></dialog>
 <div id="toast" role="status" popover="manual" hidden></div>
 <script src="schedule.js"></script>
+<script src="pet.js"></script>
 <script src="base-benefits.js"></script>
 <script src="base-tips.js"></script>
 <script src="local.js"></script>

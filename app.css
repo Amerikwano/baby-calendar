@@ -275,3 +275,7 @@ nav button{text-shadow:0 0 3px rgb(255 255 255/.85)}nav button .ic{filter:drop-s
 .bulkr{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;touch-action:pan-x pan-y}.bulkr::-webkit-scrollbar{display:none}
 .bulkr button{flex:none;width:84px;height:84px;border-radius:14px;overflow:hidden;position:relative;border:3px solid transparent;opacity:.55}.bulkr button[aria-pressed=true]{border-color:var(--accent);opacity:1}
 .bulkr img{width:100%;height:100%;object-fit:cover;display:block}.bulkr span{position:absolute;left:4px;bottom:4px;font-size:11px;padding:1px 6px;border-radius:99px;background:rgb(0 0 0/.45);color:#fff}
+/* 반려동물 수첩 */
+:root{--prev:#4a8a45;--care:#b87324}
+.t-prev{--c:var(--prev)}.t-care{--c:var(--care)}
+.av.pet{background:#fff4e0;color:#b87324}.av.pet svg{width:60%;height:60%}

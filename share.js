@@ -4,7 +4,7 @@
   const APP = 'https://amerikwano.github.io/baby-calendar/';
   // n: 오늘이 태어난 지(또는 예정일까지) 며칠인지. 태어났으면 1일부터, 아니면 남은 날
   function text(k, n) {
-    if (!k) return { title: '우리 아기 수첩', description: '예방접종 알림부터 육아 기록, 사진첩까지 한곳에' };
+    if (!k) return { title: '우리 수첩', description: '아기와 반려동물의 일정, 기록, 사진첩을 한곳에' };
     if (!k.born) return { title: n > 0 ? `${k.name} 만나기까지 D-${n}` : n === 0 ? `${k.name} 만나는 날이에요` : `${k.name} 예정일 D+${-n}`, description: '설레는 마음으로 함께 기다려요' };
     const special = { 100: '오늘은 백일이에요', 200: '오늘은 200일이에요' }[n];
     return { title: `${k.name} 태어난 지 ${n}일`, description: special || '오늘도 한 뼘 자랐어요' };
@@ -35,6 +35,6 @@ const shareNow = () => shareOf(dlg.querySelector('[name=sh]:checked').value);
 function sendKakao() { try { Kakao.Share.sendDefault(Share.message(shareNow())); } catch (e) { console.error(e); toast('카카오톡으로 보내지 못했어요. 다른 앱으로 보내기를 눌러 주세요.'); } }
 async function shareLink() {
   const t = shareNow(), s = `${t.title}\n${t.description}`;
-  if (navigator.share) return navigator.share({ title: '우리 아기 수첩', text: s, url: Share.APP }).catch(e => { if (e.name !== 'AbortError') toast('공유 창을 열지 못했어요.'); });
+  if (navigator.share) return navigator.share({ title: '우리 수첩', text: s, url: Share.APP }).catch(e => { if (e.name !== 'AbortError') toast('공유 창을 열지 못했어요.'); });
   try { await navigator.clipboard.writeText(`${s}\n${Share.APP}`); toast('글과 주소를 복사했어요'); } catch { toast('복사하지 못했어요.'); }
 }
