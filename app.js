@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.19.0';
+const APP_VERSION = '0.19.1';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -336,7 +336,9 @@ function petMoney() {
 
 // 연애: 팁과 이번 계절 데이트 코스, 지역별 데이트 명소와 행사
 // 네이버 지도 앱으로 열고, 앱이 없으면 네이버 지도 웹으로
-const nmapBtn = q => `<button type="button" class="btn" data-act="nmap" data-q="${esc(q)}">네이버 지도에서 보기</button>`;
+const nmapBtn = q => `<button type="button" class="pin" data-act="nmap" data-q="${esc(q)}" aria-label="${esc(q)} 네이버 지도에서 보기">${PIN}</button>`;
+// 지도 단추가 오른쪽에 붙는 카드(병원 목록과 같은 모양)
+const pinCard = (chip, title, body, q) => `<article class="paper"><div class="hosp" style="border:0;padding:0"><span><span class="chip">${esc(chip)}</span><b style="margin-top:8px;font-size:17px">${esc(title)}</b><span class="sub">${esc(body)}</span></span>${nmapBtn(q)}</div></article>`;
 function openNmap(q) {
   const web = Couple.mapUrl(q); if (!/iPhone|iPad|iPod|Android/.test(navigator.userAgent)) return window.open(web, '_blank', 'noopener');
   let gone = false; const off = () => { gone = true; }; document.addEventListener('visibilitychange', off, { once: true }); window.addEventListener('pagehide', off, { once: true });
@@ -351,7 +353,7 @@ function coupleTips() {
 // 데이트 명소: 지역(전국·시도·해외)과 검색으로 고른다. 고른 지역은 이 기기에만 둔다.
 let spotQ = '';
 const spotArea = () => { const a = localStorage.getItem('baby-spot-area'); return a == null ? db.sido || '' : a; };
-const spotCard = x => plainCard(x.c || x.sido.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주'), x.name, x.desc, nmapBtn(x.name));
+const spotCard = x => pinCard(x.c || x.sido.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주'), x.name, x.desc, x.name);
 function spotList() {
   const a = spotArea(), q = spotQ.trim().toLowerCase();
   const l = Couple.SPOTS.filter(x => q ? (x.name + x.desc + x.sido + (x.c || '')).toLowerCase().includes(q) : !a || x.sido === a);
@@ -373,7 +375,7 @@ function meTips() {
   return tipSeg() + `<p class="sub">만 ${Me.age(k.birth, today())}세 ${k.sex === 'girl' ? '여성' : '남성'}에게 맞춰 골랐어요.</p>` + tipList('건강', d.health) + (solo ? tipList('혼자 사는 팁', Me.SOLO_LIVE) + tipList('연애를 시작하는 팁', Me.DATE_TIPS) : '');
 }
 function meMoney() {
-  const k = K(), d = Me.tips(k, today()), solo = Me.isSolo(k), place = x => plainCard('추천', x.name, x.desc, nmapBtn(x.name));
+  const k = K(), d = Me.tips(k, today()), solo = Me.isSolo(k), place = x => pinCard('추천', x.name, x.desc, x.name);
   return tipSeg() + tipList('재테크', d.money) + '<p class="sub">일반적인 안내이고 투자 권유가 아니에요. 상품 조건은 바뀔 수 있으니 가입 전에 확인하세요.</p>' + tipList('여행 팁', d.travel)
     + `<section class="stack"><h2>${solo ? '혼자 가기 좋은 여행지' : '가 볼 만한 여행지'}</h2>${Me.SOLO_TRIP.map(place).join('')}</section>` + (solo ? `<section class="stack"><h2>새 인연을 만나기 좋은 곳</h2>${Me.MEET.map(place).join('')}</section>` : '');
 }
@@ -450,7 +452,7 @@ async function fillGu(keep) {
   if (keep && !names.includes(keep)) names.push(keep);
   sel.innerHTML = '<option value="">전체</option>' + names.sort((a, b) => a.localeCompare(b, 'ko')).map(n => `<option ${n === keep ? 'selected' : ''}>${esc(n)}</option>`).join('');
 }
-document.addEventListener('change', ev => { if (ev.target.id === 'rSido') fillGu(''); if (ev.target.id === 'cashOnly') { cashOnly = ev.target.checked; render(); } });
+document.addEventListener('change', ev => { if (ev.target.id === 'nearSido' || ev.target.id === 'nearGu') { const box = ev.target.closest('section'), s = $('#nearSido').value; nearAt = { sido: s, sigungu: ev.target.id === 'nearGu' ? $('#nearGu').value : '' }; nearOther = true; spot = null; fillNear(box, Number(ev.target.dataset.n)); return; } if (ev.target.id === 'rSido') fillGu(''); if (ev.target.id === 'cashOnly') { cashOnly = ev.target.checked; render(); } });
 // 지역을 아직 안 정했으면 앱을 켤 때 한 번 안내한다.
 function askLocationOnce() {
   if (!started || db.sido || dlg.open || isPet(K())) return;
@@ -799,14 +801,16 @@ async function loadHosp() {
   const j = await r.json(); hosp.rows = j.rows; hosp.info = j;
 }
 const where = () => new Promise((ok, no) => { if (!navigator.geolocation) return no(new Error('이 기기에서는 위치를 쓸 수 없어요.')); navigator.geolocation.getCurrentPosition(p => ok({ lat: p.coords.latitude, lng: p.coords.longitude }), e => no(new Error(e.code === 1 ? '위치가 허용되지 않았어요. 휴대폰 설정에서 이 브라우저의 위치를 켜 주세요.' : '위치를 찾지 못했어요. 잠시 뒤 다시 눌러 주세요.')), { timeout: 15000, maximumAge: 300000, enableHighAccuracy: true }); });
-const listHosp = n => { const rows = n < 10 ? hosp.rows.filter(Hospitals.kids) : hosp.rows; return spot ? Hospitals.nearest(rows, spot, n) : Hospitals.inRegion(rows, db.sido, db.sigungu).sort((a, b) => Hospitals.kids(b.r) - Hospitals.kids(a.r)).slice(0, n); };
+let nearAt = null, nearOther = false; // 다른 위치를 고르면 이번에 켠 동안만 기억
+const nearArea = () => nearAt || { sido: db.sido, sigungu: db.sigungu };
+const listHosp = n => { const rows = n < 10 ? hosp.rows.filter(Hospitals.kids) : hosp.rows, a = nearArea(); return spot ? Hospitals.nearest(rows, spot, n) : Hospitals.inRegion(rows, a.sido, a.sigungu).sort((a, b) => Hospitals.kids(b.r) - Hospitals.kids(a.r)).slice(0, n); };
 const hospRow = ({ r, km }) => { const i = hosp.rows.indexOf(r); return `<div class="hosp"><span><b>${esc(r[0])}</b><span class="when sub">${km == null ? '' : Hospitals.dist(km) + ', '}${esc(r[5])}${r[6] ? `, 소아청소년과 전문의 ${r[6]}명` : ''}</span><br><span class="sub">${esc(r[1])}</span>${/^[\d-]{7,}$/.test(r[2]) ? `<br><a href="tel:${r[2]}">${r[2]}</a>` : ''}</span><button type="button" class="pin" data-act="map" data-i="${i}" aria-label="${esc(r[0])} 지도에서 보기">${PIN}</button></div>`; };
 async function fillNear(box, n) {
   try { await loadHosp(); } catch { if (box.isConnected) box.querySelector('p').textContent = '병원 자료를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.'; return; }
-  if (!spot && navigator.permissions) try { if ((await navigator.permissions.query({ name: 'geolocation' })).state === 'granted') spot = await where(); } catch { }
+  if (!spot && !nearOther) { box.querySelector('p').textContent = '내 위치를 찾는 중이에요'; try { spot = await where(); } catch { nearOther = true; } } // 처음엔 내 위치로
   if (!box.isConnected) return;
-  const head = box.querySelector('h2').outerHTML, list = listHosp(n), at = (db.sido + ' ' + db.sigungu).trim();
-  box.innerHTML = head + `<p class="sub">${spot ? '지금 위치에서 가까운 순서예요.' : at ? `${esc(at)}에 있는 곳이에요. 내 위치를 켜면 가까운 순서로 볼 수 있어요.` : '내 위치를 켜면 가까운 병원을 찾아드려요.'}</p>${spot ? '' : `<div class="row"><button type="button" class="btn main" data-act="nearme" data-n="${n}">내 위치로 찾기</button></div>`}${list.length ? `<div class="list">${list.map(hospRow).join('')}</div>` : spot || at ? '<p class="sub">찾은 병원이 없어요.</p>' : ''}${n < 10 && list.length ? '<button type="button" class="btn" data-act="hospitals">더 보기</button>' : ''}<p class="sub">맞으려는 백신이 있는지, 무료로 맞을 수 있는지는 가기 전에 전화로 확인하세요. 무료 접종 기관은 <a href="https://nip.kdca.go.kr" target="_blank" rel="noopener noreferrer">예방접종도우미</a>에서 볼 수 있어요. 자료: ${esc(hosp.info.source)}, ${hosp.info.asOf.replace(/-/g, '.')}</p>`;
+  const head = box.querySelector('h2').outerHTML, list = listHosp(n), at = (nearArea().sido + ' ' + nearArea().sigungu).trim();
+  box.innerHTML = head + `<p class="sub">${spot ? '지금 위치에서 가까운 순서예요.' : at ? `${esc(at)}에 있는 곳이에요. 내 위치를 켜면 가까운 순서로 볼 수 있어요.` : '내 위치를 켜면 가까운 병원을 찾아드려요.'}</p><div class="row">${spot ? '' : `<button type="button" class="btn main" data-act="nearme" data-n="${n}">내 위치로 찾기</button>`}<button type="button" class="btn" data-act="nearpick" data-n="${n}">다른 위치 선택</button></div>${list.length ? `<div class="list">${list.map(hospRow).join('')}</div>` : spot || at ? '<p class="sub">찾은 병원이 없어요.</p>' : ''}${n < 10 && list.length ? '<button type="button" class="btn" data-act="hospitals">더 보기</button>' : ''}<p class="sub">맞으려는 백신이 있는지, 무료로 맞을 수 있는지는 가기 전에 전화로 확인하세요. 무료 접종 기관은 <a href="https://nip.kdca.go.kr" target="_blank" rel="noopener noreferrer">예방접종도우미</a>에서 볼 수 있어요. 자료: ${esc(hosp.info.source)}, ${hosp.info.asOf.replace(/-/g, '.')}</p>`;
 }
 function hospDlg() { openDlg('<form data-form="none"><div class="row between"><h2>인근 병원</h2></div><section class="stack" id="near"><h2 style="font-size:15px">소아청소년과와 보건소</h2><p class="sub">불러오는 중</p></section></form>'); fillNear($('#near'), 20); }
 // 휴대폰에서는 새 창 없이 네이버지도 앱을 바로 연다. 웹 주소로 열면 돌아왔을 때 빈 창이 남는다.
@@ -1008,7 +1012,9 @@ async function moreActs(act, b, id) {
   else if (act === 'outshare') navigator.share({ files: [out.file] }).catch(e => { if (e.name !== 'AbortError') toast('공유 창을 열지 못했어요. 내려받기를 눌러 주세요.'); });
   else if (act === 'outsave') saveFile(out.blob, out.name);
   else if (act === 'hospitals') hospDlg();
-  else if (act === 'nearme') { b.disabled = true; b.textContent = '위치를 찾는 중'; const box = b.closest('section'); try { spot = await where(); } catch (e) { toast(e.message); } if (box.isConnected) fillNear(box, Number(d.n)); }
+  else if (act === 'nearpick') { const box = b.closest('section'), a = nearArea(), gus = s => [...new Set(hosp.rows.filter(r => r[1].startsWith(s)).map(r => r[1].split(' ')[1]).filter(Boolean))].sort((x, y) => x.localeCompare(y, 'ko'));
+    b.closest('.row').outerHTML = `<div class="two"><label class="f">시·도<select id="nearSido" data-n="${d.n}">${SIDO.map(x => `<option ${x === a.sido ? 'selected' : ''}>${x}</option>`).join('')}</select></label><label class="f">시·군·구<select id="nearGu" data-n="${d.n}"><option value="">전체</option>${gus(a.sido || SIDO[0]).map(x => `<option ${x === a.sigungu ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label></div>`; box.dataset.picking = '1'; }
+  else if (act === 'nearme') { nearOther = false; nearAt = null; b.disabled = true; b.textContent = '위치를 찾는 중'; const box = b.closest('section'); try { spot = await where(); } catch (e) { toast(e.message); } if (box.isConnected) fillNear(box, Number(d.n)); }
   else if (act === 'map') showMap(Number(d.i));
   else if (act === 'login') Drive.login(GOOGLE_ID);
   else if (act === 'loginlater') { try { localStorage.setItem('baby-login-later', Date.now()); } catch { } render(); }
