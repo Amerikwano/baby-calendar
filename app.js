@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.30.0';
+const APP_VERSION = '0.31.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -360,7 +360,7 @@ const kmap = () => kmapP || (kmapP = new Promise((ok, no) => {
   s.onload = () => { try { kakao.maps.load(ok); } catch (e) { kmapP = null; no(e); } }; s.onerror = () => { kmapP = null; no(new Error('kakao')); }; document.head.append(s);
 }));
 // 할 일 문구로 무엇을 찾을지 고른다: [분류 코드 또는 검색어, 카테고리 검색인지]
-const STEP_Q = [[/체크인|체크아웃|숙소/, 'AD5', 1], [/호캉스/, '호텔'], [/애프터눈/, '호텔 라운지'], [/백화점/, '백화점'], [/사진관/, '커플사진관'], [/케이크/, '케이크'], [/선물 고르기/, '소품샵'], [/파인다이닝|레스토랑/, '레스토랑'], [/술집|한잔/, '술집'], [/빵집/, '빵집'], [/꽃집|꽃다발/, '꽃집'], [/점심|저녁|맛집|해산물/, 'FD6', 1], [/카페|디저트|만나기/, 'CE7', 1], [/공방/, '공방'], [/방탈출/, '방탈출카페'], [/보드게임/, '보드게임카페'], [/영화/, '영화관'], [/볼링|포켓볼/, '볼링장'], [/노래방/, '코인노래방'], [/서점/, '서점'], [/전시|팝업/, '전시'], [/아쿠아리움/, '아쿠아리움'], [/찜질방|스파/, '찜질방'], [/소품|가게/, '소품샵'], [/시장/, '시장'], [/공원|피크닉|산책/, '공원']];
+const STEP_Q = [[/^집에서|홈카페|홈트|몰아 보기|퍼즐|앨범|머리 땋|네일|배달|랜덤 역|종점|놀이터|학교|필름|배드민턴|별 보러/, ''], [/장 보기/, '마트'], [/PC방/, 'PC방'], [/만화카페/, '만화카페'], [/오락실/, '오락실'], [/인생네컷/, '인생네컷'], [/VR/, 'VR체험'], [/스크린/, '스크린야구'], [/클라이밍/, '클라이밍'], [/사격/, '실내사격장'], [/LP바/, 'LP바'], [/동물카페/, '동물카페'], [/낚시/, '실내낚시'], [/수목원/, '수목원'], [/베이킹/, '베이킹클래스'], [/칵테일/, '칵테일클래스'], [/플라워/, '플라워클래스'], [/요가/, '요가'], [/전통시장/, '전통시장'], [/편의점/, '편의점'], [/분식/, '분식'], [/문방구/, '문구점'], [/체크인|체크아웃|숙소/, 'AD5', 1], [/호캉스/, '호텔'], [/애프터눈/, '호텔 라운지'], [/백화점/, '백화점'], [/사진관/, '커플사진관'], [/케이크/, '케이크'], [/선물 고르기/, '소품샵'], [/파인다이닝|레스토랑/, '레스토랑'], [/술집|한잔/, '술집'], [/빵집/, '빵집'], [/꽃집|꽃다발/, '꽃집'], [/점심|저녁|맛집|해산물/, 'FD6', 1], [/카페|디저트|만나기/, 'CE7', 1], [/공방/, '공방'], [/방탈출/, '방탈출카페'], [/보드게임/, '보드게임카페'], [/영화/, '영화관'], [/볼링|포켓볼/, '볼링장'], [/노래방/, '코인노래방'], [/서점/, '서점'], [/전시|팝업/, '전시'], [/아쿠아리움/, '아쿠아리움'], [/찜질방|스파/, '찜질방'], [/소품|가게/, '소품샵'], [/시장/, '시장'], [/공원|피크닉|산책/, '공원']];
 const placeCache = new Map();
 // base: 기준 장소 이름. steps: [[시각, 할 일, 명소이름?]] → 각 단계에 가게를 붙여 돌려준다.
 async function realPlaces(base, steps, opt) {
@@ -373,7 +373,7 @@ async function realPlaces(base, steps, opt) {
   for (const st of steps) {
     if (st[2]) { out.push(Object.assign({ step: st }, { p: b })); continue; }
     if (/체크아웃/.test(st[1]) && opt.lodge) { out.push({ step: st, p: opt.lodge }); continue; } // 전날 묵은 숙소에서 나온다
-    const m = STEP_Q.find(([re]) => re.test(st[1])); if (!m) { out.push({ step: st }); continue; }
+    const m = STEP_Q.find(([re]) => re.test(st[1])); if (!m || !m[1]) { out.push({ step: st }); continue; }
     const k = m[1]; got[k] = got[k] || (m[2] ? await q(P.categorySearch, k, o) : await q(P.keywordSearch, k, o));
     const pool = got[k].filter(x => !seen.has(x.id) && !(k === 'CE7' && /보드게임|방탈출|만화|PC방|스터디/.test(x.category_name + x.place_name))).slice(0, 8), p = pool[Math.floor(Math.random() * Math.min(3, pool.length))];
     if (p) seen.add(p.id); out.push({ step: st, p });
@@ -547,7 +547,7 @@ const NIGHTS = ['당일', '1박 2일', '2박 3일', '3박 4일', '4박 5일'];
 function rdcDlg(themed) {
   const v = Object.assign({ theme: themed ? 'food' : '' }, rdc && Boolean(rdc.theme) === Boolean(themed) ? rdc : null) || {};
   if (!v.date) Object.assign(v, { date: nextSat(), nights: 0, from: '11:00', to: '21:00', area: SIDO_XY[spotArea()] ? spotArea() : SIDO_XY[db.sido] ? db.sido : '서울특별시' });
-  openDlg(`<form data-form="rdc"><h2>${themed ? '테마 데이트 코스 짜기' : '랜덤 데이트 코스 짜기'}</h2><p class="sub">${themed ? '테마를 고르면 그에 맞는 활동과 명소로 코스를 짜요.' : '날짜와 시간대를 고르면 그 안에서 코스를 뽑아요.'} 비가 오면 실내 위주로 짜요.</p>${themed ? [['평소 데이트', false], ['특별한 날', true]].map(([h, day]) => `<div class="f"><span>${h}</span><div class="opts themes">${Object.entries(Couple.THEMES).filter(([, t]) => Boolean(t.day) === day).map(([k, t]) => `<label><input type="radio" name="theme" value="${k}" ${v.theme === k ? 'checked' : ''}><span>${t.name}</span></label>`).join('')}</div></div>`).join('') : ''}<div class="two"><label class="f">시작 날짜<input type="date" name="date" required min="${today()}" value="${v.date}"></label><label class="f">기간<select name="nights">${NIGHTS.map((t, i) => `<option value="${i}" ${Number(v.nights) === i ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div><div class="two"><label class="f">첫날 시작<select name="from">${hourOpts(8, 20, v.from)}</select></label><label class="f">마지막 날 끝<select name="to">${hourOpts(11, 23, v.to)}</select></label></div><label class="f">지역<select name="area"><option value="전국" ${v.any ? 'selected' : ''}>전국 (지역도 랜덤)</option>${Object.keys(SIDO_XY).map(x => `<option ${!v.any && x === v.area ? 'selected' : ''}>${x}</option>`).join('')}</select></label><button class="btn main big">코스 뽑기</button><p class="sub">여러 날이면 가운데 날은 10시~21시로 짜고, 밤에는 숙소 체크인, 다음 날 아침엔 체크아웃을 넣어요. 날씨는 Open-Meteo에서 고른 지역의 대표 좌표로 알아와요(2주 안의 날짜만).</p></form>`);
+  openDlg(`<form data-form="rdc"><h2>${themed ? '테마 데이트 코스 짜기' : '랜덤 데이트 코스 짜기'}</h2><p class="sub">${themed ? '테마를 고르면 그에 맞는 활동과 명소로 코스를 짜요.' : '날짜와 시간대를 고르면 그 안에서 코스를 뽑아요.'} 비가 오면 실내 위주로 짜요.</p>${themed ? [['평소 데이트', false], ['특별한 날', true]].map(([h, day]) => `<div class="f"><span>${h}</span><div class="opts themes">${Object.entries(Couple.THEMES).filter(([, t]) => Boolean(t.day) === day).map(([k, t]) => `<label><input type="radio" name="theme" value="${k}" ${v.theme === k ? 'checked' : ''}><span>${t.name}</span></label>`).join('')}</div></div>`).join('') : ''}<div class="two"><label class="f">시작 날짜<input type="date" name="date" required min="${today()}" value="${v.date}"></label><label class="f">기간<select name="nights">${NIGHTS.map((t, i) => `<option value="${i}" ${Number(v.nights) === i ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div><div class="two"><label class="f">첫날 시작<select name="from">${hourOpts(8, 20, v.from)}</select></label><label class="f">마지막 날 끝<select name="to">${hourOpts(11, 23, v.to)}</select></label></div>${themed ? `<label class="f">옛날 살던 동네 (그 테마일 때만)<input name="place" maxlength="40" autocomplete="off" placeholder="예: 부산 동래구 온천동" value="${esc(v.place || '')}"></label>` : ''}<label class="f">지역<select name="area"><option value="전국" ${v.any ? 'selected' : ''}>전국 (지역도 랜덤)</option>${Object.keys(SIDO_XY).map(x => `<option ${!v.any && x === v.area ? 'selected' : ''}>${x}</option>`).join('')}</select></label><button class="btn main big">코스 뽑기</button><p class="sub">여러 날이면 가운데 날은 10시~21시로 짜고, 밤에는 숙소 체크인, 다음 날 아침엔 체크아웃을 넣어요. 날씨는 Open-Meteo에서 고른 지역의 대표 좌표로 알아와요(2주 안의 날짜만).</p></form>`);
 }
 const WX = c => c == null ? '' : c === 0 ? '맑음' : c <= 3 ? '구름' : c <= 48 ? '안개' : c <= 67 ? '비' : c <= 77 ? '눈' : c <= 82 ? '소나기' : '뇌우';
 // 날마다 그 시간대의 날씨(한 번에 받아 날짜별로 나눈다)
@@ -566,7 +566,7 @@ async function rdcWeather() {
 function rdcSetup(v) {
   const n = Number(v.nights) || 0;
   const any = v.area === '전국', ks = Object.keys(SIDO_XY);
-  rdc = { any, theme: v.theme || '', date: v.date, nights: n, from: v.from, to: v.to, area: any ? ks[Math.floor(Math.random() * ks.length)] : v.area, days: Array.from({ length: n + 1 }, (_, i) => ({ date: S.addDays(v.date, i), from: i === 0 ? v.from : '10:00', to: i === n ? v.to : '22:00' })) };
+  rdc = { any, place: (v.place || '').trim(), theme: v.theme || '', date: v.date, nights: n, from: v.from, to: v.to, area: any ? ks[Math.floor(Math.random() * ks.length)] : v.area, days: Array.from({ length: n + 1 }, (_, i) => ({ date: S.addDays(v.date, i), from: i === 0 ? v.from : '10:00', to: i === n ? v.to : '22:00' })) };
   if (n && rdc.days[0].to <= rdc.days[0].from) rdc.days[0].to = '23:00';
 }
 function rdcRoll() {
@@ -575,10 +575,14 @@ function rdcRoll() {
     const w = d.w || {}, left = sp.filter(x => !used.has(x.name)), pool = left.length ? left : sp;
     // 여러 날이면 첫날 밤엔 체크인, 다음 날 아침엔 체크아웃 시간을 비운다
     const to = n > 1 && i < n - 1 ? '21:00' : d.to, from = i > 0 ? '11:00' : d.from;
-    d.res = null; d.full = null; d.course = Couple.randomCourse({ theme: rdc.theme, from, to, rain: w.rain, hot: w.hi >= 28, cold: w.lo <= 3, spots: pool });
+    // 랜덤이면 두 번 중 한 번쯤 색다른 컨셉을 뽑는다(여러 날 여행엔 집·옛 동네는 빼고)
+    const cs = ['pc', 'retro', 'sports', 'trip', 'animal', 'oneday', 'food', 'cafe', 'active', 'nature', 'culture', 'night'].concat(n > 1 ? [] : ['home', 'home']);
+    d.concept = rdc.theme ? '' : Math.random() < .5 ? cs[Math.floor(Math.random() * cs.length)] : '';
+    const theme = rdc.theme || d.concept, th = Couple.THEMES[theme] || {};
+    d.res = null; d.full = null; d.course = Couple.randomCourse({ theme, from, to, rain: w.rain, hot: w.hi >= 28, cold: w.lo <= 3, spots: pool });
     if (i > 0) d.course.unshift(['10:30', '숙소 체크아웃 (보통 11시까지 퇴실)']);
     if (n > 1 && i < n - 1) d.course.push(['21:00', '숙소 체크인 (보통 15시부터 입실)']);
-    const sn = d.course.find(x => x[2]); d.base = sn ? sn[2] : pool.length ? pool[Math.floor(Math.random() * pool.length)].name : ''; used.add(d.base);
+    const sn = d.course.find(x => x[2]); d.base = th.home ? '' : th.place ? rdc.place : sn ? sn[2] : pool.length ? pool[Math.floor(Math.random() * pool.length)].name : ''; used.add(d.base);
   });
 }
 const md = dt => { const [, m, dd] = dt.split('-').map(Number); return `${m}월 ${dd}일 (${WD[dow(dt)]})`; };
@@ -589,10 +593,10 @@ const dayHead = (d, i) => rdc.days.length > 1 ? `${i + 1}일차 · ${md(d.date)}
 const rdcText = () => `[우리 수첩] ${rdcTitle()}\n${rdcSub()}\n` + rdc.days.map((d, i) => `\n■ ${dayHead(d, i)}\n날씨: ${wxText(d)}${d.base ? `\n${d.base} 근처` : ''}\n${withPlaces(d.course, d.res).map(([a, b]) => `${a}  ${b}`).join('\n')}`).join('\n');
 const dayFull = d => d.full || courseData(d.course, d.res, d.base).steps; // 고친 하루면 고친 단계
 function rdcShow() {
-  openDlg(`<form data-form="none"><div class="row between"><h2>${rdcTitle()}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="rdccap" aria-label="사진에 저장">${icon('capture')}</button><button type="button" class="sq" data-act="rdccap" aria-label="공유하기" data-share="1">${icon('share')}</button></span></div><p class="sub">${esc(rdcSub())}</p>${rdc.days.map((d, i) => d.full ? `<section class="rday" data-i="${i}"><h3>${dayHead(d, i)} · 고친 코스</h3><p class="notice${d.w && d.w.rain ? ' hot' : ''}">${esc(wxText(d))}</p>${stepsHtml(d.full)}<div class="route" hidden></div><button type="button" class="btn" data-act="rdcedit" data-i="${i}">이 날 코스 고치기</button></section>` : `<section class="rday" data-i="${i}"><h3>${dayHead(d, i)}</h3><p class="notice${d.w && d.w.rain ? ' hot' : ''}">${esc(wxText(d))}${d.base ? `<br><b>${esc(d.base)} 근처</b>에서 짰어요` : ''}</p><ol class="plan">${d.course.map(([a, b, nm]) => `<li><b>${a}</b><span>${nm ? `<button type="button" class="linkb" data-act="plan" data-n="${esc(nm)}">${esc(b)}</button>` : esc(b)}</span><em class="cost">${Couple.won(Couple.costOf(b, '', nm))}</em></li>`).join('')}</ol>${costTotal(d.course)}${d.base ? '<div class="route" hidden></div><p class="sub plnote">근처 가게를 찾는 중이에요</p>' : ''}<button type="button" class="btn" data-act="rdcedit" data-i="${i}">이 날 코스 고치기</button></section>`).join('')}<div class="row"><button type="button" class="btn main" data-act="rdcroll">다시 뽑기</button><button type="button" class="btn" data-act="rdcadd">달력에 넣기</button><button type="button" class="btn" data-act="rdc">조건 바꾸기</button></div><p class="sub">명소 이름을 누르면 그곳 코스를 볼 수 있어요.</p></form>`);
+  openDlg(`<form data-form="none"><div class="row between"><h2>${rdcTitle()}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="rdccap" aria-label="사진에 저장">${icon('capture')}</button><button type="button" class="sq" data-act="rdccap" aria-label="공유하기" data-share="1">${icon('share')}</button></span></div><p class="sub">${esc(rdcSub())}</p>${rdc.days.map((d, i) => d.full ? `<section class="rday" data-i="${i}"><h3>${dayHead(d, i)} · 고친 코스</h3><p class="notice${d.w && d.w.rain ? ' hot' : ''}">${esc(wxText(d))}</p>${stepsHtml(d.full)}<div class="route" hidden></div><button type="button" class="btn" data-act="rdcedit" data-i="${i}">이 날 코스 고치기</button></section>` : `<section class="rday" data-i="${i}"><h3>${dayHead(d, i)}</h3><p class="notice${d.w && d.w.rain ? ' hot' : ''}">${d.concept ? `<b>오늘의 컨셉: ${esc(Couple.THEMES[d.concept].name)}</b><br>` : ''}${esc(wxText(d))}${d.base ? `<br><b>${esc(d.base)} 근처</b>에서 짰어요` : Couple.THEMES[d.concept || rdc.theme] && Couple.THEMES[d.concept || rdc.theme].home ? '<br>집에서 보내는 하루예요' : ''}</p><ol class="plan">${d.course.map(([a, b, nm]) => `<li><b>${a}</b><span>${nm ? `<button type="button" class="linkb" data-act="plan" data-n="${esc(nm)}">${esc(b)}</button>` : esc(b)}</span><em class="cost">${Couple.won(Couple.costOf(b, '', nm))}</em></li>`).join('')}</ol>${costTotal(d.course)}${d.base ? '<div class="route" hidden></div><p class="sub plnote">근처 가게를 찾는 중이에요</p>' : ''}<button type="button" class="btn" data-act="rdcedit" data-i="${i}">이 날 코스 고치기</button></section>`).join('')}<div class="row"><button type="button" class="btn main" data-act="rdcroll">다시 뽑기</button><button type="button" class="btn" data-act="rdcadd">달력에 넣기</button><button type="button" class="btn" data-act="rdc">조건 바꾸기</button></div><p class="sub">명소 이름을 누르면 그곳 코스를 볼 수 있어요.</p></form>`);
   (async () => { let lodge = null; for (const [i, d] of rdc.days.entries()) { const sec = dlg.querySelector(`.rday[data-i="${i}"]`); if (!sec) return; if (d.full) { routeOf(sec.querySelector('.route'), d.full); lodge = (d.full.find(st => /체크인/.test(st[1])) || [])[3] || null; continue; } if (d.base) await fillCourse(sec, d.base, d.course, res => { d.res = res; }, { lodge }); const ci = d.res && d.res.out.find(x => /체크인/.test(x.step[1])); lodge = ci && ci.p ? ci.p : null; } })();
 }
-const rdcCard = () => `<button class="strip" data-act="rdc" data-theme="1">${icon('tips')}<span><b>테마 데이트 코스 짜기</b><em>맛집·야경·실내, 100일·생일·프러포즈 같은 특별한 날까지</em></span>${icon('right', 's')}</button><button class="strip" data-act="rdc" data-theme="">${icon('heart')}<span><b>랜덤 데이트 코스 짜기</b><em>날짜와 시간만 고르면 날씨에 맞춰 뽑아 드려요</em></span>${icon('right', 's')}</button>`;
+const rdcCard = () => `<button class="strip" data-act="rdc" data-theme="1">${icon('tips')}<span><b>테마 데이트 코스 짜기</b><em>집·PC방·옛날 살던 동네·레트로부터 100일·프러포즈까지</em></span>${icon('right', 's')}</button><button class="strip" data-act="rdc" data-theme="">${icon('heart')}<span><b>랜덤 데이트 코스 짜기</b><em>무엇이 나올지 몰라요. 날씨에 맞춰 뽑아 드려요</em></span>${icon('right', 's')}</button>`;
 const plainCard = (chip, title, body, link) => `<article class="paper"><div class="row"><span class="chip">${esc(chip)}</span></div><h2>${esc(title)}</h2><p>${esc(body)}</p>${link ? `<div class="row">${link}</div>` : ''}</article>`;
 function coupleTips() {
   const s = Couple.SEASON[Couple.season(today())];
@@ -1237,7 +1241,7 @@ async function moreActs(act, b, id) {
   else if (act === 'rdccopy') { try { await navigator.clipboard.writeText(rdcText()); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
   else if (act === 'rdccap') { shotMode = d.share ? 'share' : 'save'; courseShot({ title: rdcTitle(), sub: rdcSub(), days: rdc.days.map((d, i) => ({ head: `${rdc.days.length > 1 ? i + 1 + '일차 · ' : ''}${md(d.date)} · ${wxText(d)}${d.base ? ' · ' + d.base + ' 근처' : ''}`, steps: dayFull(d) })), file: `${rdc.date}-데이트코스.png` }); }
   else if (act === 'rdcadd') { const trip = rdc.days.length > 1 ? uid() : '';
-    if (await save(x => rdc.days.forEach((d, i) => x.events.push({ id: uid(), trip, day: i + 1, title: (rdc.theme ? Couple.THEMES[rdc.theme].name + ' ' : '') + (rdc.days.length > 1 ? `데이트 ${i + 1}일차` : '데이트'), date: d.date, time: dayFull(d)[0] ? dayFull(d)[0][0] : d.from, memo: '', course: { base: d.base, steps: dayFull(d) }, kid: K().id })))) { dlg.close(); toast('달력에 넣었어요'); } }
+    if (await save(x => rdc.days.forEach((d, i) => x.events.push({ id: uid(), trip, day: i + 1, title: ((rdc.theme || d.concept) ? Couple.THEMES[rdc.theme || d.concept].name + ' ' : '') + (rdc.days.length > 1 ? `데이트 ${i + 1}일차` : '데이트'), date: d.date, time: dayFull(d)[0] ? dayFull(d)[0][0] : d.from, memo: '', course: { base: d.base, steps: dayFull(d) }, kid: K().id })))) { dlg.close(); toast('달력에 넣었어요'); } }
   else if (act === 'grapeok') openDlg(`<form data-form="grape"><h2>정말 성공하셨나요?</h2><p><b>${esc(missionNow(K()))}</b></p><p class="sub">네를 누르면 포도 한 알을 채워요.</p><div class="row"><button class="btn main" value="ok">네</button><button type="button" class="btn" data-act="close">아니요</button></div></form>`);
   else if (act === 'grapenext') await save(x => { const k = x.kids.find(y => y.id === K().id); k.grape = Object.assign(grapeOf(k), { mi: grapeOf(k).mi + 1 }); });
   else if (act === 'grapeown') openDlg(`<form data-form="grapeown"><h2>미션 직접 쓰기</h2><label class="f">미션<input name="m" required maxlength="40" autocomplete="off" placeholder="예: 둘만의 암호 만들기"></label><p class="sub">쓴 미션은 이 수첩을 함께 쓰는 사람만 볼 수 있어요.</p>${acts()}</form>`);
@@ -1503,7 +1507,7 @@ document.addEventListener('submit', async ev => {
     const m = (v.m || '').trim(); if (!m) return;
     ok = await save(x => { const k = x.kids.find(y => y.id === K().id), g = grapeOf(k); g.custom = [m].concat(g.custom || []).slice(0, 30); g.mi = 0; k.grape = g; });
   }
-  if (kind === 'rdc') { const ok2 = f.querySelector('.btn.main'); if (!Number(v.nights) && v.to <= v.from) return toast('끝 시간이 시작보다 늦어야 해요'); ok2.disabled = true; ok2.textContent = '날씨를 보고 있어요'; rdcSetup(v); await rdcWeather(); rdcRoll(); rdcShow(); return; }
+  if (kind === 'rdc') { const ok2 = f.querySelector('.btn.main'); if (!Number(v.nights) && v.to <= v.from) return toast('끝 시간이 시작보다 늦어야 해요'); if (v.theme === 'memory' && !(v.place || '').trim()) return toast('옛날 살던 동네를 적어 주세요'); ok2.disabled = true; ok2.textContent = '날씨를 보고 있어요'; rdcSetup(v); await rdcWeather(); rdcRoll(); rdcShow(); return; }
   if (kind === 'cedit') return cedSave();
   if (kind === 'cedsearch') return cedSearch(Number(f.dataset.i), v.q);
   if (kind === 'planpick') {

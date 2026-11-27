@@ -1,5 +1,5 @@
 // 수정할 때 CACHE와 index.html의 APP_VERSION을 함께 올린다.
-const CACHE = 'baby-notebook-v0.30.0';
+const CACHE = 'baby-notebook-v0.31.0';
 const FILES = ['./', 'index.html', 'schedule.js', 'pet.js', 'couple.js', 'me.js', 'base-benefits.js', 'base-tips.js', 'local.js', 'regions.js', 'family.js', 'hospitals.js', 'drive.js', 'login.js', 'share.js', 'icons.js', 'care.js', 'album.js', 'notice.js', 'bell.js', 'swipe.js', 'media.js', 'viewer.js', 'sync.js', 'home.js', 'onboard.js', 'app.js', 'app.css', 'manifest.webmanifest', 'icon-192.png', 'apple-touch-icon.png'];
 importScripts('schedule.js', 'pet.js', 'couple.js', 'me.js', 'family.js', 'local.js', 'notice.js');
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
