@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.24.2';
+const APP_VERSION = '0.25.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -398,13 +398,50 @@ async function fillCourse(box, base, steps, after) {
   } catch { if (box.isConnected) box.querySelector('.plnote').textContent = '지금은 가게 추천과 지도를 불러올 수 없어요.'; }
 }
 const withPlaces = (steps, res) => steps.map((s, i) => { const p = res && res.out[i] && res.out[i].p; return [s[0], s[1] + (p && !s[2] ? ` - ${p.place_name}` : '')]; });
+// 코스 창을 그대로 그림으로: 제목, 날짜, 단계와 가게, 경로 지도(OpenStreetMap 타일 위에 번호와 점선)
+async function courseShot(o) { // o: { title, sub, steps } 또는 { title, sub, days:[{ head, steps }] }, steps:[[시각, 할 일, 명소?, 가게?]]
+  const W = 1080, P = 64, c = document.createElement('canvas'), g = c.getContext('2d'), F = (sz, wt) => `${wt || 400} ${sz}px "Apple SD Gothic Neo","Noto Sans KR",sans-serif`;
+  const wrap = (t, w, f) => { g.font = f; const out = []; let l = ''; for (const ch of t) { if (g.measureText(l + ch).width > w) { out.push(l); l = ''; } l += ch; } out.push(l); return out; };
+  const tx = P + 150, tw = W - tx - P, mapH = 620;
+  const days = (o.days || [{ head: '', steps: o.steps }]).map(d => ({ head: d.head, rows: d.steps.map(([a, b, n, p]) => ({ a, lines: wrap(b, tw, F(38, 600)), p: p && !n ? p : null })), pts: d.steps.map(s2 => s2[3]).filter(Boolean) }));
+  const H = 200 + days.reduce((h, d) => h + (d.head ? 80 : 0) + d.rows.reduce((h2, r) => h2 + r.lines.length * 52 + (r.p ? 46 : 0) + 34, 0) + (d.pts.length ? mapH + 50 : 0), 0) + 120;
+  c.width = W; c.height = H; g.fillStyle = '#fffdf9'; g.fillRect(0, 0, W, H);
+  let y = 100; g.fillStyle = '#4f3f3a'; g.font = F(54, 800); g.fillText(o.title, P, y); y += 60; g.fillStyle = '#7a685d'; g.font = F(32); g.fillText(o.sub, P, y); y += 80;
+  const wpx = (lon, lat, z) => { const s2 = 256 * 2 ** z, r = lat * Math.PI / 180; return [(+lon + 180) / 360 * s2, (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * s2]; };
+  for (const d of days) {
+    if (d.head) { g.fillStyle = '#4f3f3a'; g.font = F(40, 800); g.fillText(d.head, P, y); y += 80; }
+    d.rows.forEach(r => {
+      g.fillStyle = '#b87324'; g.font = F(38, 800); g.fillText(r.a, P, y);
+      g.fillStyle = '#4f3f3a'; g.font = F(38, 600); r.lines.forEach((l, i2) => g.fillText(l, tx, y + i2 * 52)); y += r.lines.length * 52;
+      if (r.p) { g.fillStyle = '#2f6ea8'; g.font = F(32, 700); g.fillText(r.p.place_name, tx, y - 4); const nw = g.measureText(r.p.place_name).width; g.fillStyle = '#7a685d'; g.font = F(28); g.fillText(`${r.p.category_name || ''}${r.p.distance ? ' · ' + (r.p.distance >= 1000 ? (r.p.distance / 1000).toFixed(1) + 'km' : r.p.distance + 'm') : ''}`, tx + nw + 16, y - 4); y += 46; }
+      y += 34;
+    });
+    if (!d.pts.length) continue;
+    const mx = P, my = y, mw = W - 2 * P;
+    let z = 17; for (; z > 3; z--) { const q = d.pts.map(p => wpx(p.x, p.y, z)), xs = q.map(a => a[0]), ys = q.map(a => a[1]); if (Math.max(...xs) - Math.min(...xs) < mw - 160 && Math.max(...ys) - Math.min(...ys) < mapH - 160) break; }
+    const xy = d.pts.map(p => wpx(p.x, p.y, z)), cx = (Math.max(...xy.map(a => a[0])) + Math.min(...xy.map(a => a[0]))) / 2, cy = (Math.max(...xy.map(a => a[1])) + Math.min(...xy.map(a => a[1]))) / 2, ox = cx - mw / 2, oy = cy - mapH / 2;
+    g.save(); g.beginPath(); g.roundRect(mx, my, mw, mapH, 36); g.clip(); g.fillStyle = '#eee8df'; g.fillRect(mx, my, mw, mapH);
+    const tiles = []; for (let a = Math.floor(ox / 256); a <= Math.floor((ox + mw) / 256); a++) for (let b = Math.floor(oy / 256); b <= Math.floor((oy + mapH) / 256); b++) tiles.push([a, b]);
+    await Promise.all(tiles.map(([a, b]) => new Promise(r => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => { g.drawImage(im, mx + a * 256 - ox, my + b * 256 - oy); r(); }; im.onerror = r; im.src = `https://tile.openstreetmap.org/${z}/${a}/${b}.png`; })));
+    const sp = xy.map(([a, b]) => [mx + a - ox, my + b - oy]);
+    g.setLineDash([18, 14]); g.lineWidth = 8; g.strokeStyle = 'rgba(184,115,36,.9)'; g.beginPath(); sp.forEach(([a, b], i2) => i2 ? g.lineTo(a, b) : g.moveTo(a, b)); g.stroke(); g.setLineDash([]);
+    sp.forEach(([a, b], i2) => { g.fillStyle = '#b87324'; g.strokeStyle = '#fff'; g.lineWidth = 6; g.beginPath(); g.arc(a, b, 30, 0, 7); g.fill(); g.stroke(); g.fillStyle = '#fff'; g.font = F(30, 800); g.textAlign = 'center'; g.fillText(String(i2 + 1), a, b + 11); g.textAlign = 'left'; });
+    g.restore(); y += mapH + 50;
+  }
+  const mapH2 = days.some(d => d.pts.length);
+  g.fillStyle = '#b87324'; g.font = F(30, 800); g.fillText('우리 수첩', P, H - 56); if (mapH2) { g.fillStyle = '#a59585'; g.font = F(22); g.textAlign = 'right'; g.fillText('지도 © OpenStreetMap 기여자', W - P, H - 56); g.textAlign = 'left'; }
+  const blob = await new Promise(r => { try { c.toBlob(r, 'image/png'); } catch { r(null); } }); if (!blob) return toast('이미지를 만들지 못했어요');
+  const file = new File([blob], o.file, { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) return navigator.share({ files: [file], title: o.title }).catch(() => { });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('이미지를 저장했어요');
+}
 // ── 고른 코스를 달력 일정에 담아 두고(가게 위치까지), 달력·홈에서 코스와 경로를 다시 본다
 const slimP = p => p ? { place_name: p.place_name, x: p.x, y: p.y, place_url: p.place_url, category_name: (p.category_name || '').split(' > ').pop(), distance: p.distance } : null;
 const courseData = (steps, res, base) => ({ base: base || '', steps: steps.map((st, i) => [st[0], st[1], st[2] || '', slimP(res && res.out[i] && res.out[i].p)]) });
 const cvText = e => `[우리 수첩] ${e.title}\n${kd(e.date)}${e.course.base ? ' · ' + e.course.base + ' 근처' : ''}\n\n${e.course.steps.map(([a, b, n, p]) => `${a}  ${b}${p && !n ? ' - ' + p.place_name : ''}`).join('\n')}`;
 function courseView(id) {
   const e = db.events.find(x => x.id === id); if (!e || !e.course) return eventDlg(id); const c = e.course;
-  openDlg(`<form data-form="none"><div class="row between"><h2>${esc(e.title)}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="cvcap" data-id="${id}" aria-label="이미지로 저장">${icon('capture')}</button><button type="button" class="sq" data-act="cvcopy" data-id="${id}" aria-label="글로 복사">${icon('copy')}</button></span></div><p class="sub">${kd(e.date)}${c.base ? ' · ' + esc(c.base) + ' 근처' : ''}</p><ol class="plan">${c.steps.map(([a, b, n, p]) => `<li><b>${a}</b><span>${n ? `<button type="button" class="linkb" data-act="plan" data-n="${esc(n)}">${esc(b)}</button>` : esc(b)}${p && !n ? placeLine(p) : ''}</span></li>`).join('')}</ol><div class="route" hidden></div><div class="row"><button type="button" class="btn" data-act="event" data-id="${id}">일정 고치기</button></div></form>`);
+  openDlg(`<form data-form="none"><div class="row between"><h2>${esc(e.title)}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="cvcap" data-id="${id}" aria-label="이미지로 저장">${icon('capture')}</button></span></div><p class="sub">${kd(e.date)}${c.base ? ' · ' + esc(c.base) + ' 근처' : ''}</p><ol class="plan">${c.steps.map(([a, b, n, p]) => `<li><b>${a}</b><span>${n ? `<button type="button" class="linkb" data-act="plan" data-n="${esc(n)}">${esc(b)}</button>` : esc(b)}${p && !n ? placeLine(p) : ''}</span></li>`).join('')}</ol><div class="route" hidden></div><div class="row"><button type="button" class="btn" data-act="event" data-id="${id}">일정 고치기</button></div></form>`);
   if (c.steps.some(st => st[3])) kmap().then(() => drawRoute(dlg.querySelector('.route'), { out: c.steps.map(st => ({ p: st[3] })) })).catch(() => { });
 }
 // 홈: 오늘 코스가 있으면 위에 보여 준다
@@ -436,7 +473,7 @@ async function courseImage(o) { // o: { title, sub, steps:[[시각, 할 일]], t
   if (navigator.canShare && navigator.canShare({ files: [file] })) return navigator.share({ files: [file], title: o.title }).catch(() => { });
   const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('이미지를 저장했어요');
 }
-function planImage(n) { const x = Couple.SPOTS.find(y => y.name === n), p = Couple.plan(x); return courseImage({ title: p.title, sub: x.desc, steps: planRes ? withPlaces(p.steps.map(st => [st[0], st[1], st[1].startsWith(n) ? n : '']), planRes) : p.steps, tip: '팁: ' + p.tip, img: Couple.IMG[n], file: `${n}-데이트코스.png` }); }
+function planImage(n) { const x = Couple.SPOTS.find(y => y.name === n), p = Couple.plan(x); if (x.sido !== '해외') { const st = p.steps.map(s2 => [s2[0], s2[1], s2[1].startsWith(n) ? n : '']); return courseShot({ title: p.title, sub: x.desc, steps: courseData(st, planRes, n).steps, file: `${n}-데이트코스.png` }); } return courseImage({ title: p.title, sub: x.desc, steps: planRes ? withPlaces(p.steps.map(st => [st[0], st[1], st[1].startsWith(n) ? n : '']), planRes) : p.steps, tip: '팁: ' + p.tip, img: Couple.IMG[n], file: `${n}-데이트코스.png` }); }
 
 /* ── 랜덤 데이트 코스(연애 수첩 홈) ── */
 // 시·도 대표 좌표: 날씨를 물을 때 이 좌표만 보낸다(내 위치는 보내지 않는다).
@@ -1117,13 +1154,13 @@ async function moreActs(act, b, id) {
   else if (act === 'planpick') { const keep = planRes; planPickDlg(d.n); planRes = keep; }
   else if (act === 'courseview') courseView(id);
   else if (act === 'cvcopy') { const e = db.events.find(x => x.id === id); try { await navigator.clipboard.writeText(cvText(e)); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
-  else if (act === 'cvcap') { const e = db.events.find(x => x.id === id); courseImage({ title: e.title, sub: kd(e.date) + (e.course.base ? ' · ' + e.course.base + ' 근처' : ''), steps: e.course.steps.map(([a, b, n, p]) => [a, b + (p && !n ? ' - ' + p.place_name : '')]), tip: '우리 수첩 데이트 코스', img: Couple.IMG[e.course.base], file: `${e.date}-데이트코스.png` }); }
+  else if (act === 'cvcap') { const e = db.events.find(x => x.id === id); courseShot({ title: e.title, sub: kd(e.date) + (e.course.base ? ' · ' + e.course.base + ' 근처' : ''), steps: e.course.steps, file: `${e.date}-데이트코스.png` }); }
   else if (act === 'plancopy') { const x = Couple.SPOTS.find(y => y.name === d.n); try { const p = Couple.plan(x); await navigator.clipboard.writeText(Couple.planText(x, planRes && planRes.base && dlg.open ? Object.assign({}, p, { steps: withPlaces(p.steps.map(st => [st[0], st[1], st[1].startsWith(x.name) ? x.name : '']), planRes) }) : p)); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
   else if (act === 'plancap') planImage(d.n);
   else if (act === 'rdc') rdcDlg();
   else if (act === 'rdcroll') { rdcRoll(); rdcShow(); }
   else if (act === 'rdccopy') { try { await navigator.clipboard.writeText(rdcText()); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
-  else if (act === 'rdccap') courseImage({ title: rdcTitle(), sub: rdcSub(), steps: rdc.days.flatMap((d, i) => (rdc.days.length > 1 ? [[`${i + 1}일차`, md(d.date)]] : []).concat(withPlaces(d.course, d.res))), tip: rdc.days.map((d, i) => (rdc.days.length > 1 ? `${i + 1}일차 ` : '') + '날씨: ' + wxText(d)).join(' / '), file: `${rdc.date}-데이트코스.png` });
+  else if (act === 'rdccap') courseShot({ title: rdcTitle(), sub: rdcSub(), days: rdc.days.map((d, i) => ({ head: `${rdc.days.length > 1 ? i + 1 + '일차 · ' : ''}${md(d.date)} · ${wxText(d)}${d.base ? ' · ' + d.base + ' 근처' : ''}`, steps: courseData(d.course, d.res, d.base).steps })), file: `${rdc.date}-데이트코스.png` });
   else if (act === 'rdcadd') { if (await save(x => rdc.days.forEach((d, i) => x.events.push({ id: uid(), title: rdc.days.length > 1 ? `데이트 ${i + 1}일차` : '데이트', date: d.date, time: d.course[0] ? d.course[0][0] : d.from, memo: '', course: courseData(d.course, d.res, d.base), kid: K().id })))) { dlg.close(); toast('달력에 넣었어요'); } }
   else if (act === 'grapeok') openDlg(`<form data-form="grape"><h2>정말 성공하셨나요?</h2><p><b>${esc(missionNow(K()))}</b></p><p class="sub">네를 누르면 포도 한 알을 채워요.</p><div class="row"><button class="btn main" value="ok">네</button><button type="button" class="btn" data-act="close">아니요</button></div></form>`);
   else if (act === 'grapenext') await save(x => { const k = x.kids.find(y => y.id === K().id); k.grape = Object.assign(grapeOf(k), { mi: grapeOf(k).mi + 1 }); });
