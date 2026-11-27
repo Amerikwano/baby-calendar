@@ -26,7 +26,7 @@ const shareOf = id => { const k = db.kids.find(x => x.id === id); return Share.t
 async function shareDlg() {
   const cur = K().id;
   openDlg(`<form data-form="none"><h2>카카오톡으로 공유하기</h2><div class="opts" id="shopts">${db.kids.map(k => `<label><input type="radio" name="sh" value="${k.id}" ${k.id === cur ? 'checked' : ''}><span>${esc(k.name)} ${k.born ? '며칠째' : '디데이'}</span></label>`).join('')}<label><input type="radio" name="sh" value=""><span>앱 소개만</span></label></div>
-  <div class="shcard"><img src="icon-192.png?v=2" alt=""><b id="sht"></b><span id="shd"></span><em>수첩 열기</em></div><button type="button" class="soc kakao" data-act="sendkakao" disabled>${KAKAO_MARK}카카오톡으로 보내기</button><button type="button" class="btn" data-act="sharelink">다른 앱으로 보내기</button><p class="sub">위에 보이는 글과 앱 주소만 카카오로 가요. 사진과 기록은 보내지 않아요. 받은 사람이 앱을 열어도 내 수첩은 보이지 않아요.</p></form>`);
+  <div class="shcard"><img src="icon-192.png?v=3" alt=""><b id="sht"></b><span id="shd"></span><em>수첩 열기</em></div><button type="button" class="soc kakao" data-act="sendkakao" disabled>${KAKAO_MARK}카카오톡으로 보내기</button><button type="button" class="btn" data-act="sharelink">다른 앱으로 보내기</button><p class="sub">위에 보이는 글과 앱 주소만 카카오로 가요. 사진과 기록은 보내지 않아요. 받은 사람이 앱을 열어도 내 수첩은 보이지 않아요.</p></form>`);
   const show = () => { const t = shareOf(dlg.querySelector('[name=sh]:checked').value); $('#sht').textContent = t.title; $('#shd').textContent = t.description; };
   $('#shopts').addEventListener('change', show); show();
   try { await loadKakao(); const b = dlg.querySelector('[data-act=sendkakao]'); if (b) b.disabled = false; } catch { toast('카카오톡을 불러오지 못했어요. 다른 앱으로 보내기를 눌러 주세요.'); }

@@ -1,5 +1,5 @@
 // 수정할 때 CACHE와 index.html의 APP_VERSION을 함께 올린다.
-const CACHE = 'baby-notebook-v0.16.3';
+const CACHE = 'baby-notebook-v0.16.4';
 const FILES = ['./', 'index.html', 'schedule.js', 'pet.js', 'couple.js', 'me.js', 'base-benefits.js', 'base-tips.js', 'local.js', 'regions.js', 'family.js', 'hospitals.js', 'drive.js', 'login.js', 'share.js', 'icons.js', 'care.js', 'album.js', 'notice.js', 'bell.js', 'swipe.js', 'media.js', 'viewer.js', 'sync.js', 'home.js', 'onboard.js', 'app.js', 'app.css', 'manifest.webmanifest', 'icon-192.png', 'apple-touch-icon.png'];
 importScripts('schedule.js', 'pet.js', 'couple.js', 'me.js', 'family.js', 'local.js', 'notice.js');
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
@@ -48,7 +48,7 @@ async function notify() {
   } catch { }
   // 받은 알림은 반드시 보여 줘야 한다(아이폰은 보여 주지 않으면 알림 권한을 거둔다).
   if (!m) m = { ids: ['check'], title: '우리 아기 수첩', body: '오늘 일정을 확인해 보세요' };
-  await self.registration.showNotification(m.title, { body: m.body, icon: 'icon-192.png?v=2', badge: 'icon-192.png?v=2', tag: m.ids[0] || 'test', lang: 'ko' });
+  await self.registration.showNotification(m.title, { body: m.body, icon: 'icon-192.png?v=3', badge: 'icon-192.png?v=3', tag: m.ids[0] || 'test', lang: 'ko' });
 }
 self.addEventListener('push', e => e.waitUntil(notify()));
 self.addEventListener('notificationclick', e => {
