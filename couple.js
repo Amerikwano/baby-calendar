@@ -156,7 +156,7 @@
       if (!dinner && t >= 1020 && t < 1200) { out.push([hhmm(t), '분위기 좋은 곳에서 저녁']); dinner = true; t += 90; continue; }
       // 식사 시간을 건너뛰지 않게 그 전까지만 쓸 수 있는 시간
       let room = left; if (!lunch && t < 660 && end > 720) room = Math.min(room, 780 - t); if (!dinner && t < 1020 && end > 1080) room = Math.min(room, 1140 - t);
-      if (!spot && outdoorOk && s0 && (nightSpot ? t >= 1110 && left >= 60 : t < 1080 && room >= 120)) { out.push([hhmm(t), nightSpot ? `${s0.name}에서 야경 보기` : `${s0.name} 가기`, s0.name]); spot = true; t += nightSpot ? 90 : 120; continue; }
+      if (!spot && outdoorOk && s0 && (nightSpot ? t >= 1110 && left >= 60 : t < 1080 && room >= 120)) { out.push([hhmm(t), nightSpot ? `${s0.name}에서 야경 보기` : `${s0.name} 가기`, s0.name]); spot = true; if (nightSpot) used.add('야경 보러 가기'); t += nightSpot ? 90 : 120; continue; }
       if (!cafe && t >= 840 && t < 1050) { out.push([hhmm(t), o.hot ? '시원한 디저트 카페' : '분위기 좋은 카페에서 쉬기']); cafe = true; t += 60; continue; }
       const night = t >= 1140;
       const ok = ACT.filter(a => !used.has(a[0]) && (outdoorOk || a[1]) && a[2] <= room && (!night || a[3] || a[1]) && !(o.cold && !a[1] && rnd() < .5) && !(a[0] === '야경 보러 가기' && t < 1080));
