@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.37.0';
+const APP_VERSION = '0.37.1';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -664,6 +664,7 @@ async function kakaoSpots(sido, gu, me) {
   l.forEach(x => kspots.set(x.place_name, { name: x.place_name, desc: (x.category_name || '').split(' > ').slice(-1)[0] + ' · ' + (x.road_address_name || x.address_name || ''), sido, at: { x: x.x, y: x.y, name: x.place_name } }));
   kspotCache.set(key, l); return l;
 }
+const srow = (n, sub, q, g, img) => `<div class="srow" data-act="plan" data-n="${esc(n)}">${img ? `<img src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="sic">${icon('visit')}</span>`}<span><b>${esc(n)}</b><em>${esc(sub)}</em></span>${g ? gmapBtn(q) : nmapBtn(q)}</div>`;
 const spotKind = () => localStorage.getItem('baby-spot-kind') || '', spotSort = () => localStorage.getItem('baby-spot-sort') || 'pop';
 const km = d => d == null ? '' : d >= 1000 ? (d / 1000).toFixed(1) + 'km' : d + 'm';
 async function fillKSpots() {
