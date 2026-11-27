@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.18.6';
+const APP_VERSION = '0.18.7';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
