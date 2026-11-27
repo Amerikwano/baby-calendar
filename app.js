@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.27.0';
+const APP_VERSION = '0.28.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -358,7 +358,7 @@ const kmap = () => kmapP || (kmapP = new Promise((ok, no) => {
   s.onload = () => { try { kakao.maps.load(ok); } catch (e) { kmapP = null; no(e); } }; s.onerror = () => { kmapP = null; no(new Error('kakao')); }; document.head.append(s);
 }));
 // 할 일 문구로 무엇을 찾을지 고른다: [분류 코드 또는 검색어, 카테고리 검색인지]
-const STEP_Q = [[/점심|저녁|맛집|해산물/, 'FD6', 1], [/카페|디저트|만나기/, 'CE7', 1], [/공방/, '공방'], [/방탈출/, '방탈출카페'], [/보드게임/, '보드게임카페'], [/영화/, '영화관'], [/볼링|포켓볼/, '볼링장'], [/노래방/, '코인노래방'], [/서점/, '서점'], [/전시|팝업/, '전시'], [/아쿠아리움/, '아쿠아리움'], [/찜질방|스파/, '찜질방'], [/소품|가게/, '소품샵'], [/시장/, '시장'], [/공원|피크닉|산책/, '공원']];
+const STEP_Q = [[/술집|한잔/, '술집'], [/빵집/, '빵집'], [/꽃집|꽃다발/, '꽃집'], [/점심|저녁|맛집|해산물/, 'FD6', 1], [/카페|디저트|만나기/, 'CE7', 1], [/공방/, '공방'], [/방탈출/, '방탈출카페'], [/보드게임/, '보드게임카페'], [/영화/, '영화관'], [/볼링|포켓볼/, '볼링장'], [/노래방/, '코인노래방'], [/서점/, '서점'], [/전시|팝업/, '전시'], [/아쿠아리움/, '아쿠아리움'], [/찜질방|스파/, '찜질방'], [/소품|가게/, '소품샵'], [/시장/, '시장'], [/공원|피크닉|산책/, '공원']];
 const placeCache = new Map();
 // base: 기준 장소 이름. steps: [[시각, 할 일, 명소이름?]] → 각 단계에 가게를 붙여 돌려준다.
 async function realPlaces(base, steps) {
@@ -387,7 +387,8 @@ function drawRoute(el, res) {
   map.setBounds(bd, 40, 40, 40, 40);
 }
 // 예상 비용 합계(2인). steps: [[시각, 할 일, 명소?, 가게?]]
-const stepsCost = steps => steps.reduce((t, [, b, n, p]) => t + Couple.costOf(b, p && p.category_name, n), 0);
+const stepCost = ([, b, n, p, c]) => c != null && c !== '' ? Number(c) : Couple.costOf(b, p && p.category_name, n); // c: 직접 고친 비용
+const stepsCost = steps => steps.reduce((t, st) => t + stepCost(st), 0);
 const costTotal = steps => { const t = stepsCost(steps); return t ? `<p class="ctotal"><span>예상 비용 (2인)</span><b>${Couple.won(t)}</b></p><p class="sub" style="margin-top:-4px">식당·카페는 보통 가격으로 어림한 값이에요. 입장료는 아는 곳만 넣었어요.</p>` : ''; };
 // 코스 창 안의 목록·지도를 진짜 가게로 채운다
 async function fillCourse(box, base, steps, after) {
@@ -408,7 +409,7 @@ async function courseShot(o) { // o: { title, sub, steps } 또는 { title, sub, 
   const W = 1080, P = 64, c = document.createElement('canvas'), g = c.getContext('2d'), F = (sz, wt) => `${wt || 400} ${sz}px "Apple SD Gothic Neo","Noto Sans KR",sans-serif`;
   const wrap = (t, w, f) => { g.font = f; const out = []; let l = ''; for (const ch of t) { if (g.measureText(l + ch).width > w) { out.push(l); l = ''; } l += ch; } out.push(l); return out; };
   const tx = P + 150, tw = W - tx - P, mapH = 620;
-  const days = (o.days || [{ head: '', steps: o.steps }]).map(d => ({ head: d.head, rows: d.steps.map(([a, b, n, p]) => ({ a, lines: wrap(b, tw - 170, F(38, 600)), p: p && !n ? p : null, cost: o.noCost ? 0 : Couple.costOf(b, p && p.category_name, n) })), pts: d.steps.map(s2 => s2[3]).filter(Boolean) }));
+  const days = (o.days || [{ head: '', steps: o.steps }]).map(d => ({ head: d.head, rows: d.steps.map(st => { const [a, b, n, p] = st; return { a, lines: wrap(b, tw - 170, F(38, 600)), p: p && !n ? p : null, cost: o.noCost ? 0 : stepCost(st) }; }), pts: d.steps.map(s2 => s2[3]).filter(Boolean) }));
   const H = 200 + days.length * 90 + days.reduce((h, d) => h + (d.head ? 80 : 0) + d.rows.reduce((h2, r) => h2 + r.lines.length * 52 + (r.p ? 46 : 0) + 34, 0) + (d.pts.length ? mapH + 50 : 0), 0) + 120;
   c.width = W; c.height = H; g.fillStyle = '#fffdf9'; g.fillRect(0, 0, W, H);
   let y = 100; g.fillStyle = '#4f3f3a'; g.font = F(54, 800); g.fillText(o.title, P, y); y += 60; g.fillStyle = '#7a685d'; g.font = F(32); g.fillText(o.sub, P, y); y += 80;
@@ -446,15 +447,15 @@ const courseData = (steps, res, base) => ({ base: base || '', steps: steps.map((
 const cvText = e => `[우리 수첩] ${e.title}\n${kd(e.date)}${e.course.base ? ' · ' + e.course.base + ' 근처' : ''}\n\n${e.course.steps.map(([a, b, n, p]) => `${a}  ${b}${p && !n ? ' - ' + p.place_name : ''}`).join('\n')}`;
 function courseView(id) {
   const e = db.events.find(x => x.id === id); if (!e || !e.course) return eventDlg(id); const c = e.course;
-  openDlg(`<form data-form="none"><div class="row between"><h2>${esc(e.title)}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="cvcap" data-id="${id}" aria-label="사진에 저장">${icon('capture')}</button><button type="button" class="sq" data-act="cvcap" data-id="${id}" aria-label="공유하기" data-share="1">${icon('share')}</button></span></div><p class="sub">${kd(e.date)}${c.base ? ' · ' + esc(c.base) + ' 근처' : ''}</p><ol class="plan">${c.steps.map(([a, b, n, p]) => `<li><b>${a}</b><span>${n ? `<button type="button" class="linkb" data-act="plan" data-n="${esc(n)}">${esc(b)}</button>` : esc(b)}${p && !n ? placeLine(p) : ''}</span><em class="cost">${Couple.won(Couple.costOf(b, p && p.category_name, n))}</em></li>`).join('')}</ol>${costTotal(c.steps)}<div class="route" hidden></div><div class="row"><button type="button" class="btn main" data-act="cedit" data-id="${id}">코스 고치기</button><button type="button" class="btn" data-act="event" data-id="${id}">일정 고치기</button></div></form>`);
+  openDlg(`<form data-form="none"><div class="row between"><h2>${esc(e.title)}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="cvcap" data-id="${id}" aria-label="사진에 저장">${icon('capture')}</button><button type="button" class="sq" data-act="cvcap" data-id="${id}" aria-label="공유하기" data-share="1">${icon('share')}</button></span></div><p class="sub">${kd(e.date)}${c.base ? ' · ' + esc(c.base) + ' 근처' : ''}</p><ol class="plan">${c.steps.map(st => { const [a, b, n, p] = st; return `<li><b>${a}</b><span>${n ? `<button type="button" class="linkb" data-act="plan" data-n="${esc(n)}">${esc(b)}</button>` : esc(b)}${p && !n ? placeLine(p) : ''}</span><em class="cost">${Couple.won(stepCost(st))}</em></li>`; }).join('')}</ol>${costTotal(c.steps)}<div class="route" hidden></div><div class="row"><button type="button" class="btn main" data-act="cedit" data-id="${id}">코스 고치기</button><button type="button" class="btn" data-act="event" data-id="${id}">일정 고치기</button></div></form>`);
   if (c.steps.some(st => st[3])) kmap().then(() => drawRoute(dlg.querySelector('.route'), { out: c.steps.map(st => ({ p: st[3] })) })).catch(() => { });
 }
 // ── 저장한 코스 고치기: 시간·할 일·장소 바꾸기, 단계 더하기·빼기
 let ced = null, cedHits = [];
 function cedOpen(id) { const e = db.events.find(x => x.id === id); if (!e || !e.course) return; ced = { id, title: e.title, base: e.course.base, steps: JSON.parse(JSON.stringify(e.course.steps)) }; cedShow(); }
-function cedSync() { const f = dlg.querySelector('form[data-form=cedit]'); if (!f) return; ced.title = f.elements.title.value.trim() || ced.title; ced.steps.forEach((st, i) => { st[0] = f.elements['t' + i].value || st[0]; st[1] = f.elements['b' + i].value.trim() || st[1]; }); }
+function cedSync() { const f = dlg.querySelector('form[data-form=cedit]'); if (!f) return; ced.title = f.elements.title.value.trim() || ced.title; ced.steps.forEach((st, i) => { st[0] = f.elements['t' + i].value || st[0]; st[1] = f.elements['b' + i].value.trim() || st[1]; const c = f.elements['c' + i].value; st[4] = c === '' ? null : Math.max(0, Math.round(Number(c))); }); }
 function cedShow() {
-  openDlg(`<form data-form="cedit"><h2>코스 고치기</h2><label class="f">제목<input name="title" maxlength="40" value="${esc(ced.title)}"></label><div class="stack" style="gap:12px">${ced.steps.map(([a, b, n, p], i) => `<div class="cedrow"><div class="two" style="grid-template-columns:110px 1fr"><input type="time" name="t${i}" value="${a}" aria-label="시간"><input name="b${i}" maxlength="60" value="${esc(b)}" aria-label="할 일"></div><div class="row" style="gap:6px">${p ? `<span class="chip">${esc(p.place_name)}</span>` : n ? `<span class="chip">${esc(n)}</span>` : '<span class="sub">장소 없음</span>'}<button type="button" class="btn" data-act="cedplace" data-i="${i}">${p || n ? '장소 바꾸기' : '장소 넣기'}</button>${p && !n ? `<button type="button" class="btn" data-act="cednoplace" data-i="${i}">장소 빼기</button>` : ''}<button type="button" class="btn danger" data-act="ceddel" data-i="${i}">단계 지우기</button></div></div>`).join('')}</div><button type="button" class="btn" data-act="cedadd">+ 단계 더하기</button><p class="sub">저장하면 시간 순서대로 정리되고, 경로 지도도 바뀐 장소로 다시 그려요.</p>${acts()}</form>`);
+  openDlg(`<form data-form="cedit"><h2>코스 고치기</h2><label class="f">제목<input name="title" maxlength="40" value="${esc(ced.title)}"></label><div class="stack" style="gap:12px">${ced.steps.map(([a, b, n, p, cc], i) => `<div class="cedrow"><div class="two" style="grid-template-columns:110px 1fr"><input type="time" name="t${i}" value="${a}" aria-label="시간"><input name="b${i}" maxlength="60" value="${esc(b)}" aria-label="할 일"></div><label class="costin">예상 비용 (2인)<input type="number" inputmode="numeric" name="c${i}" min="0" max="10000000" step="1000" value="${cc != null && cc !== '' ? cc : ''}" placeholder="${Couple.costOf(b, p && p.category_name, n)}"><span>원</span></label><div class="row" style="gap:6px">${p ? `<span class="chip">${esc(p.place_name)}</span>` : n ? `<span class="chip">${esc(n)}</span>` : '<span class="sub">장소 없음</span>'}<button type="button" class="btn" data-act="cedplace" data-i="${i}">${p || n ? '장소 바꾸기' : '장소 넣기'}</button>${p && !n ? `<button type="button" class="btn" data-act="cednoplace" data-i="${i}">장소 빼기</button>` : ''}<button type="button" class="btn danger" data-act="ceddel" data-i="${i}">단계 지우기</button></div></div>`).join('')}</div><button type="button" class="btn" data-act="cedadd">+ 단계 더하기</button><p class="sub">비용을 비워 두면 어림값을 써요. 저장하면 시간 순서대로 정리되고, 경로 지도도 바뀐 장소로 다시 그려요.</p>${acts()}</form>`);
 }
 // 장소 바꾸기: 코스 근처에서 검색(카카오 장소 검색)
 const cedCenter = () => { const p = ced.steps.map(st => st[3]).find(Boolean); return p ? { x: p.x, y: p.y } : null; };
@@ -522,9 +523,10 @@ let rdc = null; // { date, nights, from, to, area, days:[{ date, from, to, w, co
 const nextSat = () => { const d = new Date(); d.setDate(d.getDate() + (6 - d.getDay() + 7) % 7); return d.toLocaleDateString('sv-SE'); };
 const hourOpts = (a, b, v) => Array.from({ length: b - a + 1 }, (_, i) => a + i).map(h => `<option value="${String(h).padStart(2, '0')}:00" ${v === String(h).padStart(2, '0') + ':00' ? 'selected' : ''}>${h}시</option>`).join('');
 const NIGHTS = ['당일', '1박 2일', '2박 3일', '3박 4일', '4박 5일'];
-function rdcDlg() {
-  const v = rdc || { date: nextSat(), nights: 0, from: '11:00', to: '21:00', area: SIDO_XY[spotArea()] ? spotArea() : SIDO_XY[db.sido] ? db.sido : '서울특별시' };
-  openDlg(`<form data-form="rdc"><h2>랜덤 데이트 코스 짜기</h2><p class="sub">날짜와 시간대를 고르면 그 안에서 코스를 뽑아요. 비가 오면 실내 위주로 짜요.</p><div class="two"><label class="f">시작 날짜<input type="date" name="date" required min="${today()}" value="${v.date}"></label><label class="f">기간<select name="nights">${NIGHTS.map((t, i) => `<option value="${i}" ${Number(v.nights) === i ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div><div class="two"><label class="f">첫날 시작<select name="from">${hourOpts(8, 20, v.from)}</select></label><label class="f">마지막 날 끝<select name="to">${hourOpts(11, 23, v.to)}</select></label></div><label class="f">지역<select name="area">${Object.keys(SIDO_XY).map(x => `<option ${x === v.area ? 'selected' : ''}>${x}</option>`).join('')}</select></label><button class="btn main big">코스 뽑기</button><p class="sub">여러 날이면 가운데 날은 10시~21시로 짜고, 밤에는 숙소 체크인, 다음 날 아침엔 체크아웃을 넣어요. 날씨는 Open-Meteo에서 고른 지역의 대표 좌표로 알아와요(2주 안의 날짜만).</p></form>`);
+function rdcDlg(themed) {
+  const v = Object.assign({ theme: themed ? 'food' : '' }, rdc && Boolean(rdc.theme) === Boolean(themed) ? rdc : null) || {};
+  if (!v.date) Object.assign(v, { date: nextSat(), nights: 0, from: '11:00', to: '21:00', area: SIDO_XY[spotArea()] ? spotArea() : SIDO_XY[db.sido] ? db.sido : '서울특별시' });
+  openDlg(`<form data-form="rdc"><h2>${themed ? '테마 데이트 코스 짜기' : '랜덤 데이트 코스 짜기'}</h2><p class="sub">${themed ? '테마를 고르면 그에 맞는 활동과 명소로 코스를 짜요.' : '날짜와 시간대를 고르면 그 안에서 코스를 뽑아요.'} 비가 오면 실내 위주로 짜요.</p>${themed ? `<div class="f"><span>테마</span><div class="opts themes">${Object.entries(Couple.THEMES).map(([k, t]) => `<label><input type="radio" name="theme" value="${k}" ${v.theme === k ? 'checked' : ''}><span>${t.name}</span></label>`).join('')}</div></div>` : ''}<div class="two"><label class="f">시작 날짜<input type="date" name="date" required min="${today()}" value="${v.date}"></label><label class="f">기간<select name="nights">${NIGHTS.map((t, i) => `<option value="${i}" ${Number(v.nights) === i ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div><div class="two"><label class="f">첫날 시작<select name="from">${hourOpts(8, 20, v.from)}</select></label><label class="f">마지막 날 끝<select name="to">${hourOpts(11, 23, v.to)}</select></label></div><label class="f">지역<select name="area">${Object.keys(SIDO_XY).map(x => `<option ${x === v.area ? 'selected' : ''}>${x}</option>`).join('')}</select></label><button class="btn main big">코스 뽑기</button><p class="sub">여러 날이면 가운데 날은 10시~21시로 짜고, 밤에는 숙소 체크인, 다음 날 아침엔 체크아웃을 넣어요. 날씨는 Open-Meteo에서 고른 지역의 대표 좌표로 알아와요(2주 안의 날짜만).</p></form>`);
 }
 const WX = c => c == null ? '' : c === 0 ? '맑음' : c <= 3 ? '구름' : c <= 48 ? '안개' : c <= 67 ? '비' : c <= 77 ? '눈' : c <= 82 ? '소나기' : '뇌우';
 // 날마다 그 시간대의 날씨(한 번에 받아 날짜별로 나눈다)
@@ -542,7 +544,7 @@ async function rdcWeather() {
 }
 function rdcSetup(v) {
   const n = Number(v.nights) || 0;
-  rdc = { date: v.date, nights: n, from: v.from, to: v.to, area: v.area, days: Array.from({ length: n + 1 }, (_, i) => ({ date: S.addDays(v.date, i), from: i === 0 ? v.from : '10:00', to: i === n ? v.to : '22:00' })) };
+  rdc = { theme: v.theme || '', date: v.date, nights: n, from: v.from, to: v.to, area: v.area, days: Array.from({ length: n + 1 }, (_, i) => ({ date: S.addDays(v.date, i), from: i === 0 ? v.from : '10:00', to: i === n ? v.to : '22:00' })) };
   if (n && rdc.days[0].to <= rdc.days[0].from) rdc.days[0].to = '23:00';
 }
 function rdcRoll() {
@@ -551,14 +553,14 @@ function rdcRoll() {
     const w = d.w || {}, left = sp.filter(x => !used.has(x.name)), pool = left.length ? left : sp;
     // 여러 날이면 첫날 밤엔 체크인, 다음 날 아침엔 체크아웃 시간을 비운다
     const to = n > 1 && i < n - 1 ? '21:00' : d.to, from = i > 0 ? '11:00' : d.from;
-    d.res = null; d.course = Couple.randomCourse({ from, to, rain: w.rain, hot: w.hi >= 28, cold: w.lo <= 3, spots: pool });
+    d.res = null; d.course = Couple.randomCourse({ theme: rdc.theme, from, to, rain: w.rain, hot: w.hi >= 28, cold: w.lo <= 3, spots: pool });
     if (i > 0) d.course.unshift(['10:00', '숙소 체크아웃']);
     if (n > 1 && i < n - 1) d.course.push(['21:00', '숙소 체크인하고 쉬기']);
     const sn = d.course.find(x => x[2]); d.base = sn ? sn[2] : pool.length ? pool[Math.floor(Math.random() * pool.length)].name : ''; used.add(d.base);
   });
 }
 const md = dt => { const [, m, dd] = dt.split('-').map(Number); return `${m}월 ${dd}일 (${WD[dow(dt)]})`; };
-const rdcTitle = () => rdc.days.length > 1 ? `${NIGHTS[rdc.nights]} 데이트 코스` : `${md(rdc.date).replace(/ \(.\)$/, '')} 데이트 코스`;
+const rdcTitle = () => { const th = rdc.theme ? Couple.THEMES[rdc.theme].name + ' ' : ''; return rdc.days.length > 1 ? `${NIGHTS[rdc.nights]} ${th}데이트 코스` : `${md(rdc.date).replace(/ \(.\)$/, '')} ${th}데이트 코스`; };
 const wxText = d => d.w ? `${d.w.sky}, ${d.w.lo}~${d.w.hi}°, 비 올 확률 ${d.w.pr}%${d.w.rain ? ' · 실내 위주' : ''}` : '날씨 정보 없음(2주 안의 날짜만)';
 const rdcSub = () => `${rdc.area.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주')} · ${md(rdc.days[0].date)}${rdc.days.length > 1 ? ' ~ ' + md(rdc.days[rdc.days.length - 1].date) : ''}`;
 const dayHead = (d, i) => rdc.days.length > 1 ? `${i + 1}일차 · ${md(d.date)}` : md(d.date);
@@ -567,7 +569,7 @@ function rdcShow() {
   openDlg(`<form data-form="none"><div class="row between"><h2>${rdcTitle()}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="rdccap" aria-label="사진에 저장">${icon('capture')}</button><button type="button" class="sq" data-act="rdccap" aria-label="공유하기" data-share="1">${icon('share')}</button></span></div><p class="sub">${esc(rdcSub())}</p>${rdc.days.map((d, i) => `<section class="rday" data-i="${i}"><h3>${dayHead(d, i)}</h3><p class="notice${d.w && d.w.rain ? ' hot' : ''}">${esc(wxText(d))}${d.base ? `<br><b>${esc(d.base)} 근처</b>에서 짰어요` : ''}</p><ol class="plan">${d.course.map(([a, b, nm]) => `<li><b>${a}</b><span>${nm ? `<button type="button" class="linkb" data-act="plan" data-n="${esc(nm)}">${esc(b)}</button>` : esc(b)}</span><em class="cost">${Couple.won(Couple.costOf(b, '', nm))}</em></li>`).join('')}</ol>${costTotal(d.course)}${d.base ? '<div class="route" hidden></div><p class="sub plnote">근처 가게를 찾는 중이에요</p>' : ''}</section>`).join('')}<div class="row"><button type="button" class="btn main" data-act="rdcroll">다시 뽑기</button><button type="button" class="btn" data-act="rdcadd">달력에 넣기</button><button type="button" class="btn" data-act="rdc">조건 바꾸기</button></div><p class="sub">명소 이름을 누르면 그곳 코스를 볼 수 있어요.</p></form>`);
   rdc.days.forEach((d, i) => { if (d.base) fillCourse(dlg.querySelector(`.rday[data-i="${i}"]`), d.base, d.course, res => { d.res = res; }); });
 }
-const rdcCard = () => `<button class="strip" data-act="rdc">${icon('heart')}<span><b>랜덤 데이트 코스 짜기</b><em>날짜와 시간만 고르면 날씨에 맞춰 뽑아 드려요</em></span>${icon('right', 's')}</button>`;
+const rdcCard = () => `<button class="strip" data-act="rdc" data-theme="1">${icon('tips')}<span><b>테마 데이트 코스 짜기</b><em>맛집·카페·야경·실내 등 테마를 골라 짜 드려요</em></span>${icon('right', 's')}</button><button class="strip" data-act="rdc" data-theme="">${icon('heart')}<span><b>랜덤 데이트 코스 짜기</b><em>날짜와 시간만 고르면 날씨에 맞춰 뽑아 드려요</em></span>${icon('right', 's')}</button>`;
 const plainCard = (chip, title, body, link) => `<article class="paper"><div class="row"><span class="chip">${esc(chip)}</span></div><h2>${esc(title)}</h2><p>${esc(body)}</p>${link ? `<div class="row">${link}</div>` : ''}</article>`;
 function coupleTips() {
   const s = Couple.SEASON[Couple.season(today())];
@@ -1204,11 +1206,11 @@ async function moreActs(act, b, id) {
   else if (act === 'cvcap') { shotMode = d.share ? 'share' : 'save'; { const e = db.events.find(x => x.id === id); courseShot({ title: e.title, sub: kd(e.date) + (e.course.base ? ' · ' + e.course.base + ' 근처' : ''), steps: e.course.steps, file: `${e.date}-데이트코스.png` }); } }
   else if (act === 'plancopy') { const x = Couple.SPOTS.find(y => y.name === d.n); try { const p = Couple.plan(x); await navigator.clipboard.writeText(Couple.planText(x, planRes && planRes.base && dlg.open ? Object.assign({}, p, { steps: withPlaces(p.steps.map(st => [st[0], st[1], st[1].startsWith(x.name) ? x.name : '']), planRes) }) : p)); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
   else if (act === 'plancap') { shotMode = d.share ? 'share' : 'save'; planImage(d.n); }
-  else if (act === 'rdc') rdcDlg();
+  else if (act === 'rdc') rdcDlg(d.theme === '1' || (d.theme == null && rdc && rdc.theme && dlg.open));
   else if (act === 'rdcroll') { rdcRoll(); rdcShow(); }
   else if (act === 'rdccopy') { try { await navigator.clipboard.writeText(rdcText()); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
   else if (act === 'rdccap') { shotMode = d.share ? 'share' : 'save'; courseShot({ title: rdcTitle(), sub: rdcSub(), days: rdc.days.map((d, i) => ({ head: `${rdc.days.length > 1 ? i + 1 + '일차 · ' : ''}${md(d.date)} · ${wxText(d)}${d.base ? ' · ' + d.base + ' 근처' : ''}`, steps: courseData(d.course, d.res, d.base).steps })), file: `${rdc.date}-데이트코스.png` }); }
-  else if (act === 'rdcadd') { if (await save(x => rdc.days.forEach((d, i) => x.events.push({ id: uid(), title: rdc.days.length > 1 ? `데이트 ${i + 1}일차` : '데이트', date: d.date, time: d.course[0] ? d.course[0][0] : d.from, memo: '', course: courseData(d.course, d.res, d.base), kid: K().id })))) { dlg.close(); toast('달력에 넣었어요'); } }
+  else if (act === 'rdcadd') { if (await save(x => rdc.days.forEach((d, i) => x.events.push({ id: uid(), title: (rdc.theme ? Couple.THEMES[rdc.theme].name + ' ' : '') + (rdc.days.length > 1 ? `데이트 ${i + 1}일차` : '데이트'), date: d.date, time: d.course[0] ? d.course[0][0] : d.from, memo: '', course: courseData(d.course, d.res, d.base), kid: K().id })))) { dlg.close(); toast('달력에 넣었어요'); } }
   else if (act === 'grapeok') openDlg(`<form data-form="grape"><h2>정말 성공하셨나요?</h2><p><b>${esc(missionNow(K()))}</b></p><p class="sub">네를 누르면 포도 한 알을 채워요.</p><div class="row"><button class="btn main" value="ok">네</button><button type="button" class="btn" data-act="close">아니요</button></div></form>`);
   else if (act === 'grapenext') await save(x => { const k = x.kids.find(y => y.id === K().id); k.grape = Object.assign(grapeOf(k), { mi: grapeOf(k).mi + 1 }); });
   else if (act === 'grapeown') openDlg(`<form data-form="grapeown"><h2>미션 직접 쓰기</h2><label class="f">미션<input name="m" required maxlength="40" autocomplete="off" placeholder="예: 둘만의 암호 만들기"></label><p class="sub">쓴 미션은 이 수첩을 함께 쓰는 사람만 볼 수 있어요.</p>${acts()}</form>`);

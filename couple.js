@@ -146,20 +146,36 @@
   ];
   const mins = s => { const [h, m] = s.split(':').map(Number); return h * 60 + m; }, hhmm = n => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
   // o: { from:'11:00', to:'20:00', rain:bool, hot:bool, cold:bool, spots:[명소] }, rnd: 0~1 난수 함수
+  // 테마: 그 테마 활동을 먼저 고르고, 모자라면 다른 활동으로 채운다. extra: [이름, 실내?, 분, 저녁 뒤에도?]
+  const THEMES = {
+    food: { name: '맛집 탐방', acts: ['시장 구경과 길거리 음식'], extra: [['유명 빵집 들르기', 1, 45], ['디저트 가게 투어', 1, 60], ['분위기 좋은 술집에서 한잔', 1, 90, 1]], lunch: '줄 서는 맛집에서 점심', dinner: '현지인 맛집에서 저녁' },
+    cafe: { name: '카페 투어', acts: ['서점 데이트'], extra: [['베이커리 카페', 1, 60], ['루프탑 카페', 1, 60, 1], ['감성 디저트 카페', 1, 60]], cafe: '분위기 좋은 카페' },
+    indoor: { name: '실내 데이트', indoor: true, acts: ['영화 보기', '보드게임 카페', '방탈출 카페', '전시·팝업 구경', '아쿠아리움', '실내 쇼핑몰 구경', '찜질방·스파', '공방 체험(반지·향수·도자기)'] },
+    active: { name: '액티비티', acts: ['방탈출 카페', '볼링이나 포켓볼', '자전거 타기', '코인 노래방', '보드게임 카페', '근교 드라이브'] },
+    night: { name: '야경', night: true, acts: ['야경 보러 가기', '사진 찍기 좋은 골목 걷기', '코인 노래방'], extra: [['분위기 좋은 술집에서 한잔', 1, 90, 1]], dinner: '야경이 보이는 곳에서 저녁' },
+    nature: { name: '힐링·자연', outdoor: true, acts: ['공원 산책', '강변·호숫가 피크닉', '자전거 타기', '근교 드라이브', '사진 찍기 좋은 골목 걷기'] },
+    culture: { name: '문화·전시', acts: ['전시·팝업 구경', '영화 보기', '서점 데이트', '공방 체험(반지·향수·도자기)'] },
+    special: { name: '기념일 특별', acts: ['공방 체험(반지·향수·도자기)', '사진 찍기 좋은 골목 걷기', '야경 보러 가기'], extra: [['꽃집에서 꽃다발 고르기', 1, 30]], dinner: '분위기 좋은 레스토랑에서 저녁' },
+  };
   function randomCourse(o, rnd) {
     rnd = rnd || Math.random; const pick = l => l[Math.floor(rnd() * l.length)];
     const end = mins(o.to), out = [], used = new Set(); let t = mins(o.from), lunch = false, dinner = false, cafe = false, spot = false;
-    const outdoorOk = !o.rain, s0 = o.spots && o.spots.length ? pick(o.spots) : null, nightSpot = s0 && /야경|빛|분수|타워|전망|밤/.test(s0.name + s0.desc); // 야경 명소는 저녁 뒤에
+    const th = THEMES[o.theme] || null, nightRe = /야경|빛|분수|타워|전망|밤/;
+    // 테마에 맞는 명소를 먼저 고른다(야경 테마는 야경 명소, 자연 테마는 야경 아닌 곳)
+    const sp = th && o.spots ? (th.night ? o.spots.filter(x => nightRe.test(x.name + x.desc)) : th.outdoor ? o.spots.filter(x => !nightRe.test(x.name + x.desc)) : o.spots) : o.spots;
+    const outdoorOk = !o.rain && !(th && th.indoor), s0 = sp && sp.length ? pick(sp) : o.spots && o.spots.length && !(th && th.indoor) ? pick(o.spots) : null, nightSpot = s0 && /야경|빛|분수|타워|전망|밤/.test(s0.name + s0.desc); // 야경 명소는 저녁 뒤에
     while (t < end - 30) {
       const left = end - t;
-      if (!lunch && t >= 660 && t < 840) { out.push([hhmm(t), '근처 맛집에서 점심']); lunch = true; t += 60; continue; }
-      if (!dinner && t >= 1020 && t < 1200) { out.push([hhmm(t), '분위기 좋은 곳에서 저녁']); dinner = true; t += 90; continue; }
+      if (!lunch && t >= 660 && t < 840) { out.push([hhmm(t), (th && th.lunch) || '근처 맛집에서 점심']); lunch = true; t += 60; continue; }
+      if (!dinner && t >= 1020 && t < 1200) { out.push([hhmm(t), (th && th.dinner) || '분위기 좋은 곳에서 저녁']); dinner = true; t += 90; continue; }
       // 식사 시간을 건너뛰지 않게 그 전까지만 쓸 수 있는 시간
       let room = left; if (!lunch && t < 660 && end > 720) room = Math.min(room, 780 - t); if (!dinner && t < 1020 && end > 1080) room = Math.min(room, 1140 - t);
       if (!spot && outdoorOk && s0 && (nightSpot ? t >= 1110 && left >= 60 : t < 1080 && room >= 120)) { out.push([hhmm(t), nightSpot ? `${s0.name}에서 야경 보기` : `${s0.name} 가기`, s0.name]); spot = true; if (nightSpot) used.add('야경 보러 가기'); t += nightSpot ? 90 : 120; continue; }
-      if (!cafe && t >= 840 && t < 1050) { out.push([hhmm(t), o.hot ? '시원한 디저트 카페' : '분위기 좋은 카페에서 쉬기']); cafe = true; t += 60; continue; }
+      if (!cafe && t >= 840 && t < 1050) { out.push([hhmm(t), (th && th.cafe) || (o.hot ? '시원한 디저트 카페' : '분위기 좋은 카페에서 쉬기')]); cafe = true; t += 60; continue; }
       const night = t >= 1140;
-      const ok = ACT.filter(a => !used.has(a[0]) && (outdoorOk || a[1]) && a[2] <= room && (!night || a[3] || a[1]) && !(o.cold && !a[1] && rnd() < .5) && !(a[0] === '야경 보러 가기' && t < 1080));
+      const fit = a => !used.has(a[0]) && !(/술집|한잔/.test(a[0]) && t < 1080) && (outdoorOk || a[1]) && a[2] <= room && (!night || a[3] || a[1]) && !(a[0] === '야경 보러 가기' && t < 1080);
+      const tp = th ? ACT.filter(a => th.acts.includes(a[0])).concat(th.extra || []).filter(fit) : [];
+      const ok = tp.length ? tp : ACT.filter(a => !used.has(a[0]) && (outdoorOk || a[1]) && a[2] <= room && (!night || a[3] || a[1]) && !(o.cold && !a[1] && rnd() < .5) && !(a[0] === '야경 보러 가기' && t < 1080));
       if (!ok.length) { if (room < left) { out.push([hhmm(t), '근처 산책하며 쉬기']); t += Math.max(30, room - 60 > 0 ? Math.min(60, room) : 30); continue; } break; }
       const a = pick(ok); used.add(a[0]); out.push([hhmm(t), a[0]]); t += a[2];
     }
@@ -205,7 +221,7 @@
   const festsFor = (area, month) => FESTS.filter(x => area ? x.sido === area : x.sido !== '해외').map(x => [x, Math.min(...x.months.map(m => (m - month + 12) % 12))]).sort((a, b) => a[1] - b[1]).map(a => a[0]);
   // ── 예상 비용(2인, 원). 어림값이라 '약'으로만 보여 준다. 해외는 빼고 국내만.
   const FEE = { '남산서울타워': 52000, '남이섬': 32000, '경주 동궁과 월지': 6000, '수원 화성 행궁동': 4000, '공주 공산성': 2400, '성산일출봉': 10000, '순천만국가정원': 20000 }; // 입장료(2인)
-  const COST = [[/체크인|숙소/, 120000, '숙소 1박'], [/체크아웃/, 0], [/저녁/, 60000], [/점심|맛집|해산물/, 35000], [/디저트|카페|만나기|라떼|커피/, 15000], [/공방/, 60000], [/방탈출/, 44000], [/보드게임/, 15000], [/영화/, 30000], [/볼링|포켓볼/, 30000], [/노래방/, 5000], [/아쿠아리움/, 60000], [/찜질방|스파/, 30000], [/전시|팝업/, 30000], [/시장|길거리/, 20000], [/자전거/, 10000], [/피크닉/, 20000], [/드라이브/, 20000], [/소품|가게/, 20000]];
+  const COST = [[/체크인|숙소/, 120000, '숙소 1박'], [/체크아웃/, 0], [/저녁/, 60000], [/점심|맛집|해산물/, 35000], [/술집|한잔/, 40000], [/빵집/, 15000], [/꽃집|꽃다발/, 40000], [/디저트|카페|만나기|라떼|커피/, 15000], [/공방/, 60000], [/방탈출/, 44000], [/보드게임/, 15000], [/영화/, 30000], [/볼링|포켓볼/, 30000], [/노래방/, 5000], [/아쿠아리움/, 60000], [/찜질방|스파/, 30000], [/전시|팝업/, 30000], [/시장|길거리/, 20000], [/자전거/, 10000], [/피크닉/, 20000], [/드라이브/, 20000], [/소품|가게/, 20000]];
   // 단계 하나의 예상 비용. 가게 분류로 식당 값을 조금 바꾼다.
   function costOf(text, cat, spot) {
     if (spot) return FEE[spot] || 0;
@@ -216,6 +232,6 @@
   const won = n => n >= 10000 ? `약 ${(Math.round(n / 1000) / 10).toString().replace(/\.0$/, '')}만 원` : n ? `약 ${Math.round(n / 1000)}천 원` : '';
   const mapUrl = name => 'https://map.naver.com/p/search/' + encodeURIComponent(name);
   const searchUrl = q => 'https://search.naver.com/search.naver?query=' + encodeURIComponent(q);
-  const out = { costOf, won, FEE, HALLS, hallsFor, FESTS, festsFor, randomCourse, mins, plan, planText, IMG, is, LOGS, build, TIPS, COURSES, courses, season, SEASON, SPOTS, mapUrl, searchUrl };
+  const out = { THEMES, costOf, won, FEE, HALLS, hallsFor, FESTS, festsFor, randomCourse, mins, plan, planText, IMG, is, LOGS, build, TIPS, COURSES, courses, season, SEASON, SPOTS, mapUrl, searchUrl };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Couple = out;
 })(typeof window !== 'undefined' ? window : globalThis);
