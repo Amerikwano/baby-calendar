@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.32.0';
+const APP_VERSION = '0.33.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -635,10 +635,20 @@ function coupleEvents() {
     <section class="stack"><h2>공연장</h2>${Couple.hallsFor(sido).map(x => { const g = x.sido === '해외'; return `<article class="paper"><div class="hosp" style="border:0;padding:0"><span><span class="chip">${esc(x.c || sidoShort(x.sido))}</span><b style="margin-top:8px;font-size:17px">${esc(x.name)}</b><span class="sub">${esc(x.desc)}</span><span style="display:block;margin-top:6px">${src(Couple.searchUrl(x.name + ' 공연 일정'), '지금 하는 공연 보기')}</span></span>${g ? gmapBtn(x.name) : nmapBtn(x.name)}</div></article>`; }).join('') || '<p class="sub">이 지역은 아직 정리한 공연장이 없어요.</p>'}</section>
     <section class="stack"><h2>더 찾아보기</h2>${plainCard('행사', `${sido && !abroad ? esc(sido) + ' ' : abroad ? '해외 ' : ''}이번 달 축제와 행사`, '지역 축제, 공연, 빛축제 일정을 찾아봐요.', src(Couple.searchUrl(q), '일정 찾아보기'))}${plainCard('공연', `${sido && !abroad ? esc(sido) + ' ' : abroad ? '해외 ' : ''}이번 주 공연`, '뮤지컬, 연극, 콘서트, 클래식 일정을 찾아봐요.', src(Couple.searchUrl((sido && !abroad ? sido + ' ' : abroad ? '해외 ' : '') + '공연 일정'), '공연 찾아보기'))}${abroad ? '' : plainCard('행사', '이번 주말 전시·팝업', '데이트하기 좋은 전시와 팝업 스토어를 찾아봐요.', src(Couple.searchUrl((sido ? sido + ' ' : '') + '이번 주말 전시 팝업'), '찾아보기'))}</section><p class="sub">축제는 보통 열리는 달이에요. 해마다 날짜가 바뀌니 가기 전에 올해 일정을 확인하세요.</p>`;
 }
+// 요즘 핫한 곳: hot.json(매주 화요일 새로 찾아 고친다). 기간이 지난 곳은 숨긴다.
+let hot = null;
+const loadHot = () => hot || fetch('hot.json', { cache: 'no-cache' }).then(r => r.json()).then(j => { hot = j; if (tab === 'money' && Couple.is(K())) render(); return j; }).catch(() => (hot = { items: [] }));
+function hotList(area) {
+  if (!hot || !hot.items) { loadHot(); return ''; }
+  const t = today(), l = hot.items.filter(x => (!x.until || x.until >= t) && (area ? x.sido === area : true) && area !== '해외');
+  if (!l.length) return '';
+  const md2 = d => d ? Number(d.slice(5, 7)) + '.' + Number(d.slice(8)) : '';
+  return `<section class="stack"><h2>요즘 핫한 곳</h2>${l.map(x => `<article class="paper"><div class="hosp" style="border:0;padding:0"><span><span class="row" style="gap:6px"><span class="chip hot">핫플</span><span class="chip">${esc(sidoShort(x.sido))}</span>${x.from || x.until ? `<span class="chip">${x.from > t ? md2(x.from) + '부터' : ''}${x.until ? ' ~' + md2(x.until) : ''}</span>` : ''}</span><b style="margin-top:8px;font-size:17px">${esc(x.name)}</b><span class="sub">${esc(x.desc)}</span>${x.src ? `<span style="display:block;margin-top:6px">${src(x.src, '자세히 보기')}</span>` : ''}</span>${x.at ? nmapBtn(x.at) : ''}</div></article>`).join('')}<p class="sub">매주 화요일에 새로 찾아 고쳐요. 마지막 확인 ${esc(hot.updated || '')}. 기간과 운영 시간은 가기 전에 확인하세요.</p></section>`;
+}
 function coupleMoney() {
   const sido = spotArea(), abroad = sido === '해외';
   const q = abroad ? '해외 축제' : (sido || '전국') + ' 축제';
-  return tipSeg() + `<section class="stack"><div class="row between"><h2>데이트 명소</h2><select id="spotarea" class="areasel" aria-label="지역"><option value="">전국</option>${SIDO.map(x => `<option ${x === sido ? 'selected' : ''}>${x}</option>`).join('')}<option value="해외" ${abroad ? 'selected' : ''}>해외</option></select></div><input id="spotq" type="search" class="spotq" placeholder="명소 이름이나 지역으로 찾기" value="${esc(spotQ)}" autocomplete="off"><div id="spotlist" class="stack">${spotList()}</div></section><p class="sub">명소와 행사는 바뀔 수 있어요. 가기 전에 운영 시간을 확인하세요.</p>`;
+  return tipSeg() + `<section class="stack"><div class="row between"><h2>데이트 명소</h2><select id="spotarea" class="areasel" aria-label="지역"><option value="">전국</option>${SIDO.map(x => `<option ${x === sido ? 'selected' : ''}>${x}</option>`).join('')}<option value="해외" ${abroad ? 'selected' : ''}>해외</option></select></div>${spotQ.trim() ? '' : hotList(sido)}<input id="spotq" type="search" class="spotq" placeholder="명소 이름이나 지역으로 찾기" value="${esc(spotQ)}" autocomplete="off"><div id="spotlist" class="stack">${spotList()}</div></section><p class="sub">명소와 행사는 바뀔 수 있어요. 가기 전에 운영 시간을 확인하세요.</p>`;
 }
 
 // 개인·솔로: 건강, 생활, 연애 팁 / 재테크, 여행, 만남

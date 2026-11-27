@@ -1,0 +1,14 @@
+{
+ "updated": "2026-11-27",
+ "note": "매주 화요일에 새로 찾아 고친다. sido는 시·도 전체 이름, until이 지나면 앱에서 숨긴다.",
+ "items": [
+  { "sido": "서울특별시", "name": "요모조모 이슬기 전시", "desc": "서울시립미술관 서소문본관 새 전시. 입장 무료.", "from": "2026-11-26", "until": "2027-02-28", "at": "서울시립미술관 서소문본관", "src": "https://koreagenda.com/ko/calendar/2026-11/seoul" },
+  { "sido": "서울특별시", "name": "치이카와 클리닉 팝업", "desc": "더현대 서울의 치이카와 팝업스토어.", "from": "2026-11-27", "until": "2027-01-10", "at": "더현대 서울", "src": "https://popnol.co.kr/region/seoul" },
+  { "sido": "서울특별시", "name": "노들서가 정진 작가 개인전", "desc": "노들섬에서 글과 그림을 천천히 보는 전시.", "from": "2026-11-05", "until": "2026-11-29", "at": "노들섬", "src": "https://heypop.kr/n/145838/" },
+  { "sido": "서울특별시", "name": "서울빛초롱축제", "desc": "청계천을 따라 빛 조형물. 보통 12월 중순 시작, 정확한 날짜는 공식 발표 확인.", "from": "2026-12-11", "until": "2027-01-31", "at": "청계광장", "src": "https://kr.trip.com/blog/seoul-lantern-festival-guide/" },
+  { "sido": "서울특별시", "name": "서울라이트 DDP", "desc": "DDP 외벽 미디어아트 빛 축제.", "from": "2026-12-17", "until": "2026-12-31", "at": "동대문디자인플라자", "src": "https://www.make2t.kr/2026/11/2026-seoul-christmas-events-guide.html" },
+  { "sido": "경기도", "name": "아침고요수목원 오색별빛정원전", "desc": "정원 전체를 조명으로 채우는 겨울 빛 축제(보통 12월~3월).", "from": "2026-12-01", "until": "2027-03-15", "at": "아침고요수목원", "src": "https://travelmapjourney.com/2025-2026-light-festival-schedule-guide/" },
+  { "sido": "부산광역시", "name": "서면 빛축제", "desc": "서면 거리 일대를 밝히는 빛 조형물.", "from": "2026-11-20", "until": "2027-01-31", "at": "서면 젊음의거리", "src": "https://korean.visitkorea.or.kr/detail/rem_detail.do?cotid=33909eaa-ed7a-4ddf-8401-2ec0830bdd9a" },
+  { "sido": "대구광역시", "name": "이월드 일루미네이션", "desc": "이월드의 겨울 야간 빛 축제.", "from": "2026-11-15", "until": "2027-02-28", "at": "이월드", "src": "https://blog.idbins.com/2688" }
+ ]
+}
