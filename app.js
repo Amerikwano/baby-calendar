@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.13.0';
+const APP_VERSION = '0.13.1';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -562,7 +562,7 @@ function growth() {
   // 최근 두 주 안에 빠진 날은 빈칸으로 보여 나중에 채울 수 있게 한다.
   const miss = Array.from({ length: Math.min(14, n) }, (_, i) => S.addDays(t, -i)).filter(d => d >= k.birth && !has.has(d));
   const cells = fs.map(f => ({ d: f.date, f })).concat(miss.map(d => ({ d }))).sort((a, b) => a.d < b.d ? 1 : -1);
-  return mission() + driveBar() + `<section class="stack"><div class="row between"><h2>성장 앨범 ${fs.length}장</h2><button class="btn main" data-act="video" ${fs.length < 2 ? 'disabled' : ''}>성장 영상 만들기</button></div><p class="sub">${fs.length < 2 ? '얼굴 사진이 두 장부터 영상을 만들 수 있어요. ' : ''}여기 사진은 사진첩과 따로 저장돼요. 빈칸을 누르면 지난 날짜 사진도 넣을 수 있어요.</p>
+  return mission() + driveBar() + `<section class="stack"><div class="row between"><h2>${growName()} ${fs.length}장</h2><button class="btn main" data-act="video" ${fs.length < 2 ? 'disabled' : ''}>성장 영상 만들기</button></div><p class="sub">${fs.length < 2 ? '얼굴 사진이 두 장부터 영상을 만들 수 있어요. ' : ''}여기 사진은 사진첩과 따로 저장돼요. 빈칸을 누르면 지난 날짜 사진도 넣을 수 있어요.</p>
     <div class="grid">${cells.map(c => c.f ? `<button data-act="face" data-id="${c.f.id}" aria-label="${dayNo(k, c.d)}일차 사진"><img ${pic(c.f.id, 1)} alt="${dayNo(k, c.d)}일차 얼굴 사진"><span class="d">${dayNo(k, c.d)}일차</span></button>` : `<button class="miss" data-act="faceask" data-d="${c.d}" aria-label="${dayNo(k, c.d)}일차 사진 넣기">${dayNo(k, c.d)}일차<br>넣기</button>`).join('')}</div><div class="row"><button class="btn main" data-act="facebulk">여러 장 한 번에 넣기</button><button class="btn" data-act="faceadd">다른 날짜 사진 넣기</button></div></section>`;
 }
 // 얼굴 사진을 날짜 순서로 한 장씩 넘겨 본다.
@@ -647,7 +647,7 @@ async function faceBulk(files) {
   if (!groups.length) return toast(out ? `${k.name} 태어난 날부터 오늘까지 찍은 사진이 없어요` : '사진을 열 수 없어요');
   bulk = { kid: k.id, groups };
   const tm = st => st.length > 10 ? st.slice(11, 16) : '';
-  openDlg(`<form data-form="none" class="bulk"><h2>성장 앨범에 넣을 사진</h2><p class="sub">${groups.length}일치를 찾았어요. 같은 날 사진이 여러 장이면 가장 이른 시각 사진을 골랐어요. 다른 사진을 누르면 바뀌어요.${out ? ` 태어나기 전이거나 날짜를 알 수 없는 ${out}장은 뺐어요.` : ''} 사진은 가운데를 정사각형으로 잘라 넣고, 나중에 한 장씩 바꿀 수 있어요.</p>
+  openDlg(`<form data-form="none" class="bulk"><h2>${growName()}에 넣을 사진</h2><p class="sub">${groups.length}일치를 찾았어요. 같은 날 사진이 여러 장이면 가장 이른 시각 사진을 골랐어요. 다른 사진을 누르면 바뀌어요.${out ? ` 태어나기 전이거나 날짜를 알 수 없는 ${out}장은 뺐어요.` : ''} 사진은 가운데를 정사각형으로 잘라 넣고, 나중에 한 장씩 바꿀 수 있어요.</p>
     <div class="bulkl">${groups.map((g, gi) => `<section><div class="row between"><b>${dayNo(k, g.date)}일차 <span class="sub">${kd(g.date)}</span></b>${g.has ? `<label class="ck"><input type="checkbox" name="re${gi}"> 이미 있어요, 바꾸기</label>` : ''}</div><div class="bulkr">${g.files.map((x, i) => `<button type="button" data-act="bulkpick" data-g="${gi}" data-i="${i}" aria-pressed="${i === 0}" aria-label="${tm(x.st) || '사진'} ${i + 1}"><img src="${x.url}" alt="">${tm(x.st) ? `<span>${tm(x.st)}</span>` : ''}</button>`).join('')}</div></section>`).join('')}</div>
     <div class="row"><button type="button" class="btn main big" data-act="bulksave" style="flex:1">넣기</button></div></form>`);
   dlg.addEventListener('close', bulkFree, { once: true });
@@ -662,7 +662,7 @@ async function bulkSave() {
   if (!todo.length) return toast('넣을 사진이 없어요. 이미 있는 날은 "바꾸기"를 골라 주세요');
   const made = [], c = document.createElement('canvas'), s = document.createElement('canvas'); c.width = c.height = 1080; s.width = s.height = 360; let bad = 0, n = 0;
   for (const g of todo) {
-    busy(`${todo.length}장을 성장 앨범에 넣는 중이에요`, '화면을 켜 두세요', n++, todo.length); await new Promise(r => setTimeout(r, 30));
+    busy(`${todo.length}장을 ${growName()}에 넣는 중이에요`, '화면을 켜 두세요', n++, todo.length); await new Promise(r => setTimeout(r, 30));
     try {
       const bmp = await createImageBitmap(g.files[g.pick].f), w = Math.min(bmp.width, bmp.height);
       c.getContext('2d').drawImage(bmp, (bmp.width - w) / 2, (bmp.height - w) / 2, w, w, 0, 0, 1080, 1080); bmp.close && bmp.close();
@@ -672,14 +672,14 @@ async function bulkSave() {
       made.push({ id: r.id, date: g.date });
     } catch { bad++; }
   }
-  busy(`${todo.length}장을 성장 앨범에 넣는 중이에요`, '거의 다 됐어요', todo.length, todo.length);
+  busy(`${todo.length}장을 ${growName()}에 넣는 중이에요`, '거의 다 됐어요', todo.length, todo.length);
   const dates = new Set(made.map(m => m.date)), old = db.faces.filter(f => f.kid === k.id && dates.has(f.date));
   const ok = made.length && await save(d => { d.faces = d.faces.filter(f => !(f.kid === k.id && dates.has(f.date))); made.forEach(m => d.faces.push({ id: m.id, date: m.date, kid: k.id, caption: (old.find(f => f.date === m.date) || {}).caption || '' })); });
   busyOff();
   if (!ok) { made.forEach(m => api('/api/photos/' + m.id, { method: 'DELETE' }).catch(() => { })); return toast('저장하지 못했어요. 다시 해 주세요'); }
   old.forEach(f => api('/api/photos/' + f.id, { method: 'DELETE' }).catch(() => { }));
   dlg.close(); render(); autoUpload();
-  toast(`성장 앨범에 ${made.length}장을 넣었어요` + (bad ? `, ${bad}장은 열 수 없었어요` : ''));
+  toast(`${growName()}에 ${made.length}장을 넣었어요` + (bad ? `, ${bad}장은 열 수 없었어요` : ''));
 }
 function faceDlg(id) {
   const f = db.faces.find(x => x.id === id); if (!f) return; const k = kidOf(f.kid);

@@ -115,7 +115,7 @@ function growCar(k) {
   const fs = k.born ? facesOf(k) : []; if (!fs.length) return '';
   if (carI >= fs.length) carI = 0;
   setTimeout(() => { const c = document.querySelector('.growcar'); if (c) c.scrollLeft = carI * c.clientWidth; });
-  return `<div class="growcar" aria-label="성장 앨범">${fs.map(f => `<button data-act="face" data-id="${f.id}"><img ${pic(f.id)} alt="${dayNo(k, f.date)}일차 얼굴 사진"><span class="d">${dayNo(k, f.date)}일차</span></button>`).join('')}</div>`;
+  return `<div class="growcar" aria-label="${growName()}">${fs.map(f => `<button data-act="face" data-id="${f.id}"><img ${pic(f.id)} alt="${dayNo(k, f.date)}일차 얼굴 사진"><span class="d">${dayNo(k, f.date)}일차</span></button>`).join('')}</div>`;
 }
 if (typeof document !== 'undefined') (() => {
   let hold = 0;
@@ -167,7 +167,7 @@ const kidsDlg = () => openDlg(`<form data-form="none"><h2>수첩</h2><div class=
 function more() {
   const it = (i, t, s, at) => `<button class="menu" ${at}><span class="lic">${icon(i)}</span><span><b>${t}</b><em>${s}</em></span>${icon('right', 's')}</button>`;
   const pet = Pet.isPet(K()), cp = Couple.is(K());
-  return accountCard() + `<section class="menus"><h3>${cp ? '연애' : pet ? '반려동물' : '아기'}</h3>${it('heart', '성장 앨범', cp ? '매일 우리 사진 한 장' : '매일 얼굴 사진과 성장 영상', 'data-tab="grow"')}${cp ? it('cal', '기념일', '100일, 주년 챙기기', 'data-tab="vax"') + it('visit', '데이트 명소', '지역별 명소와 행사', 'data-tab="money"') : pet ? it('shield', '접종·건강', '접종, 검진, 예방약 일정', 'data-tab="vax"') + it('hospital', '동물병원 찾기', '카카오맵에서 가까운 동물병원', 'data-act="vethosp"') : it('shield', '접종·검진', '전체 일정과 완료 기록', 'data-tab="vax"') + it('hospital', '인근 병원', '가까운 소아청소년과와 보건소', 'data-act="hospitals"')}${it('paw', '수첩 더하기', '아기, 반려동물, 연애 수첩을 더 만들어요', 'data-act="kids"')}${it('bell', '캘린더에 넣기', '일정을 캘린더 파일로 받기', 'data-act="ics"')}</section>
+  return accountCard() + `<section class="menus"><h3>${cp ? '연애' : pet ? '반려동물' : '아기'}</h3>${it('heart', growName(), cp ? '매일 우리 사진 한 장' : '매일 얼굴 사진과 성장 영상', 'data-tab="grow"')}${cp ? it('cal', '기념일', '100일, 주년 챙기기', 'data-tab="vax"') + it('visit', '데이트 명소', '지역별 명소와 행사', 'data-tab="money"') : pet ? it('shield', '접종·건강', '접종, 검진, 예방약 일정', 'data-tab="vax"') + it('hospital', '동물병원 찾기', '카카오맵에서 가까운 동물병원', 'data-act="vethosp"') : it('shield', '접종·검진', '전체 일정과 완료 기록', 'data-tab="vax"') + it('hospital', '인근 병원', '가까운 소아청소년과와 보건소', 'data-act="hospitals"')}${it('paw', '수첩 더하기', '아기, 반려동물, 연애 수첩을 더 만들어요', 'data-act="kids"')}${it('bell', '캘린더에 넣기', '일정을 캘린더 파일로 받기', 'data-act="ics"')}</section>
   <section class="menus"><h3>가족</h3>${it('diary', '함께 쓰기 초대', '아빠·엄마와 같은 수첩을 같이 기록해요', 'data-act="invite" data-role="editor"')}${it('heart', '보기만 초대', '할머니·이모가 일기와 앨범을 보고 댓글을 달아요', 'data-act="invite" data-role="viewer"')}${it('chat', '초대 링크로 들어가기', '받은 초대 링크를 붙여 넣어요', 'data-act="pastejoin"')}${it('visit', '놀러가기', visits.length ? `초대받은 집 ${visits.length}곳` : '보기만 초대를 받은 집에 놀러 가요', 'data-act="visits"')}${bound ? it('baby', '가족 수첩 보기', esc(bound.name || '') + ' 가족 목록', 'data-act="family"') : ''}${it('gear', '내 별명', myNick() ? esc(myNick()) : '아직 정하지 않았어요', 'data-act="nick"')}</section>
   <section class="menus"><h3>앱</h3>${it('heart', '카카오톡으로 공유하기', '디데이나 앱 소개 보내기', 'data-act="sharek"')}${it('gear', '설정', '아이 정보, 지역, 백업', 'data-act="settings"')}</section><p class="sub">${pet ? '반려동물 일정은 국내 동물병원에서 흔히 쓰는 순서예요. 실제 접종은 동물병원 안내를 먼저 따르세요.' : '질병관리청 표준예방접종일정표(2026) 기준이에요. 실제 접종은 병원 안내를 먼저 따르세요.'} 버전 ${APP_VERSION}</p>`;
 }
