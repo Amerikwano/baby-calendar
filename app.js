@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.20.2';
+const APP_VERSION = '0.21.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -353,7 +353,7 @@ function openNmap(q) {
 // 명소 데이트 코스 창
 function planDlgFor(n) {
   const x = Couple.SPOTS.find(y => y.name === n); if (!x) return; const p = Couple.plan(x), g = x.sido === '해외';
-  openDlg(`<form data-form="none"><div class="row between"><h2>${esc(p.title)}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="plancap" data-n="${esc(n)}" aria-label="이미지로 저장">${icon('capture')}</button><button type="button" class="sq" data-act="plancopy" data-n="${esc(n)}" aria-label="글로 복사">${icon('copy')}</button></span></div>${spotImg(n)}<p class="sub">${esc(x.desc)}</p><ol class="plan">${p.steps.map(([a, b]) => `<li><b>${a}</b><span>${esc(b)}</span></li>`).join('')}</ol><p class="notice">${esc(p.tip)}</p><div class="row">${g ? `<a class="btn" data-act="ext" href="${gmapUrl(x.c + ' ' + n)}" target="_blank" rel="noopener noreferrer">구글 지도</a>` : `<button type="button" class="btn" data-act="nmap" data-q="${esc(n)}">네이버 지도</button><button type="button" class="btn" data-act="nmap" data-q="${esc(n + ' 맛집')}">근처 맛집</button>`}</div><p class="sub">장소 성격에 맞춰 만든 추천 코스예요. 운영 시간은 가기 전에 확인하세요.</p></form>`);
+  openDlg(`<form data-form="none"><div class="row between"><h2>${esc(p.title)}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="plancap" data-n="${esc(n)}" aria-label="이미지로 저장">${icon('capture')}</button><button type="button" class="sq" data-act="plancopy" data-n="${esc(n)}" aria-label="글로 복사">${icon('copy')}</button></span></div>${spotImg(n)}<p class="sub">${esc(x.desc)}</p><ol class="plan">${p.steps.map(([a, b]) => `<li><b>${a}</b><span>${esc(b)}</span></li>`).join('')}</ol><p class="notice">${esc(p.tip)}</p><div class="row">${g ? `<a class="btn" data-act="ext" href="${gmapUrl(x.c + ' ' + n)}" target="_blank" rel="noopener noreferrer">구글 지도</a>` : `<button type="button" class="btn" data-act="nmap" data-q="${esc(n)}">네이버 지도</button>`}</div><h3 style="margin-top:6px">근처에서 같이 가기 좋은 곳</h3><div class="nearby">${[['meal', '맛집', g ? 'restaurants' : '맛집'], ['cafe', '카페', g ? 'cafe' : '카페'], ['craft', '공방', g ? 'workshop' : '공방'], ['bar', '술집', g ? 'bar' : '분위기 좋은 술집'], ['photo', '사진 명소', g ? 'photo spot' : '사진 명소']].map(([k, t, w]) => g ? `<a class="btn" data-act="ext" href="${gmapUrl(w + ' near ' + n)}" target="_blank" rel="noopener noreferrer">${t}</a>` : `<button type="button" class="btn" data-act="nmap" data-q="${esc(n + ' ' + w)}">${t}</button>`).join('')}</div><p class="sub">누르면 지도에서 이 명소 근처의 맛집·카페·공방을 찾아 보여 줘요.</p><p class="sub">장소 성격에 맞춰 만든 추천 코스예요. 운영 시간은 가기 전에 확인하세요.</p></form>`);
 }
 // 코스를 그림으로 만들어 저장·공유한다(사진은 위키미디어에서 받아 그린다)
 async function courseImage(o) { // o: { title, sub, steps:[[시각, 할 일]], tip, img:[파일, 주소], file }
@@ -418,9 +418,15 @@ function spotList() {
 }
 document.addEventListener('input', e => { if (e.target.id === 'spotq') { spotQ = e.target.value; const l = $('#spotlist'); if (l) l.innerHTML = spotList(); } });
 document.addEventListener('change', e => { if (e.target.id === 'spotarea') { localStorage.setItem('baby-spot-area', e.target.value); render(); } });
+// 행사: 지역(전국·시도·해외)별 축제, 가까운 달 순서. 지역은 명소와 따로 고른다.
+const evtArea = () => { const a = localStorage.getItem('baby-evt-area'); return a == null ? spotArea() : a; };
+document.addEventListener('change', e => { if (e.target.id === 'evtarea') { localStorage.setItem('baby-evt-area', e.target.value); render(); } });
 function coupleEvents() {
-  const sido = spotArea(), abroad = sido === '해외', q = abroad ? '해외 축제' : (sido || '전국') + ' 축제';
-  return tipSeg() + `<section class="stack"><h2>행사</h2>${plainCard('행사', `${sido && !abroad ? esc(sido) + ' ' : ''}이번 달 축제와 행사`, '지역 축제, 공연, 빛축제 일정을 찾아봐요.', src(Couple.searchUrl(q), '일정 찾아보기'))}${plainCard('행사', '이번 주말 전시·팝업', '데이트하기 좋은 전시와 팝업 스토어를 찾아봐요.', src(Couple.searchUrl((sido && !abroad ? sido + ' ' : '') + '이번 주말 전시 팝업'), '찾아보기'))}</section><p class="sub">지역은 명소 탭에서 고른 곳을 따라가요.</p>`;
+  const sido = evtArea(), abroad = sido === '해외', now = Number(today().slice(5, 7)), q = abroad ? '해외 축제' : (sido || '전국') + ' 축제';
+  const card = x => { const g = x.sido === '해외', soon = x.months.includes(now) ? '<span class="chip hot">이번 달</span>' : ''; return `<article class="paper"><div class="hosp" style="border:0;padding:0"><span><span class="row" style="gap:6px"><span class="chip">${esc(x.c || x.sido.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주'))}</span><span class="chip">보통 ${x.months.join('·')}월</span>${soon}</span><b style="margin-top:8px;font-size:17px">${esc(x.name)}</b><span class="sub">${esc(x.desc)}</span><span style="display:block;margin-top:6px">${src(Couple.searchUrl(x.name + ' ' + today().slice(0, 4)), '올해 일정 찾아보기')}</span></span>${x.at ? (g ? gmapBtn(x.at) : nmapBtn(x.at)) : ''}</div></article>`; };
+  const list = Couple.festsFor(sido, now);
+  return tipSeg() + `<section class="stack"><div class="row between"><h2>축제</h2><select id="evtarea" class="areasel" aria-label="지역"><option value="">전국</option>${SIDO.map(x => `<option ${x === sido ? 'selected' : ''}>${x}</option>`).join('')}<option value="해외" ${abroad ? 'selected' : ''}>해외</option></select></div>${list.map(card).join('') || '<p class="sub">이 지역은 아직 정리한 축제가 없어요. 아래에서 찾아보세요.</p>'}</section>
+    <section class="stack"><h2>더 찾아보기</h2>${plainCard('행사', `${sido && !abroad ? esc(sido) + ' ' : abroad ? '해외 ' : ''}이번 달 축제와 행사`, '지역 축제, 공연, 빛축제 일정을 찾아봐요.', src(Couple.searchUrl(q), '일정 찾아보기'))}${abroad ? '' : plainCard('행사', '이번 주말 전시·팝업', '데이트하기 좋은 전시와 팝업 스토어를 찾아봐요.', src(Couple.searchUrl((sido ? sido + ' ' : '') + '이번 주말 전시 팝업'), '찾아보기'))}</section><p class="sub">축제는 보통 열리는 달이에요. 해마다 날짜가 바뀌니 가기 전에 올해 일정을 확인하세요.</p>`;
 }
 function coupleMoney() {
   const sido = spotArea(), abroad = sido === '해외';
