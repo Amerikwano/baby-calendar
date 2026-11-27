@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.36.1';
+const APP_VERSION = '0.36.2';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -644,14 +644,15 @@ async function kakaoSpots(sido, gu, me) {
   await kmap(); const P = new kakao.maps.services.Places(), G = new kakao.maps.services.Geocoder(), OK = kakao.maps.services.Status.OK;
   let c = me && gu === me.gu ? me : null;
   if (!c && gu) c = await new Promise(ok => G.addressSearch(`${sido} ${gu}`, (d, st) => ok(st === OK ? { x: d[0].x, y: d[0].y } : null)));
-  const run = (fn, a, o) => new Promise(r => fn.call(P, a, (d, st) => r(st === OK ? d : []), o)), got = new Map(), add = l => l.forEach(x => { if (['AT4', 'CT1'].includes(x.category_group_code) && !got.has(x.id)) got.set(x.id, x); });
-  for (let page = 1; page <= 3; page++) {
-    if (c) add(await run(P.categorySearch, 'AT4', { location: new kakao.maps.LatLng(c.y, c.x), radius: 20000, sort: kakao.maps.services.SortBy.ACCURACY, page }));
-    add(await run(P.keywordSearch, `${gu || sido} 가볼만한곳`, { page }));
-    add(await run(P.keywordSearch, `${gu || sido} 관광명소`, { page }));
-  }
-  let l = [...got.values()].filter(x => !gu || (x.address_name || '').includes(gu) || (x.road_address_name || '').includes(gu));
-  if (c) { const d = x => Math.hypot((x.x - c.x) * 88, (x.y - c.y) * 111); l.sort((a, b) => d(a) - d(b)); }
+  const run = (fn, a, o) => new Promise(r => fn.call(P, a, (d, st) => r(st === OK ? d : []), o)), got = new Map();
+  // 데이트와 상관없는 산·골짜기·들 같은 지명은 뺀다
+  const dull = x => { const c = (x.category_name || '').split(' > ').pop(); return /^(산|봉우리|고개|골짜기|계곡|저수지|들|바위|자연지명|지명|하천|강|섬)$/.test(c) || /(골|들|봉|고개)$/.test(x.place_name) && !/공원|마을|길|거리/.test(x.place_name); };
+  const add = l => l.forEach(x => { if (['AT4', 'CT1'].includes(x.category_group_code) && !got.has(x.id) && !dull(x)) got.set(x.id, x); });
+  // 인기 순서(검색 결과 순서)를 먼저, 그다음 주변 관광명소
+  for (let page = 1; page <= 3; page++) { add(await run(P.keywordSearch, `${gu || sido} 가볼만한곳`, { page })); add(await run(P.keywordSearch, `${gu || sido} 데이트`, { page })); }
+  for (let page = 1; page <= 3; page++) add(await run(P.keywordSearch, `${gu || sido} 관광명소`, { page }));
+  if (c) for (let page = 1; page <= 3; page++) add(await run(P.categorySearch, 'AT4', { location: new kakao.maps.LatLng(c.y, c.x), radius: 20000, sort: kakao.maps.services.SortBy.ACCURACY, page }));
+  const l = [...got.values()].filter(x => !gu || (x.address_name || '').includes(gu) || (x.road_address_name || '').includes(gu));
   l.forEach(x => kspots.set(x.place_name, { name: x.place_name, desc: (x.category_name || '').split(' > ').slice(-1)[0] + ' · ' + (x.road_address_name || x.address_name || ''), sido, at: { x: x.x, y: x.y, name: x.place_name } }));
   kspotCache.set(key, l); return l;
 }
