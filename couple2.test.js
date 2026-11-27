@@ -33,3 +33,4 @@ test('코스 순서가 말이 되게: 집 데이트는 요리가 배달 뒤에 �
     assert.ok(m.filter(s => /분식/.test(s[1])).length <= 1);
   }
 });
+test('명소 목록에 빈 칸이 없다', () => { assert.ok(C.SPOTS.every(x => x && x.name && x.sido)); });
