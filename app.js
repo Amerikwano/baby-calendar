@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.19.1';
+const APP_VERSION = '0.19.2';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -338,7 +338,10 @@ function petMoney() {
 // 네이버 지도 앱으로 열고, 앱이 없으면 네이버 지도 웹으로
 const nmapBtn = q => `<button type="button" class="pin" data-act="nmap" data-q="${esc(q)}" aria-label="${esc(q)} 네이버 지도에서 보기">${PIN}</button>`;
 // 지도 단추가 오른쪽에 붙는 카드(병원 목록과 같은 모양)
-const pinCard = (chip, title, body, q) => `<article class="paper"><div class="hosp" style="border:0;padding:0"><span><span class="chip">${esc(chip)}</span><b style="margin-top:8px;font-size:17px">${esc(title)}</b><span class="sub">${esc(body)}</span></span>${nmapBtn(q)}</div></article>`;
+// 해외는 구글 지도(앱이 있으면 앱으로 열린다)
+const gmapUrl = q => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+const gmapBtn = q => `<a class="pin" href="${gmapUrl(q)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(q)} 구글 지도에서 보기">${PIN}</a>`;
+const pinCard = (chip, title, body, q, g) => `<article class="paper"><div class="hosp" style="border:0;padding:0"><span><span class="chip">${esc(chip)}</span><b style="margin-top:8px;font-size:17px">${esc(title)}</b><span class="sub">${esc(body)}</span></span>${g ? gmapBtn(q) : nmapBtn(q)}</div></article>`;
 function openNmap(q) {
   const web = Couple.mapUrl(q); if (!/iPhone|iPad|iPod|Android/.test(navigator.userAgent)) return window.open(web, '_blank', 'noopener');
   let gone = false; const off = () => { gone = true; }; document.addEventListener('visibilitychange', off, { once: true }); window.addEventListener('pagehide', off, { once: true });
@@ -353,11 +356,11 @@ function coupleTips() {
 // 데이트 명소: 지역(전국·시도·해외)과 검색으로 고른다. 고른 지역은 이 기기에만 둔다.
 let spotQ = '';
 const spotArea = () => { const a = localStorage.getItem('baby-spot-area'); return a == null ? db.sido || '' : a; };
-const spotCard = x => pinCard(x.c || x.sido.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주'), x.name, x.desc, x.name);
+const spotCard = x => pinCard(x.c || x.sido.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주'), x.name, x.desc, x.c ? x.c + ' ' + x.name : x.name, x.sido === '해외');
 function spotList() {
   const a = spotArea(), q = spotQ.trim().toLowerCase();
   const l = Couple.SPOTS.filter(x => q ? (x.name + x.desc + x.sido + (x.c || '')).toLowerCase().includes(q) : !a || x.sido === a);
-  return (l.map(spotCard).join('') || '<p class="sub">찾는 명소가 목록에 없어요.</p>') + (q ? `<div class="row"><button type="button" class="btn main" data-act="nmap" data-q="${esc(spotQ.trim())}">네이버 지도에서 '${esc(spotQ.trim())}' 찾기</button></div>` : '');
+  return (l.map(spotCard).join('') || '<p class="sub">찾는 명소가 목록에 없어요.</p>') + (q ? `<div class="row">${a === '해외' ? `<a class="btn main" href="${gmapUrl(spotQ.trim())}" target="_blank" rel="noopener noreferrer">구글 지도에서 '${esc(spotQ.trim())}' 찾기</a>` : `<button type="button" class="btn main" data-act="nmap" data-q="${esc(spotQ.trim())}">네이버 지도에서 '${esc(spotQ.trim())}' 찾기</button>`}</div>` : '');
 }
 document.addEventListener('input', e => { if (e.target.id === 'spotq') { spotQ = e.target.value; const l = $('#spotlist'); if (l) l.innerHTML = spotList(); } });
 document.addEventListener('change', e => { if (e.target.id === 'spotarea') { localStorage.setItem('baby-spot-area', e.target.value); render(); } });
