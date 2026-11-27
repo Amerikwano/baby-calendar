@@ -34,11 +34,11 @@ const lastDay = ym => S.addDays(S.addMonths(ym + '-01', 1), -1);
 const cell = (p, cls) => `<button class="${cls || ''}" data-act="photo" data-id="${p.id}" aria-label="${kd(p.date)} ${p.type ? '동영상' : '사진'}"><img ${pic(p.id, 1)} alt="${esc(p.caption || kd(p.date) + ' 사진')}">${p.type && p.th !== 1 && local ? `<video class="vfix" data-vfix="${p.id}" muted playsinline preload="auto" aria-hidden="true" tabindex="-1"></video>` : ''}${p.type ? `<s>${icon('vplay', 's')}${p.dur ? Media.clock(p.dur) : ''}</s>` : ''}${p.fav ? `<i>${icon('heart', 'fill')}</i>` : ''}</button>`;
 const yearCard = (y, l) => { const c = Album.cover(l); return `<button class="ycard" data-act="albyear" data-y="${y}"><img ${pic(c.id, 1)} alt=""><b>${y}</b><em>${esc(sinceBirth(y + '-12-31'))}</em></button>`; };
 // 한 메뉴 안의 두 화면을 오가는 위쪽 탭
-const segTabs = (label, list) => `<div class="albseg" role="tablist" aria-label="${label}">${list.map(([t, n]) => `<button role="tab" data-tab="${t}" aria-selected="${tab === t}">${n}</button>`).join('')}</div>`;
+const segTabs = (label, list) => `<div class="albseg" style="grid-template-columns:repeat(${list.length},1fr)" role="tablist" aria-label="${label}">${list.map(([t, n]) => `<button role="tab" data-tab="${t}" aria-selected="${tab === t}">${n}</button>`).join('')}</div>`;
 const growName = () => Couple.is(K()) || Me.is(K()) ? '하루 한 장' : '성장 앨범'; // 연애 수첩은 이름이 다르다
 const albName = () => Me.is(K()) ? '내 앨범' : Couple.is(K()) ? '우리 앨범' : Pet.isPet(K()) ? '사진 앨범' : '아기 앨범';
 const albSeg = () => Couple.is(K()) ? '' : segTabs('앨범 종류', [['album', Me.is(K()) ? '내 앨범' : Couple.is(K()) ? '우리 앨범' : Pet.isPet(K()) ? '사진 앨범' : '아기 앨범'], ['grow', growName()]]);
-const tipSeg = () => `<div class="albtop">${segTabs('꿀팁 종류', [['tips', Me.is(K()) ? '생활 팁' : Couple.is(K()) ? '연애 팁' : Pet.isPet(K()) ? '돌봄 팁' : '육아 팁'], ['money', Me.is(K()) ? '재테크·여행' : Couple.is(K()) ? '명소·행사' : Pet.isPet(K()) ? '혜택·행사' : '혜택']])}</div>`;
+const tipSeg = () => `<div class="albtop">${segTabs('꿀팁 종류', Couple.is(K()) ? [['money', '명소'], ['evt', '행사'], ['tips', '연애 팁']] : [['tips', Me.is(K()) ? '생활 팁' : Couple.is(K()) ? '연애 팁' : Pet.isPet(K()) ? '돌봄 팁' : '육아 팁'], ['money', Me.is(K()) ? '재테크·여행' : Couple.is(K()) ? '명소·행사' : Pet.isPet(K()) ? '혜택·행사' : '혜택']])}</div>`;
 function album() {
   if (db.photos.some(p => p.type === 'video' && p.th !== 1)) setTimeout(repairPosters, 500);
   const all = albPhotos(), ys = Album.years(all), ty = today().slice(0, 4);

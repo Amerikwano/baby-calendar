@@ -3,7 +3,7 @@
   'use strict';
   const ORDER = ['home', 'cal', 'diary', 'album', 'grow', 'tips', 'money', 'more'];
   // dir: 1은 왼쪽으로 밀기(다음), -1은 오른쪽으로 밀기(이전). 더보기 안의 화면(접종·검진)은 더보기로만 돌아간다.
-  function next(tab, dir, skip) { const O = skip ? ORDER.filter(x => !skip.includes(x)) : ORDER, i = O.indexOf(tab); return i < 0 ? (dir < 0 ? 'more' : '') : O[i + dir] || ''; }
+  function next(tab, dir, skip, order) { const O = (order || ORDER).filter(x => !(skip || []).includes(x)), i = O.indexOf(tab); return i < 0 ? (dir < 0 ? 'more' : '') : O[i + dir] || ''; }
   // 짧고 분명하게 옆으로 민 것만 넘긴다(위아래로 훑는 것과 구별).
   function judge(dx, dy, ms) { const x = Math.abs(dx), y = Math.abs(dy); return ms < 800 && x > 60 && x > y * 1.7 ? (dx < 0 ? 1 : -1) : 0; }
   const out = { ORDER, next, judge };
@@ -30,7 +30,7 @@ if (typeof document !== 'undefined') {
     if (!s) return; const t = e.changedTouches[0], dir = Swipe.judge(t.clientX - s.x, t.clientY - s.y, e.timeStamp - s.t); s = null;
     if (!dir || typing() || skip(e.target)) return;
     if (dir < 0 && navStack.length && navStack[navStack.length - 1].kind === 'sub') { history.back(); return; } // 하위 화면에서 오른쪽으로 밀면 뒤로
-    const to = Swipe.next(tab, dir, Me.isSolo(K()) ? ['album', 'grow'] : Couple.is(K()) ? ['grow'] : null); if (!to) return;
+    const to = Couple.is(K()) ? Swipe.next(tab, dir, ['grow'], ['home', 'cal', 'diary', 'album', 'money', 'evt', 'tips', 'more']) : Swipe.next(tab, dir, Me.isSolo(K()) ? ['album', 'grow', 'evt'] : ['evt']); if (!to) return;
     goTab(to);
     const m = document.querySelector('#main'); m.classList.add(dir > 0 ? 'in-r' : 'in-l'); setTimeout(() => m.classList.remove('in-r', 'in-l'), 260);
   }, { passive: true });

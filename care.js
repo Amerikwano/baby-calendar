@@ -73,10 +73,10 @@ function topBar() {
   return `<div><button class="me" data-act="kids" aria-label="${esc(k.name)}, 수첩 고르기">${face(k)}<span><b><span class="nm">${esc(k.name)}</span>${Me.is(k) ? icon('user', k.sex) : Couple.is(k) ? icon('heart', 'girl') : Pet.isPet(k) ? icon('paw', k.sex || 'unk') : icon('baby', k.sex || 'unk')}${k.sex ? `<span class="vh">${Pet.isPet(k) ? Pet.SEX[k.sex] : Me.is(k) ? Family.SEX[k.sex] : Family.SEX[k.sex] + '아이'}</span>` : ''}${manyAll() ? icon('down', 's') : ''}</b><em>${ageLine(k)}</em></span></button></div><div class="hbar"><span class="todayd">${todayText()}</span><span class="hbtn">${visits.length ? `<button class="sq" data-act="visits" aria-label="놀러가기">${icon('visit')}</button>` : ''}<button class="sq" data-act="report" aria-label="하루 요약">${icon('pie')}</button><button class="sq" data-act="alerts" aria-label="알림${hot ? ', 확인할 것이 있어요' : ''}">${icon('bell')}${hot ? '<i></i>' : ''}</button></span></div>`;
 }
 function navBar() {
-  const M = { home: 'home', cal: 'cal', diary: 'diary', album: 'album', grow: 'album', tips: 'tips', money: 'tips' };
+  const M = { home: 'home', cal: 'cal', diary: 'diary', album: 'album', grow: 'album', tips: 'tips', money: 'tips', evt: 'tips' };
   const main = M[SUB.includes(tab) && subFrom ? subFrom.tab : tab] || 'more';
-  const b = (t, n, i) => `<button data-tab="${t}" ${main === t ? 'aria-current="page"' : ''}>${i}<span>${n}</span></button>`;
-  return `<div>${b('home', '홈', `<span class="navface">${face(K())}</span>`)}${b('cal', '달력', icon('cal'))}${b('diary', '일기', icon('diary'))}${Me.isSolo(K()) ? '' : b('album', '앨범', icon('album'))}${b('tips', '꿀팁', icon('tips'))}${b('more', '더보기', icon('more'))}</div>`;
+  const b = (t, n, i) => `<button data-tab="${t}" ${main === t || (main === 'tips' && t === 'money') ? 'aria-current="page"' : ''}>${i}<span>${n}</span></button>`;
+  return `<div>${b('home', '홈', `<span class="navface">${face(K())}</span>`)}${b('cal', '달력', icon('cal'))}${b('diary', '일기', icon('diary'))}${Me.isSolo(K()) ? '' : b('album', '앨범', icon('album'))}${b(Couple.is(K()) ? 'money' : 'tips', '꿀팁', icon('tips'))}${b('more', '더보기', icon('more'))}</div>`;
 }
 const typesFor = k => Me.is(k) ? Me.LOGS : Couple.is(k) ? Couple.LOGS : Pet.isPet(k) ? Pet.LOGS[k.kind] : k.born ? Care.BORN : Care.WAIT;
 const typeBtn = (t, act) => `<button type="button" data-act="${act}" data-t="${t}" style="--c:${Care.TYPES[t].c}">${icon(t)}<span>${Care.TYPES[t].name}</span></button>`;

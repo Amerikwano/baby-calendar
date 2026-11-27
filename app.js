@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.19.3';
+const APP_VERSION = '0.19.4';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -366,11 +366,14 @@ function spotList() {
 }
 document.addEventListener('input', e => { if (e.target.id === 'spotq') { spotQ = e.target.value; const l = $('#spotlist'); if (l) l.innerHTML = spotList(); } });
 document.addEventListener('change', e => { if (e.target.id === 'spotarea') { localStorage.setItem('baby-spot-area', e.target.value); render(); } });
+function coupleEvents() {
+  const sido = spotArea(), abroad = sido === '해외', q = abroad ? '해외 축제' : (sido || '전국') + ' 축제';
+  return tipSeg() + `<section class="stack"><h2>행사</h2>${plainCard('행사', `${sido && !abroad ? esc(sido) + ' ' : ''}이번 달 축제와 행사`, '지역 축제, 공연, 빛축제 일정을 찾아봐요.', src(Couple.searchUrl(q), '일정 찾아보기'))}${plainCard('행사', '이번 주말 전시·팝업', '데이트하기 좋은 전시와 팝업 스토어를 찾아봐요.', src(Couple.searchUrl((sido && !abroad ? sido + ' ' : '') + '이번 주말 전시 팝업'), '찾아보기'))}</section><p class="sub">지역은 명소 탭에서 고른 곳을 따라가요.</p>`;
+}
 function coupleMoney() {
   const sido = spotArea(), abroad = sido === '해외';
   const q = abroad ? '해외 축제' : (sido || '전국') + ' 축제';
-  return tipSeg() + `<section class="stack"><div class="row between"><h2>데이트 명소</h2><select id="spotarea" class="areasel" aria-label="지역"><option value="">전국</option>${SIDO.map(x => `<option ${x === sido ? 'selected' : ''}>${x}</option>`).join('')}<option value="해외" ${abroad ? 'selected' : ''}>해외</option></select></div><input id="spotq" type="search" class="spotq" placeholder="명소 이름이나 지역으로 찾기" value="${esc(spotQ)}" autocomplete="off"><div id="spotlist" class="stack">${spotList()}</div></section>
-    <section class="stack"><h2>행사</h2>${plainCard('행사', `${sido && !abroad ? esc(sido) + ' ' : ''}이번 달 축제와 행사`, '지역 축제, 공연, 빛축제 일정을 찾아봐요.', src(Couple.searchUrl(q), '일정 찾아보기'))}${plainCard('행사', '이번 주말 전시·팝업', '데이트하기 좋은 전시와 팝업 스토어를 찾아봐요.', src(Couple.searchUrl((sido && !abroad ? sido + ' ' : '') + '이번 주말 전시 팝업'), '찾아보기'))}</section><p class="sub">명소와 행사는 바뀔 수 있어요. 가기 전에 운영 시간을 확인하세요.</p>`;
+  return tipSeg() + `<section class="stack"><div class="row between"><h2>데이트 명소</h2><select id="spotarea" class="areasel" aria-label="지역"><option value="">전국</option>${SIDO.map(x => `<option ${x === sido ? 'selected' : ''}>${x}</option>`).join('')}<option value="해외" ${abroad ? 'selected' : ''}>해외</option></select></div><input id="spotq" type="search" class="spotq" placeholder="명소 이름이나 지역으로 찾기" value="${esc(spotQ)}" autocomplete="off"><div id="spotlist" class="stack">${spotList()}</div></section><p class="sub">명소와 행사는 바뀔 수 있어요. 가기 전에 운영 시간을 확인하세요.</p>`;
 }
 
 // 개인·솔로: 건강, 생활, 연애 팁 / 재테크, 여행, 만남
@@ -491,7 +494,7 @@ function render() {
   const opened = [...document.querySelectorAll('#main details[open]')].map(x => x.dataset.key || 'all');
   if (tab === 'grow' && Couple.is(K())) tab = 'album'; // 연애 수첩은 하루 한 장이 없다
   $('#main').className = 'stack tab-' + tab;
-  $('#main').innerHTML = { home, cal: calendar, diary: records, album, more, tips, money, vax, visits: visitsView, visit: visitView, grow: () => `<div class="albtop">${albSeg()}</div>` + growth() }[tab]();
+  $('#main').innerHTML = { home, cal: calendar, diary: records, album, more, tips, money, evt: coupleEvents, vax, visits: visitsView, visit: visitView, grow: () => `<div class="albtop">${albSeg()}</div>` + growth() }[tab]();
   document.querySelectorAll('#main details').forEach(x => { if (opened.includes(x.dataset.key || 'all')) x.open = true; });
   if ($('#main .pill')) $('#main .pill').scrollLeft = qx; if ($('#main .mtabs')) $('#main .mtabs').scrollLeft = mx;
   if (vw) viewRefresh();
