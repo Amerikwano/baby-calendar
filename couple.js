@@ -203,8 +203,19 @@
   const hallsFor = area => HALLS.filter(x => area ? x.sido === area : x.sido !== '해외');
   // 지금 달부터 가까운 순서
   const festsFor = (area, month) => FESTS.filter(x => area ? x.sido === area : x.sido !== '해외').map(x => [x, Math.min(...x.months.map(m => (m - month + 12) % 12))]).sort((a, b) => a[1] - b[1]).map(a => a[0]);
+  // ── 예상 비용(2인, 원). 어림값이라 '약'으로만 보여 준다. 해외는 빼고 국내만.
+  const FEE = { '남산서울타워': 52000, '남이섬': 32000, '경주 동궁과 월지': 6000, '수원 화성 행궁동': 4000, '공주 공산성': 2400, '성산일출봉': 10000, '순천만국가정원': 20000 }; // 입장료(2인)
+  const COST = [[/체크인|숙소/, 120000, '숙소 1박'], [/체크아웃/, 0], [/저녁/, 60000], [/점심|맛집|해산물/, 35000], [/디저트|카페|만나기|라떼|커피/, 15000], [/공방/, 60000], [/방탈출/, 44000], [/보드게임/, 15000], [/영화/, 30000], [/볼링|포켓볼/, 30000], [/노래방/, 5000], [/아쿠아리움/, 60000], [/찜질방|스파/, 30000], [/전시|팝업/, 30000], [/시장|길거리/, 20000], [/자전거/, 10000], [/피크닉/, 20000], [/드라이브/, 20000], [/소품|가게/, 20000]];
+  // 단계 하나의 예상 비용. 가게 분류로 식당 값을 조금 바꾼다.
+  function costOf(text, cat, spot) {
+    if (spot) return FEE[spot] || 0;
+    const m = COST.find(([re]) => re.test(text)); let v = m ? m[1] : 0;
+    if (v && /점심|저녁|맛집/.test(text) && cat) { if (/분식|국수|만두|국밥|해장국|김밥|수제비/.test(cat)) v = Math.round(v * .5); else if (/양식|이탈리안|일식|스테이크|오마카세|한정식|회|와인|레스토랑/.test(cat)) v = Math.round(v * 1.6); }
+    return v;
+  }
+  const won = n => n >= 10000 ? `약 ${(Math.round(n / 1000) / 10).toString().replace(/\.0$/, '')}만 원` : n ? `약 ${Math.round(n / 1000)}천 원` : '';
   const mapUrl = name => 'https://map.naver.com/p/search/' + encodeURIComponent(name);
   const searchUrl = q => 'https://search.naver.com/search.naver?query=' + encodeURIComponent(q);
-  const out = { HALLS, hallsFor, FESTS, festsFor, randomCourse, mins, plan, planText, IMG, is, LOGS, build, TIPS, COURSES, courses, season, SEASON, SPOTS, mapUrl, searchUrl };
+  const out = { costOf, won, FEE, HALLS, hallsFor, FESTS, festsFor, randomCourse, mins, plan, planText, IMG, is, LOGS, build, TIPS, COURSES, courses, season, SEASON, SPOTS, mapUrl, searchUrl };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Couple = out;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -302,3 +302,4 @@ nav div{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minma
 .plan li{align-items:start}.plan li>span{display:block;min-width:0;line-height:1.45}.plan li>b{line-height:1.45}.linkb{display:inline;min-height:0;height:auto;line-height:inherit;border-radius:0;box-shadow:none}
 .cedrow{display:grid;gap:8px;padding:12px;border-radius:16px;background:var(--soft)}.cedrow input{width:100%}
 .picks.four .ic,.picks.four button:last-child .ic{color:#c07f45}
+.plan li{grid-template-columns:64px 1fr auto}.plan .cost{font-style:normal;color:var(--sub);font-size:13px;white-space:nowrap}.ctotal{display:flex;justify-content:space-between;align-items:center;background:var(--soft);border-radius:16px;padding:12px 16px;margin:6px 0}.ctotal b{font-size:18px}
