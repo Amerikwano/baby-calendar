@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.18.11';
+const APP_VERSION = '0.18.12';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -335,6 +335,14 @@ function petMoney() {
 }
 
 // 연애: 팁과 이번 계절 데이트 코스, 지역별 데이트 명소와 행사
+// 네이버 지도 앱으로 열고, 앱이 없으면 네이버 지도 웹으로
+const nmapBtn = q => `<button type="button" class="btn" data-act="nmap" data-q="${esc(q)}">네이버 지도에서 보기</button>`;
+function openNmap(q) {
+  const web = Couple.mapUrl(q); if (!/iPhone|iPad|iPod|Android/.test(navigator.userAgent)) return window.open(web, '_blank', 'noopener');
+  let gone = false; const off = () => { gone = true; }; document.addEventListener('visibilitychange', off, { once: true }); window.addEventListener('pagehide', off, { once: true });
+  location.href = 'nmap://search?query=' + encodeURIComponent(q) + '&appname=' + encodeURIComponent(location.hostname);
+  setTimeout(() => { if (!gone && !document.hidden) window.open(web, '_blank', 'noopener'); }, 1500);
+}
 const plainCard = (chip, title, body, link) => `<article class="paper"><div class="row"><span class="chip">${esc(chip)}</span></div><h2>${esc(title)}</h2><p>${esc(body)}</p>${link ? `<div class="row">${link}</div>` : ''}</article>`;
 function coupleTips() {
   const s = Couple.SEASON[Couple.season(today())];
@@ -342,7 +350,7 @@ function coupleTips() {
 }
 function coupleMoney() {
   const sido = db.sido, mine = Couple.SPOTS.filter(x => x.sido === sido), rest = Couple.SPOTS.filter(x => x.sido !== sido);
-  const spot = x => plainCard(x.sido.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주'), x.name, x.desc, src(Couple.mapUrl(x.name), '지도에서 보기'));
+  const spot = x => plainCard(x.sido.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주'), x.name, x.desc, nmapBtn(x.name));
   const q = (sido || '') + ' 축제';
   return tipSeg() + `<section class="stack"><div class="row between"><h2>${sido ? esc(sido) + ' 데이트 명소' : '전국 데이트 명소'}</h2><button class="btn" data-act="region">${sido ? '지역 바꾸기' : '지역 고르기'}</button></div>${mine.map(spot).join('')}</section>
     <section class="stack"><h2>행사</h2>${plainCard('행사', `${sido ? esc(sido) + ' ' : ''}이번 달 축제와 행사`, '지역 축제, 공연, 빛축제 일정을 찾아봐요.', src(Couple.searchUrl(q), '일정 찾아보기'))}${plainCard('행사', '이번 주말 전시·팝업', '데이트하기 좋은 전시와 팝업 스토어를 찾아봐요.', src(Couple.searchUrl((sido ? sido + ' ' : '') + '이번 주말 전시 팝업'), '찾아보기'))}</section>
@@ -356,7 +364,7 @@ function meTips() {
   return tipSeg() + `<p class="sub">만 ${Me.age(k.birth, today())}세 ${k.sex === 'girl' ? '여성' : '남성'}에게 맞춰 골랐어요.</p>` + tipList('건강', d.health) + (solo ? tipList('혼자 사는 팁', Me.SOLO_LIVE) + tipList('연애를 시작하는 팁', Me.DATE_TIPS) : '');
 }
 function meMoney() {
-  const k = K(), d = Me.tips(k, today()), solo = Me.isSolo(k), place = x => plainCard('추천', x.name, x.desc, src(Me.searchUrl(x.name), '찾아보기'));
+  const k = K(), d = Me.tips(k, today()), solo = Me.isSolo(k), place = x => plainCard('추천', x.name, x.desc, nmapBtn(x.name));
   return tipSeg() + tipList('재테크', d.money) + '<p class="sub">일반적인 안내이고 투자 권유가 아니에요. 상품 조건은 바뀔 수 있으니 가입 전에 확인하세요.</p>' + tipList('여행 팁', d.travel)
     + `<section class="stack"><h2>${solo ? '혼자 가기 좋은 여행지' : '가 볼 만한 여행지'}</h2>${Me.SOLO_TRIP.map(place).join('')}</section>` + (solo ? `<section class="stack"><h2>새 인연을 만나기 좋은 곳</h2>${Me.MEET.map(place).join('')}</section>` : '');
 }
@@ -935,6 +943,7 @@ async function moreActs(act, b, id) {
   else if (act === 'addpet') addPetDlg();
   else if (act === 'addcouple') coupleDlg();
   else if (act === 'newcat') newCatDlg();
+  else if (act === 'nmap') openNmap(d.q);
   else if (act === 'grapeok') openDlg(`<form data-form="grape"><h2>정말 성공하셨나요?</h2><p><b>${esc(missionNow(K()))}</b></p><p class="sub">네를 누르면 포도 한 알을 채워요.</p><div class="row"><button class="btn main" value="ok">네</button><button type="button" class="btn" data-act="close">아니요</button></div></form>`);
   else if (act === 'grapenext') await save(x => { const k = x.kids.find(y => y.id === K().id); k.grape = Object.assign(grapeOf(k), { mi: grapeOf(k).mi + 1 }); });
   else if (act === 'grapeown') openDlg(`<form data-form="grapeown"><h2>미션 직접 쓰기</h2><label class="f">미션<input name="m" required maxlength="40" autocomplete="off" placeholder="예: 둘만의 암호 만들기"></label><p class="sub">쓴 미션은 이 수첩을 함께 쓰는 사람만 볼 수 있어요.</p>${acts()}</form>`);
