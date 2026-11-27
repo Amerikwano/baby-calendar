@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.18.4';
+const APP_VERSION = '0.18.5';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -14,7 +14,9 @@ const SIDO = Regions.SIDO.map(s => s.name);
 const fresh = () => ({ v: 1, kids: [Family.newKid('k1', { birth: today(), options: Object.assign({}, S.DEFAULT_OPTIONS) })], cur: 'k1', sido: '', sigungu: '', leads: [7, 1], hour: 9, events: [], diary: [], photos: [], faces: [], logs: [], exports: 0 });
 const K = () => db.kids.find(k => k.id === db.cur) || db.kids[0];
 const kidOf = id => db.kids.find(k => k.id === id) || K();
-const many = () => db.kids.length > 1;
+// many: 지금 보는 수첩과 같은 종류가 둘 이상(쌍둥이, 여러 마리). manyAll: 수첩이 둘 이상(빼기, 고르기)
+const catKids = () => db.kids.filter(k => kcat(k) === kcat(K()));
+const many = () => catKids().length > 1, manyAll = () => db.kids.length > 1;
 const josa = n => { const c = n.charCodeAt(n.length - 1); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 ? '이' : '가'; };
 let db = fresh(), rev = 0, ready = false, started = false, ai = false, tab = 'home', month = today().slice(0, 7), sel = today();
 const aiData = { tips: null, benefits: null, busy: {}, err: {} };
@@ -214,18 +216,18 @@ function petDateProblem(d) {
 const meFields = v => `<label class="f">이름<input name="name" maxlength="20" placeholder="예: 나" autocomplete="off" value="${esc(v.name || '')}"></label><label class="f">생일<input type="date" name="birth" required max="${today()}" value="${v.birth || ''}"></label>${sexOpts('sex', v.sex || '', true)}<div class="f"><span>지금은</span><div class="opts"><label><input type="radio" name="solo" value="1" ${v.solo !== false ? 'checked' : ''}><span>솔로예요</span></label><label><input type="radio" name="solo" value="" ${v.solo === false ? 'checked' : ''}><span>연애 중·결혼했어요</span></label></div></div><p class="sub">솔로면 혼자 사는 팁, 여행, 만남 팁을 더 보여 드려요. 나이와 성별에 맞는 건강검진도 챙겨 드려요.</p>`;
 function meDlg(id) {
   const k = id ? kidOf(id) : null;
-  openDlg(`<form data-form="${k ? 'me' : 'addme'}" data-id="${k ? k.id : ''}"><h2>${k ? esc(k.name) + ' 정보' : '개인 수첩 더하기'}</h2>${k ? `<button type="button" class="avpick" data-act="avatar" data-id="${k.id}">${face(k, 'xl')}<span>${icon('cam', 's')}사진 ${k.photo ? '바꾸기' : '넣기'}</span></button>` : ''}${meFields(k || {})}${acts(k && many() && ['kid', k.id, '이 수첩 빼기'])}</form>`);
+  openDlg(`<form data-form="${k ? 'me' : 'addme'}" data-id="${k ? k.id : ''}"><h2>${k ? esc(k.name) + ' 정보' : '개인 수첩 더하기'}</h2>${k ? `<button type="button" class="avpick" data-act="avatar" data-id="${k.id}">${face(k, 'xl')}<span>${icon('cam', 's')}사진 ${k.photo ? '바꾸기' : '넣기'}</span></button>` : ''}${meFields(k || {})}${acts(k && manyAll() && ['kid', k.id, '이 수첩 빼기'])}</form>`);
 }
 // 연애 수첩: 이름과 사귄 날
 const coupleFields = v => `<label class="f">수첩 이름<input name="name" maxlength="20" placeholder="예: 우리 둘" autocomplete="off" value="${esc(v.name || '')}"></label><label class="f">사귄 날<input type="date" name="birth" required max="${today()}" value="${v.birth || ''}"></label><p class="sub">사귄 날이 1일이에요. 100일, 주년 같은 기념일을 챙겨 드려요.</p>`;
 function coupleDlg(id) {
   const k = id ? kidOf(id) : null;
-  openDlg(`<form data-form="${k ? 'couple' : 'addcouple'}" data-id="${k ? k.id : ''}"><h2>${k ? esc(k.name) + ' 정보' : '연애 수첩 더하기'}</h2>${k ? `<button type="button" class="avpick" data-act="avatar" data-id="${k.id}">${face(k, 'xl')}<span>${icon('cam', 's')}사진 ${k.photo ? '바꾸기' : '넣기'}</span></button>` : ''}${coupleFields(k || {})}${acts(k && many() && ['kid', k.id, '이 수첩 빼기'])}</form>`);
+  openDlg(`<form data-form="${k ? 'couple' : 'addcouple'}" data-id="${k ? k.id : ''}"><h2>${k ? esc(k.name) + ' 정보' : '연애 수첩 더하기'}</h2>${k ? `<button type="button" class="avpick" data-act="avatar" data-id="${k.id}">${face(k, 'xl')}<span>${icon('cam', 's')}사진 ${k.photo ? '바꾸기' : '넣기'}</span></button>` : ''}${coupleFields(k || {})}${acts(k && manyAll() && ['kid', k.id, '이 수첩 빼기'])}</form>`);
 }
 const addPetDlg = () => openDlg(`<form data-form="addpet"><h2>반려동물 수첩 더하기</h2>${petFields({})}${acts()}</form>`);
 function petDlg(id) {
   const k = kidOf(id);
-  openDlg(`<form data-form="pet" data-id="${k.id}"><h2>${esc(k.name)} 정보</h2><button type="button" class="avpick" data-act="avatar" data-id="${k.id}">${face(k, 'xl')}<span>${icon('cam', 's')}사진 ${k.photo ? '바꾸기' : '넣기'}</span></button>${k.photo ? `<button type="button" class="btn" data-act="avatardel" data-id="${k.id}">프로필 사진 빼기</button>` : ''}${petFields(k)}${acts(many() && ['kid', k.id, '이 수첩 빼기'])}${many() ? '<p class="sub">수첩을 빼면 접종·돌봄 기록은 지워지고, 일기와 사진은 \'모두\'의 기록으로 남아요.</p>' : ''}</form>`);
+  openDlg(`<form data-form="pet" data-id="${k.id}"><h2>${esc(k.name)} 정보</h2><button type="button" class="avpick" data-act="avatar" data-id="${k.id}">${face(k, 'xl')}<span>${icon('cam', 's')}사진 ${k.photo ? '바꾸기' : '넣기'}</span></button>${k.photo ? `<button type="button" class="btn" data-act="avatardel" data-id="${k.id}">프로필 사진 빼기</button>` : ''}${petFields(k)}${acts(manyAll() && ['kid', k.id, '이 수첩 빼기'])}${manyAll() ? '<p class="sub">수첩을 빼면 접종·돌봄 기록은 지워지고, 일기와 사진은 \'모두\'의 기록으로 남아요.</p>' : ''}</form>`);
 }
 const blankName = (list, v, i) => v.name || (list.length > 1 ? `아기 ${i + 1}` : '아기');
 
@@ -481,7 +483,7 @@ function showDlg(d) {
 }
 const acts = (del) => `<div class="row between"><div class="row"><button class="btn main" value="ok">저장</button></div>${del ? `<button type="button" class="btn danger" data-act="del" data-k="${del[0]}" data-id="${del[1]}">${del[2]}</button>` : ''}</div>`;
 
-const whoField = v => many() ? `<label class="f">누구의 기록인가요<select name="kid">${db.kids.map(k => `<option value="${k.id}" ${v === k.id ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}<option value="" ${v === '' ? 'selected' : ''}>모두</option></select></label>` : '';
+const whoField = v => many() ? `<label class="f">누구의 기록인가요<select name="kid">${catKids().map(k => `<option value="${k.id}" ${v === k.id ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}<option value="" ${v === '' ? 'selected' : ''}>모두</option></select></label>` : '';
 function itemDlg(id, kid) {
   const k = kidOf(kid), it = items(k).find(i => i.id === id); if (!it) return;
   openDlg(`<form data-form="item" data-id="${id}" data-kid="${k.id}"><div class="row between"><div><h3>${many() ? esc(k.name) + ', ' : ''}${TYPE[it.type]}</h3><h2>${esc(it.title)}</h2></div>${it.done ? chipOf(it) : ''}</div><p>권장 시기: ${esc(it.age)}<br><span class="sub">${kd(it.start, true)} ~ ${kd(it.end, true)}${k.born ? '' : ' (예정일 기준)'}</span></p>${it.hard && it.hard !== it.end ? `<p>지원 기한: ${kd(it.hard, true)}까지</p>` : ''}${it.note ? `<p class="sub">${esc(it.note)}</p>` : ''}
@@ -490,7 +492,7 @@ function itemDlg(id, kid) {
 }
 function eventDlg(id) {
   const e = db.events.find(x => x.id === id) || { title: '', date: tab === 'cal' ? sel : today(), time: '', memo: '', kid: tab === 'cal' ? '' : K().id };
-  openDlg(`<form data-form="event" data-id="${id || ''}"><h2>${id ? '일정 고치기' : '일정 추가'}</h2><label class="f">제목<input name="title" required maxlength="80" value="${esc(e.title)}" placeholder="예: 백일 사진 예약"></label>${whoField(e.kid)}<div class="two"><label class="f">날짜<input type="date" name="date" required value="${e.date}"></label><label class="f">시간 (선택)<input type="time" name="time" value="${e.time || ''}"></label></div><div class="sexf"><span>알림 (여러 개 고를 수 있어요)</span><div class="opts rem">${[['d1', '하루 전'], ['d0', '당일 아침'], ['h1', '1시간 전'], ['m10', '10분 전'], ['m0', '정시']].map(([r, t]) => `<label><input type="checkbox" name="rem" value="${r}" ${(e.rem || Notice.REM).includes(r) ? 'checked' : ''}><span>${t}</span></label>`).join('')}</div><span class="sub">1시간 전·10분 전·정시는 시간을 넣었을 때 울려요.</span></div><label class="f">메모<textarea name="memo" maxlength="1000" style="min-height:80px">${esc(e.memo)}</textarea></label>${acts(id && ['event', id, '일정 지우기'])}</form>`);
+  openDlg(`<form data-form="event" data-id="${id || ''}"><h2>${id ? '일정 고치기' : '일정 추가'}</h2><label class="f">제목<input name="title" required maxlength="80" value="${esc(e.title)}" placeholder="${({ baby: '예: 백일 사진 예약', pet: '예: 미용 예약', couple: '예: 기념일 레스토랑 예약', me: '예: 치과 예약' })[kcat(K())]}"></label>${whoField(e.kid)}<div class="two"><label class="f">날짜<input type="date" name="date" required value="${e.date}"></label><label class="f">시간 (선택)<input type="time" name="time" value="${e.time || ''}"></label></div><div class="sexf"><span>알림 (여러 개 고를 수 있어요)</span><div class="opts rem">${[['d1', '하루 전'], ['d0', '당일 아침'], ['h1', '1시간 전'], ['m10', '10분 전'], ['m0', '정시']].map(([r, t]) => `<label><input type="checkbox" name="rem" value="${r}" ${(e.rem || Notice.REM).includes(r) ? 'checked' : ''}><span>${t}</span></label>`).join('')}</div><span class="sub">1시간 전·10분 전·정시는 시간을 넣었을 때 울려요.</span></div><label class="f">메모<textarea name="memo" maxlength="1000" style="min-height:80px">${esc(e.memo)}</textarea></label>${acts(id && ['event', id, '일정 지우기'])}</form>`);
 }
 let draft = []; // 일기 창에서 고른 사진 id
 const draftGrid = () => draft.map(id => `<button type="button" data-act="undraft" data-id="${id}" aria-label="일기에서 사진 빼기"><img ${pic(id, 1)} alt=""><span class="x">빼기</span></button>`).join('');
@@ -515,7 +517,7 @@ function kidDlg(id) {
   openDlg(`<form data-form="kid" data-id="${k.id}"><h2>${esc(k.name)} 정보</h2><button type="button" class="avpick" data-act="avatar" data-id="${k.id}">${face(k, 'xl')}<span>${icon('cam', 's')}사진 ${k.photo ? '바꾸기' : '넣기'}</span></button>${k.photo ? `<button type="button" class="btn" data-act="avatardel" data-id="${k.id}">프로필 사진 빼기</button>` : ''}<label class="f">이름이나 태명<input name="name" required maxlength="20" autocomplete="off" value="${esc(k.name)}"></label><label class="ck"><input type="checkbox" name="born" ${k.born ? 'checked' : ''}>태어났어요</label>${sexOpts('sex', k.sex || '', k.born)}
   <div class="two"><label class="f">${k.born ? '생일' : '출산 예정일'}<input type="date" name="birth" required value="${k.birth}"></label><label class="f">${k.born ? '태어난 시각' : '예정 시각'} (선택)<input type="time" name="time" value="${k.time || ''}"></label></div>
   <label class="f">몇째<select name="order">${[1, 2, 3].map(n => `<option value="${n}" ${k.order === n ? 'selected' : ''}>${['첫째', '둘째', '셋째 이상'][n - 1]}</option>`).join('')}</select></label>
-  <fieldset><legend>혼합백신 (2·4·6개월)</legend>${r('combo', '5', '4가·5가, 1개월에 B형간염 2차 따로')}${r('combo', '6', '6가, B형간염 포함')}</fieldset><fieldset><legend>로타바이러스</legend>${r('rota', 'RV1', '2회 (RV1)')}${r('rota', 'RV5', '3회 (RV5)')}</fieldset><fieldset><legend>일본뇌염</legend>${r('je', 'dead', '불활성화 백신 5회')}${r('je', 'live', '생백신 2회')}</fieldset><p class="sub">백신 종류는 병원에서 정한 뒤 바꾸면 돼요.</p>${acts(many() && ['kid', k.id, '이 아이 빼기'])}${many() ? '<p class="sub">아이를 빼면 접종·육아 기록은 지워지고, 일기와 사진은 \'모두\'의 기록으로 남아요.</p>' : ''}</form>`);
+  <fieldset><legend>혼합백신 (2·4·6개월)</legend>${r('combo', '5', '4가·5가, 1개월에 B형간염 2차 따로')}${r('combo', '6', '6가, B형간염 포함')}</fieldset><fieldset><legend>로타바이러스</legend>${r('rota', 'RV1', '2회 (RV1)')}${r('rota', 'RV5', '3회 (RV5)')}</fieldset><fieldset><legend>일본뇌염</legend>${r('je', 'dead', '불활성화 백신 5회')}${r('je', 'live', '생백신 2회')}</fieldset><p class="sub">백신 종류는 병원에서 정한 뒤 바꾸면 돼요.</p>${acts(manyAll() && ['kid', k.id, '이 아이 빼기'])}${manyAll() ? '<p class="sub">아이를 빼면 접종·육아 기록은 지워지고, 일기와 사진은 \'모두\'의 기록으로 남아요.</p>' : ''}</form>`);
 }
 function addKidDlg() {
   const last = db.kids[db.kids.length - 1], v = last.born ? {} : { birth: last.birth };
@@ -1223,7 +1225,7 @@ document.addEventListener('submit', async ev => {
 });
 async function download() {
   if (!await save(d => { d.exports++; })) return;
-  const one = many() ? '' : K().name, list = db.kids.flatMap(k => items(k).map(i => Object.assign(i, { who: k.name, uid: (k.id === 'k1' ? '' : k.id + '-') + i.id })));
+  const one = many() ? '' : K().name, list = catKids().flatMap(k => items(k).map(i => Object.assign(i, { who: k.name, uid: (k.id === 'k1' ? '' : k.id + '-') + i.id })));
   const { text, count } = S.toICS(list, { name: one || '우리 수첩', today: today(), leads: db.leads, hour: db.hour, sequence: db.exports, events: db.events.filter(e => e.date >= today()).map(e => many() && e.kid ? Object.assign({}, e, { title: kidOf(e.kid).name + ' ' + e.title }) : e), stamp: new Date().toISOString().replace(/[-:]|\.\d+/g, '') });
   saveFile(new Blob([text], { type: 'text/calendar' }), (one || '우리수첩').replace(/[\\/:*?"<>|]/g, '') + '-일정.ics');
   toast(`일정 ${count}개를 담았어요`);
