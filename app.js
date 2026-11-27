@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.18.8';
+const APP_VERSION = '0.18.9';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -866,7 +866,7 @@ const extOf = b => Media.ext(b.type);
 async function uploadAll() {
   if (job.on) return;
   if (!Drive.token()) return Drive.login(GOOGLE_ID);
-  Object.assign(job, { on: true, done: 0, total: waiting().length, stop: false });
+  Object.assign(job, { on: true, done: 0, total: waiting().length, stop: false, at: Date.now() }); setTimeout(upShow, 1500);
   const paint = () => { upShow(); if ($('#upn')) { $('#upn').textContent = `드라이브에 올리는 중 ${job.done}/${job.total}`; $('#upp').max = job.total; $('#upp').value = job.done; } };
   render(); let bad = 0;
   try {
@@ -891,7 +891,8 @@ let upPill = null;
 function upShow() {
   if (typeof document === 'undefined') return;
   const fam = typeof famUp !== 'undefined' && famUp.total && Date.now() - (famUp.at || 0) >= 1400 ? famUp : null;
-  const t = job.on ? `구글 드라이브에 올리는 중 ${job.done}/${job.total}` : fam ? `가족 수첩에 올리는 중 ${fam.done}/${fam.total}` : '';
+  const slow = job.on && Date.now() - (job.at || 0) >= 1400; // 금방 끝나면 띄우지 않는다
+  const t = slow ? `구글 드라이브에 올리는 중 ${job.done}/${job.total}` : fam ? `가족 수첩에 올리는 중 ${fam.done}/${fam.total}` : '';
   if (!upPill) { upPill = document.createElement('div'); upPill.className = 'uppill'; upPill.setAttribute('role', 'status'); document.body.append(upPill); }
   upPill.hidden = !t || !started; upPill.innerHTML = t ? `<i class="spin" aria-hidden="true"></i>${esc(t)}` : '';
 }
