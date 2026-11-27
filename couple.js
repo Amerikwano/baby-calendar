@@ -278,6 +278,9 @@
     luxury: { day: true, indoor: true, name: '럭셔리·호캉스', acts: ['찜질방·스파'], extra: [['호텔 라운지에서 애프터눈 티', 1, 90, 0, 840, 1020], ['백화점 쇼핑', 1, 120], ['호텔 체크인하고 호캉스', 1, 240, 1, 1140]], dinner: '파인다이닝 저녁' },
     makeup: { day: true, name: '화해 데이트', acts: ['공원 산책', '서점 데이트', '영화 보기'], extra: [['좋아하는 디저트 사 주기', 1, 30], ['조용히 걸으며 이야기 나누기', 0, 60], ['카페에서 손편지 주고받기', 1, 45]] },
   };
+  // 키워드로 테마 고르기: 맞는 말이 없으면 null
+  const THEME_KW = [['propose', /프러포즈|청혼/], ['bday', /생일|생축/], ['d100', /100일|백일/], ['special', /주년|기념일|200일|300일|1000일/], ['xmas', /크리스마스|성탄|연말/], ['makeup', /화해|싸웠|사과/], ['luxury', /호캉스|호텔|럭셔리|고급/], ['spa', /온천|스파|족욕|노천|찜질/], ['home', /^집|집에서|집콕|방콕|홈|배달/], ['pc', /pc|피시|게임|오락/i], ['memory', /옛날|추억|살던|고향|동네/], ['retro', /레트로|복고|lp|필름/i], ['sports', /운동|스포츠|클라이밍|볼링|야구|골프|배드민턴/], ['trip', /즉흥|여행|아무|랜덤|떠나/], ['animal', /동물|강아지|고양이|낚시|수목원|별 보|별구경/], ['oneday', /클래스|만들기|공방|베이킹|칵테일|요가|꽃/], ['night', /야경|밤|불빛|술/], ['food', /맛집|먹|빵|음식|시장/], ['cafe', /카페|커피|디저트|책|서점/], ['indoor', /비 오|비오|실내|추운|더운/], ['active', /액티비티|활동|신나|방탈출/], ['nature', /자연|힐링|산책|공원|피크닉|바다|드라이브|자전거|꽃구경|단풍/], ['culture', /전시|미술|영화|문화|공연|박물관/], ['hot', /핫플|요즘|인스타|팝업|네컷/]];
+  const themeFor = q => { q = String(q || '').trim(); if (!q) return null; const m = THEME_KW.find(([, re]) => re.test(q)); return m ? m[0] : (Object.entries(THEMES).find(([, t]) => q.includes(t.name) || t.name.includes(q)) || [])[0] || null; };
   function randomCourse(o, rnd) {
     rnd = rnd || Math.random; const pick = l => l[Math.floor(rnd() * l.length)];
     const end = mins(o.to), out = [], used = new Set(); let t = mins(o.from), lunch = false, dinner = false, cafe = false, spot = false;
@@ -355,6 +358,6 @@
   const won = n => n >= 10000 ? `약 ${(Math.round(n / 1000) / 10).toString().replace(/\.0$/, '')}만 원` : n ? `약 ${Math.round(n / 1000)}천 원` : '';
   const mapUrl = name => 'https://map.naver.com/p/search/' + encodeURIComponent(name);
   const searchUrl = q => 'https://search.naver.com/search.naver?query=' + encodeURIComponent(q);
-  const out = { THEMES, costOf, won, FEE, HALLS, hallsFor, FESTS, festsFor, randomCourse, mins, plan, planText, IMG, is, LOGS, build, TIPS, COURSES, courses, season, SEASON, SPOTS, mapUrl, searchUrl };
+  const out = { THEMES, themeFor, costOf, won, FEE, HALLS, hallsFor, FESTS, festsFor, randomCourse, mins, plan, planText, IMG, is, LOGS, build, TIPS, COURSES, courses, season, SEASON, SPOTS, mapUrl, searchUrl };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Couple = out;
 })(typeof window !== 'undefined' ? window : globalThis);

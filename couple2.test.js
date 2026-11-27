@@ -34,3 +34,13 @@ test('코스 순서가 말이 되게: 집 데이트는 요리가 배달 뒤에 �
   }
 });
 test('명소 목록에 빈 칸이 없다', () => { assert.ok(C.SPOTS.every(x => x && x.name && x.sido)); });
+
+test('키워드로 테마 고르기', () => {
+  const C = require('./couple.js');
+  assert.equal(C.themeFor('온천'), 'spa');
+  assert.equal(C.themeFor('맛집'), 'food');
+  assert.equal(C.themeFor('집에서 쉬기'), 'home');
+  assert.equal(C.themeFor('생일'), 'bday');
+  assert.equal(C.themeFor('아무 말'), 'trip');
+  assert.equal(C.themeFor(''), null);
+});
