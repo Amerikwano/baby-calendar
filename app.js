@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.18.3';
+const APP_VERSION = '0.18.4';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -576,10 +576,10 @@ function nextDay(k) {
 }
 function mission() {
   const k = K(), t = today();
-  if (!k.born) return `<section class="notice"><b>매일 얼굴 사진 미션</b><p class="sub">태어난 날부터 1일차, 2일차 얼굴 사진을 하루 한 장씩 모아요. 나중에 성장 앨범 영상으로 만들 수 있어요.</p></section>`;
+  if (!k.born) return `<section class="notice"><b>매일 사진 미션</b><p class="sub">태어난 날부터 1일차, 2일차 얼굴 사진을 하루 한 장씩 모아요. 나중에 성장 앨범 영상으로 만들 수 있어요.</p></section>`;
   const n = dayNo(k, t); if (n < 1) return '';
   const f = facesOf(k).find(x => x.date === t), cnt = facesOf(k).length;
-  return `<section class="hero"><div class="mission">${f ? `<button class="face on" data-act="face" data-id="${f.id}" aria-label="오늘 찍은 얼굴 사진"><img ${pic(f.id, 1)} alt="${n}일차 얼굴 사진"></button>` : `<button class="face" data-act="faceask" data-d="${t}" aria-label="${n}일차 사진 넣기">${icon('cam')}</button>`}<div class="stack" style="gap:6px"><h3>오늘의 미션</h3><h2>${f ? `${n}일차 사진을 찍었어요` : `${n}일차 얼굴 사진 찍기`}</h2><p class="sub">지금까지 ${cnt}장 모았어요.${nextDay(k)}</p></div></div><div class="row">${tab === 'grow' ? (cnt ? '<button class="btn" data-act="growview">성장 앨범 보기</button>' : '') : '<button class="btn" data-act="grow">성장 앨범 보기</button>'}</div></section>`;
+  return `<section class="hero"><div class="mission">${f ? `<button class="face on" data-act="face" data-id="${f.id}" aria-label="오늘 찍은 얼굴 사진"><img ${pic(f.id, 1)} alt="${n}일차 얼굴 사진"></button>` : `<button class="face" data-act="faceask" data-d="${t}" aria-label="${n}일차 사진 넣기">${icon('cam')}</button>`}<div class="stack" style="gap:6px"><h3>오늘의 미션</h3><h2>${f ? `${n}일차 사진을 찍었어요` : `${n}일차 ${Me.is(k) ? '' : '얼굴 '}사진 찍기`}</h2><p class="sub">지금까지 ${cnt}장 모았어요.${nextDay(k)}</p></div></div><div class="row">${tab === 'grow' ? (cnt ? '<button class="btn" data-act="growview">${growName()} 보기</button>' : '') : '<button class="btn" data-act="grow">${growName()} 보기</button>'}</div></section>`;
 }
 function growth() {
   const k = K(), t = today();
@@ -588,7 +588,7 @@ function growth() {
   // 최근 두 주 안에 빠진 날은 빈칸으로 보여 나중에 채울 수 있게 한다.
   const miss = Array.from({ length: Math.min(14, n) }, (_, i) => S.addDays(t, -i)).filter(d => d >= k.birth && !has.has(d));
   const cells = fs.map(f => ({ d: f.date, f })).concat(miss.map(d => ({ d }))).sort((a, b) => a.d < b.d ? 1 : -1);
-  return mission() + driveBar() + `<section class="stack"><div class="row between"><h2>${growName()} ${fs.length}장</h2><button class="btn main" data-act="video" ${fs.length < 2 ? 'disabled' : ''}>성장 영상 만들기</button></div><p class="sub">${fs.length < 2 ? '얼굴 사진이 두 장부터 영상을 만들 수 있어요. ' : ''}여기 사진은 사진첩과 따로 저장돼요. 빈칸을 누르면 지난 날짜 사진도 넣을 수 있어요.</p>
+  return mission() + driveBar() + `<section class="stack"><div class="row between"><h2>${growName()} ${fs.length}장</h2><button class="btn main" data-act="video" ${fs.length < 2 ? 'disabled' : ''}>성장 영상 만들기</button></div><p class="sub">${fs.length < 2 ? '사진이 두 장부터 영상을 만들 수 있어요. ' : ''}여기 사진은 사진첩과 따로 저장돼요. 빈칸을 누르면 지난 날짜 사진도 넣을 수 있어요.</p>
     <div class="grid">${cells.map(c => c.f ? `<button data-act="face" data-id="${c.f.id}" aria-label="${dayNo(k, c.d)}일차 사진"><img ${pic(c.f.id, 1)} alt="${dayNo(k, c.d)}일차 얼굴 사진"><span class="d">${dayNo(k, c.d)}일차</span></button>` : `<button class="miss" data-act="faceask" data-d="${c.d}" aria-label="${dayNo(k, c.d)}일차 사진 넣기">${dayNo(k, c.d)}일차<br>넣기</button>`).join('')}</div><div class="row"><button class="btn main" data-act="facebulk">여러 장 한 번에 넣기</button><button class="btn" data-act="faceadd">다른 날짜 사진 넣기</button></div></section>`;
 }
 // 얼굴 사진을 날짜 순서로 한 장씩 넘겨 본다.
@@ -614,7 +614,7 @@ function growPlay() {
 }
 // 찍을지 고를지 묻는 창
 const shootBtns = (cam, pick) => `<div class="picks two2"><button type="button" ${cam}>${icon('cam', 'xl')}<b>사진 찍기</b></button><button type="button" ${pick}>${icon('album', 'xl')}<b>앨범에서 고르기</b></button></div>`;
-const addDlg = () => openDlg(`<form data-form="none"><h2>사진·동영상 추가</h2><div class="picks two2 three"><button type="button" data-act="albcam">${icon('cam', 'xl')}<b>사진 찍기</b></button><button type="button" data-act="albvid">${icon('video', 'xl')}<b>동영상 찍기</b></button><button type="button" data-act="albpick">${icon('album', 'xl')}<b>앨범에서 고르기</b></button></div><p class="sub">여기서 찍은 것은 아기 앨범에 오늘 날짜로 들어가요. 휴대폰 사진첩에도 두려면 열어서 내보내기를 눌러 주세요. 동영상은 하나에 200MB까지 넣을 수 있어요.</p></form>`);
+const addDlg = () => openDlg(`<form data-form="none"><h2>사진·동영상 추가</h2><div class="picks two2 three"><button type="button" data-act="albcam">${icon('cam', 'xl')}<b>사진 찍기</b></button><button type="button" data-act="albvid">${icon('video', 'xl')}<b>동영상 찍기</b></button><button type="button" data-act="albpick">${icon('album', 'xl')}<b>앨범에서 고르기</b></button></div><p class="sub">여기서 찍은 것은 ${albName()}에 오늘 날짜로 들어가요. 휴대폰 사진첩에도 두려면 열어서 내보내기를 눌러 주세요. 동영상은 하나에 200MB까지 넣을 수 있어요.</p></form>`);
 const faceAsk = d => openDlg(`<form data-form="none"><h2>${esc(K().name)} ${dayNo(K(), d)}일차</h2>${shootBtns(`data-act="faceadd" data-d="${d}" data-cam="1"`, `data-act="faceadd" data-d="${d}"`)}</form>`);
 function pickFace(date, cam) {
   pickFiles({ accept: PHOTO_ONLY, capture: cam ? 'environment' : '' }, async ([f]) => cropDlg(f, date || await exifDate(f) || new Date(f.lastModified).toLocaleDateString('sv-SE'), !date));
@@ -719,7 +719,7 @@ const videoType = () => ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/web
 function videoDlg() {
   const n = facesOf(K()).length;
   if (!videoType() || !HTMLCanvasElement.prototype.captureStream) return toast('이 브라우저에서는 영상을 만들 수 없어요. 최신 사파리나 크롬에서 열어 주세요.');
-  openDlg(`<form data-form="video"><h2>${esc(K().name)} 성장 영상</h2><p>얼굴 사진 ${n}장을 날짜 순서로 이어요.</p><label class="f">빠르기<select name="sec"><option value="0.3">빠르게 (약 ${Math.ceil(n * .3 + 2)}초)</option><option value="0.6" selected>보통 (약 ${Math.ceil(n * .6 + 2)}초)</option><option value="1.2">천천히 (약 ${Math.ceil(n * 1.2 + 2)}초)</option></select></label><p class="sub">영상 길이만큼 시간이 걸려요. 만드는 동안 화면을 켜 두세요. 사진은 밖으로 보내지 않아요.</p><div class="row"><button class="btn main">만들기</button></div></form>`);
+  openDlg(`<form data-form="video"><h2>${esc(K().name)} 성장 영상</h2><p>사진 ${n}장을 날짜 순서로 이어요.</p><label class="f">빠르기<select name="sec"><option value="0.3">빠르게 (약 ${Math.ceil(n * .3 + 2)}초)</option><option value="0.6" selected>보통 (약 ${Math.ceil(n * .6 + 2)}초)</option><option value="1.2">천천히 (약 ${Math.ceil(n * 1.2 + 2)}초)</option></select></label><p class="sub">영상 길이만큼 시간이 걸려요. 만드는 동안 화면을 켜 두세요. 사진은 밖으로 보내지 않아요.</p><div class="row"><button class="btn main">만들기</button></div></form>`);
 }
 async function makeVideo(sec) {
   const k = K(), fs = facesOf(k), type = videoType();
@@ -1087,7 +1087,7 @@ document.addEventListener('click', async ev => {
   else if (act === 'mon') { month = S.addMonths(month + '-01', Number(b.dataset.n)).slice(0, 7); sel = month === today().slice(0, 7) ? today() : month + '-01'; render(); }
   else if (act === 'ai') runAI(b.dataset.k, Boolean(aiData[b.dataset.k]));
   else if (act === 'ics') await download();
-  else if (act === 'backup') { try { readyDlg(await Local.backup(), `아기수첩-백업-${today()}.zip`, '백업 파일을 만들었어요'); } catch (e) { toast(e.message); } }
+  else if (act === 'backup') { try { readyDlg(await Local.backup(), `우리수첩-백업-${today()}.zip`, '백업 파일을 만들었어요'); } catch (e) { toast(e.message); } }
   else if (act === 'restore') {
     if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = '지금 내용을 지우고 되돌리기'; return; }
     pickFiles({ accept: '.zip,application/zip' }, async ([zip]) => { try { await Local.restore(zip); await load(); dlg.close(); toast('백업을 되돌렸어요'); } catch (e) { toast(e.message || '되돌리지 못했어요'); } });
@@ -1103,9 +1103,9 @@ document.addEventListener('click', async ev => {
     const k = b.dataset.k;
     if (k === 'event' && await save(d => { d.events = d.events.filter(x => x.id !== id); })) dlg.close();
     if (k === 'diary' && await save(d => { d.diary = d.diary.filter(x => x.id !== id); })) { dlg.close(); toast('일기를 지웠어요. 사진은 사진첩에 남아 있어요.'); }
-    if (k === 'kid') { const av = kidOf(id).photo; if (!await save(d => { Family.removeKid(d, id); Family.rank(d.kids); })) return; if (av) api('/api/photos/' + av, { method: 'DELETE' }).catch(() => { }); dlg.close(); toast('아이를 뺐어요. 일기와 사진은 남아 있어요.'); }
+    if (k === 'kid') { const av = kidOf(id).photo; if (!await save(d => { Family.removeKid(d, id); Family.rank(d.kids); })) return; if (av) api('/api/photos/' + av, { method: 'DELETE' }).catch(() => { }); dlg.close(); toast('수첩을 뺐어요. 일기와 사진은 남아 있어요.'); }
     if (k === 'log' && await save(d => { d.logs = d.logs.filter(x => x.id !== id); })) { dlg.close(); toast('기록을 지웠어요'); }
-    if (k === 'face' && await save(d => { d.faces = d.faces.filter(x => x.id !== id); })) { await api('/api/photos/' + id, { method: 'DELETE' }).catch(() => { }); dlg.close(); toast('얼굴 사진을 지웠어요'); }
+    if (k === 'face' && await save(d => { d.faces = d.faces.filter(x => x.id !== id); })) { await api('/api/photos/' + id, { method: 'DELETE' }).catch(() => { }); dlg.close(); toast('사진을 지웠어요'); }
     if (k === 'photo' && await save(d => { d.photos = d.photos.filter(x => x.id !== id); d.diary.forEach(x => x.photos = x.photos.filter(y => y !== id)); })) { await api('/api/photos/' + id, { method: 'DELETE' }).catch(() => { }); dlg.close(); toast('지웠어요'); }
   }
 });
@@ -1214,7 +1214,7 @@ document.addEventListener('submit', async ev => {
     const bad = Family.sexProblem(v.sex, Boolean(v.born)) || dateProblem(v.birth, Boolean(v.born)); if (bad) return toast(bad);
     ok = await save(d => { const k = d.kids.find(x => x.id === id); Object.assign(k, { name: v.name.trim() || k.name, birth: v.birth, time: v.time, sex: v.sex || '', born: Boolean(v.born), order: Number(v.order), options: { combo: v.combo, rota: v.rota, je: v.je } }); });
   }
-  if (kind === 'face') { ok = await save(d => { const x = d.faces.find(y => y.id === id); if (d.faces.some(y => y.id !== id && y.kid === x.kid && y.date === v.date)) { v.dup = 1; return; } x.date = v.date; x.caption = v.caption.trim(); }); if (v.dup) return toast('그 날짜에는 이미 얼굴 사진이 있어요'); }
+  if (kind === 'face') { ok = await save(d => { const x = d.faces.find(y => y.id === id); if (d.faces.some(y => y.id !== id && y.kid === x.kid && y.date === v.date)) { v.dup = 1; return; } x.date = v.date; x.caption = v.caption.trim(); }); if (v.dup) return toast('그 날짜에는 이미 사진이 있어요'); }
   if (kind === 'settings') {
     if (local && v.aiCode != null) saveAI(v.aiCode.trim());
     ok = await save(d => Object.assign(d, { leads: new FormData(f).getAll('lead').map(Number), hour: Number(v.hour) }));
@@ -1224,8 +1224,8 @@ document.addEventListener('submit', async ev => {
 async function download() {
   if (!await save(d => { d.exports++; })) return;
   const one = many() ? '' : K().name, list = db.kids.flatMap(k => items(k).map(i => Object.assign(i, { who: k.name, uid: (k.id === 'k1' ? '' : k.id + '-') + i.id })));
-  const { text, count } = S.toICS(list, { name: one || '우리 아이들', today: today(), leads: db.leads, hour: db.hour, sequence: db.exports, events: db.events.filter(e => e.date >= today()).map(e => many() && e.kid ? Object.assign({}, e, { title: kidOf(e.kid).name + ' ' + e.title }) : e), stamp: new Date().toISOString().replace(/[-:]|\.\d+/g, '') });
-  saveFile(new Blob([text], { type: 'text/calendar' }), (one || '우리아이들').replace(/[\\/:*?"<>|]/g, '') + '-일정.ics');
+  const { text, count } = S.toICS(list, { name: one || '우리 수첩', today: today(), leads: db.leads, hour: db.hour, sequence: db.exports, events: db.events.filter(e => e.date >= today()).map(e => many() && e.kid ? Object.assign({}, e, { title: kidOf(e.kid).name + ' ' + e.title }) : e), stamp: new Date().toISOString().replace(/[-:]|\.\d+/g, '') });
+  saveFile(new Blob([text], { type: 'text/calendar' }), (one || '우리수첩').replace(/[\\/:*?"<>|]/g, '') + '-일정.ics');
   toast(`일정 ${count}개를 담았어요`);
 }
 function saveFile(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000); }

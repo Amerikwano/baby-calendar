@@ -49,7 +49,7 @@ function pushCard() {
   if (push.state === 'home') return `<div class="notice"><b>휴대폰으로 알림 받기</b><p class="sub">아이폰은 공유 단추에서 '홈 화면에 추가'한 앱에서 알림을 켤 수 있어요.</p></div>`;
   if (push.state === 'denied') return `<div class="notice"><b>알림이 꺼져 있어요</b><p class="sub">휴대폰 설정에서 이 앱의 알림을 켠 뒤 앱을 다시 열어 주세요.</p></div>`;
   if (push.state === 'on') return `<div class="notice"><b>휴대폰 알림이 켜져 있어요</b><p class="sub">접종·검진·예약과 달력의 모든 일정, 가족 수첩의 새 좋아요와 댓글을 알려요. 아침 알림은 ${db.hour}시이고 설정에서 바꿀 수 있어요.</p><div class="row"><button type="button" class="btn" data-act="pushtest">시험 알림 보내기</button><button type="button" class="btn" data-act="pushoff">끄기</button></div></div>`;
-  return `<div class="notice"><b>휴대폰으로 알림 받기</b><p class="sub">앱을 닫아 두어도 알려드려요. 알림 서버에는 기기 주소와 알릴 시각만 맡기고, 아기 정보는 보내지 않아요.</p><div class="row"><button type="button" class="btn main" data-act="pushon">알림 켜기</button></div></div>`;
+  return `<div class="notice"><b>휴대폰으로 알림 받기</b><p class="sub">앱을 닫아 두어도 알려드려요. 알림 서버에는 기기 주소와 알릴 시각만 맡기고, 수첩 내용은 보내지 않아요.</p><div class="row"><button type="button" class="btn main" data-act="pushon">알림 켜기</button></div></div>`;
 }
 function alertsDlg() {
   const l = bellNow();
@@ -66,7 +66,7 @@ function talkOpen(id) {
   if (bound && bound.id === id && started) { goTab('diary'); asked.clear(); famPull(); return; } // 승인 요청이 있으면 famPull이 승인 창을 띄운다
   if (visits.some(v => v.id === id)) return openVisit(id);
   // 카카오톡 안 브라우저처럼 가족 수첩이 없는 창에서 열었으면 앱을 열라고 알려 준다
-  openDlg(`<form data-form="none"><h2>앱에서 확인해 주세요</h2><p>이 창에는 가족 수첩이 없어요. 홈 화면의 <b>아기 수첩</b> 앱(또는 평소 쓰던 브라우저)을 열면 승인 창이 떠요.</p>${IN_APP === 'kakao' ? '<button type="button" class="btn main" data-act="external">크롬·사파리로 열기</button>' : ''}</form>`);
+  openDlg(`<form data-form="none"><h2>앱에서 확인해 주세요</h2><p>이 창에는 가족 수첩이 없어요. 홈 화면의 <b>우리 수첩</b> 앱(또는 평소 쓰던 브라우저)을 열면 승인 창이 떠요.</p>${IN_APP === 'kakao' ? '<button type="button" class="btn main" data-act="external">크롬·사파리로 열기</button>' : ''}</form>`);
 }
 // 앱을 켜 둔 동안에도 새 알림이 생기면 종에 점을 찍는다.
 setInterval(() => { if (ready && started && !document.hidden && !dlg.open) $('#top').innerHTML = topBar(); }, 60000);

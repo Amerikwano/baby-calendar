@@ -6,6 +6,8 @@
   function text(k, n) {
     if (!k) return { title: '우리 수첩', description: '아기와 반려동물의 일정, 기록, 사진첩을 한곳에' };
     if (!k.born) return { title: n > 0 ? `${k.name} 만나기까지 D-${n}` : n === 0 ? `${k.name} 만나는 날이에요` : `${k.name} 예정일 D+${-n}`, description: '설레는 마음으로 함께 기다려요' };
+    if (k.kind === 'couple') return { title: `${k.name} 만난 지 ${n}일`, description: n % 100 === 0 ? `오늘은 ${n}일이에요` : '오늘도 함께해서 좋아요' };
+    if (k.kind === 'me') return { title: '우리 수첩', description: '건강, 재테크, 여행까지 나를 챙기는 수첩' };
     const special = { 100: '오늘은 백일이에요', 200: '오늘은 200일이에요' }[n];
     return { title: `${k.name} 태어난 지 ${n}일`, description: special || '오늘도 한 뼘 자랐어요' };
   }
