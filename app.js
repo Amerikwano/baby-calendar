@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.28.1';
+const APP_VERSION = '0.28.2';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -409,7 +409,7 @@ async function courseShot(o) { // o: { title, sub, steps } 또는 { title, sub, 
   const W = 1080, P = 64, c = document.createElement('canvas'), g = c.getContext('2d'), F = (sz, wt) => `${wt || 400} ${sz}px "Apple SD Gothic Neo","Noto Sans KR",sans-serif`;
   const wrap = (t, w, f) => { g.font = f; const out = []; let l = ''; for (const ch of t) { if (g.measureText(l + ch).width > w) { out.push(l); l = ''; } l += ch; } out.push(l); return out; };
   const tx = P + 150, tw = W - tx - P, mapH = 620;
-  const days = (o.days || [{ head: '', steps: o.steps }]).map(d => ({ head: d.head, rows: d.steps.map(st => { const [a, b, n, p] = st; return { a, lines: wrap(b, tw - 170, F(38, 600)), p: p && !n ? p : null, cost: o.noCost ? 0 : stepCost(st) }; }), pts: d.steps.map(s2 => s2[3]).filter(Boolean) }));
+  const days = (o.days || [{ head: '', steps: o.steps }]).map(d => ({ head: d.head, steps: d.steps, rows: d.steps.map(st => { const [a, b, n, p] = st; return { a, lines: wrap(b, tw - 170, F(38, 600)), p: p && !n ? p : null, cost: o.noCost ? 0 : stepCost(st) }; }), pts: d.steps.map(s2 => s2[3]).filter(Boolean) }));
   const H = 200 + days.length * 90 + days.reduce((h, d) => h + (d.head ? 80 : 0) + d.rows.reduce((h2, r) => h2 + r.lines.length * 52 + (r.p ? 46 : 0) + 34, 0) + (d.pts.length ? mapH + 50 : 0), 0) + 120;
   c.width = W; c.height = H; g.fillStyle = '#fffdf9'; g.fillRect(0, 0, W, H);
   let y = 100; g.fillStyle = '#4f3f3a'; g.font = F(54, 800); g.fillText(o.title, P, y); y += 60; g.fillStyle = '#7a685d'; g.font = F(32); g.fillText(o.sub, P, y); y += 80;
