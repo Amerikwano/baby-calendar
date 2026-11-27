@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.19.2';
+const APP_VERSION = '0.19.3';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -341,7 +341,9 @@ const nmapBtn = q => `<button type="button" class="pin" data-act="nmap" data-q="
 // 해외는 구글 지도(앱이 있으면 앱으로 열린다)
 const gmapUrl = q => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
 const gmapBtn = q => `<a class="pin" href="${gmapUrl(q)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(q)} 구글 지도에서 보기">${PIN}</a>`;
-const pinCard = (chip, title, body, q, g) => `<article class="paper"><div class="hosp" style="border:0;padding:0"><span><span class="chip">${esc(chip)}</span><b style="margin-top:8px;font-size:17px">${esc(title)}</b><span class="sub">${esc(body)}</span></span>${g ? gmapBtn(q) : nmapBtn(q)}</div></article>`;
+// 명소 사진(위키미디어 공용, 출처 표시)
+const spotImg = n => { const i = Couple.IMG[n]; return i ? `<figure class="spotimg"><img src="${esc(i[1])}" alt="${esc(n)}" loading="lazy" referrerpolicy="no-referrer"><a href="https://commons.wikimedia.org/wiki/File:${encodeURIComponent(i[0])}" target="_blank" rel="noopener noreferrer">사진 위키미디어 공용</a></figure>` : ''; };
+const pinCard = (chip, title, body, q, g, n) => `<article class="paper">${spotImg(n || title)}<div class="hosp" style="border:0;padding:0"><span><span class="chip">${esc(chip)}</span><b style="margin-top:8px;font-size:17px">${esc(title)}</b><span class="sub">${esc(body)}</span></span>${g ? gmapBtn(q) : nmapBtn(q)}</div></article>`;
 function openNmap(q) {
   const web = Couple.mapUrl(q); if (!/iPhone|iPad|iPod|Android/.test(navigator.userAgent)) return window.open(web, '_blank', 'noopener');
   let gone = false; const off = () => { gone = true; }; document.addEventListener('visibilitychange', off, { once: true }); window.addEventListener('pagehide', off, { once: true });
