@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.18.1';
+const APP_VERSION = '0.18.2';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -458,6 +458,7 @@ function render() {
   $('#top').innerHTML = topBar(); $('nav').innerHTML = navBar();
   const q = $('#main .pill'), qx = q ? q.scrollLeft : 0, mt = $('#main .mtabs'), mx = mt ? mt.scrollLeft : 0;
   const opened = [...document.querySelectorAll('#main details[open]')].map(x => x.dataset.key || 'all');
+  if (tab === 'grow' && Couple.is(K())) tab = 'album'; // 연애 수첩은 하루 한 장이 없다
   $('#main').className = 'stack tab-' + tab;
   $('#main').innerHTML = { home, cal: calendar, diary: records, album, more, tips, money, vax, visits: visitsView, visit: visitView, grow: () => `<div class="albtop">${albSeg()}</div>` + growth() }[tab]();
   document.querySelectorAll('#main details').forEach(x => { if (opened.includes(x.dataset.key || 'all')) x.open = true; });

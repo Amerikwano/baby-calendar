@@ -30,7 +30,7 @@ if (typeof document !== 'undefined') {
     if (!s) return; const t = e.changedTouches[0], dir = Swipe.judge(t.clientX - s.x, t.clientY - s.y, e.timeStamp - s.t); s = null;
     if (!dir || typing() || skip(e.target)) return;
     if (dir < 0 && navStack.length && navStack[navStack.length - 1].kind === 'sub') { history.back(); return; } // 하위 화면에서 오른쪽으로 밀면 뒤로
-    const to = Swipe.next(tab, dir, Me.isSolo(K()) ? ['album', 'grow'] : null); if (!to) return;
+    const to = Swipe.next(tab, dir, Me.isSolo(K()) ? ['album', 'grow'] : Couple.is(K()) ? ['grow'] : null); if (!to) return;
     goTab(to);
     const m = document.querySelector('#main'); m.classList.add(dir > 0 ? 'in-r' : 'in-l'); setTimeout(() => m.classList.remove('in-r', 'in-l'), 260);
   }, { passive: true });
