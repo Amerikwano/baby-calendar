@@ -66,6 +66,7 @@ const nameFor = (data, cats) => homeName(scope(data, cats));
 // 열람하는 사람에게는 보여 줄 것만 남긴다. 알림 설정, 지역, 육아 기록, 일정은 빼고, 아이 정보도 필요한 것만.
 export function forViewer(data) {
   const out = {}; VIEW_KEYS.forEach(k => { if (data && data[k] !== undefined) out[k] = data[k]; });
+  ['diary', 'photos'].forEach(k => { if (Array.isArray(out[k])) out[k] = out[k].filter(x => !x.priv); }); // 나만 보기
   out.kids = (out.kids || []).map(k => ({ id: k.id, kind: k.kind, name: k.name, birth: k.birth, born: k.born, sex: k.sex, photo: k.photo, order: k.order }));
   return out;
 }

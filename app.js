@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.16.4';
+const APP_VERSION = '0.17.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -288,7 +288,7 @@ new MutationObserver(markBlank).observe(document.body, { childList: true, subtre
 const thumb = p => `<button type="button" data-act="photo" data-id="${p.id}" aria-label="${kd(p.date)} ${p.type ? '동영상' : '사진'}"><img ${pic(p.id, 1)} alt="${esc(p.caption || kd(p.date) + ' 사진')}"></button>`;
 function records() {
   const ds = Family.forKid(db.diary, K().id).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
-  return `<div class="albtop"><div class="albhead"><h2>일기</h2><button class="sq" data-act="write" aria-label="일기 쓰기">${icon('plus')}</button></div></div>` + (ds.length ? ds.map(x => `<article class="paper"><div class="row between"><div><h2>${kd(x.date)}</h2><span class="sub">${stageOf(x.date)}</span></div>${many() && !x.kid ? tag('') : ''}<button class="btn" data-act="write" data-id="${x.id}">고치기</button></div>${x.body ? `<p class="body">${esc(x.body)}</p>` : ''}${x.photos.length ? `<div class="grid">${x.photos.map(id => db.photos.find(p => p.id === id)).filter(Boolean).map(thumb).join('')}</div>` : ''}${talkBar(Fam.target('diary', x.id))}</article>`).join('') : `<div class="empty">${icon('diary', 'xl')}<p>아직 쓴 일기가 없어요.<br>${K().born ? '오늘 있었던 일을' : '기다리는 마음을'} 적어 보세요.</p></div>`) ;
+  return `<div class="albtop"><div class="albhead"><h2>일기</h2><button class="sq" data-act="write" aria-label="일기 쓰기">${icon('plus')}</button></div></div>` + (ds.length ? ds.map(x => `<article class="paper"><div class="row between"><div><h2>${kd(x.date)}</h2><span class="sub">${stageOf(x.date)}${x.priv ? ' · 나만 보기' : ''}</span></div>${many() && !x.kid ? tag('') : ''}<button class="btn" data-act="write" data-id="${x.id}">고치기</button></div>${x.body ? `<p class="body">${esc(x.body)}</p>` : ''}${x.photos.length ? `<div class="grid">${x.photos.map(id => db.photos.find(p => p.id === id)).filter(Boolean).map(thumb).join('')}</div>` : ''}${talkBar(Fam.target('diary', x.id))}</article>`).join('') : `<div class="empty">${icon('diary', 'xl')}<p>아직 쓴 일기가 없어요.<br>${K().born ? '오늘 있었던 일을' : '기다리는 마음을'} 적어 보세요.</p></div>`) ;
 }
 
 /* ── 육아 팁 ── */
@@ -491,11 +491,11 @@ const draftGrid = () => draft.map(id => `<button type="button" data-act="undraft
 function writeDlg(id) {
   const x = db.diary.find(d => d.id === id) || { date: tab === 'cal' ? sel : today(), body: '', photos: [], kid: K().id };
   draft = [...x.photos];
-  openDlg(`<form data-form="diary" data-id="${id || ''}"><h2>${id ? '일기 고치기' : '일기 쓰기'}</h2><div class="two"><label class="f">날짜<input type="date" name="date" required value="${x.date}"></label>${whoField(x.kid)}</div><label class="f">내용<textarea name="body" maxlength="10000" placeholder="${Me.is(K()) ? '오늘 하루는 어땠나요?' : Couple.is(K()) ? '오늘 우리는 어땠나요?' : isPet(K()) ? `오늘 ${esc(K().name)}${josa(K().name) === '이' ? '은' : '는'} 어땠나요?` : K().born ? '오늘 아기는 어땠나요?' : '아기를 기다리는 오늘, 어떤 하루였나요?'}">${esc(x.body)}</textarea></label><label class="f">사진<input type="file" id="dfile" accept="image/*" multiple></label><div class="grid" id="dgrid">${draftGrid()}</div><p class="sub">넣은 사진은 사진첩에도 이 날짜로 저장돼요.</p>${acts(id && ['diary', id, '일기 지우기'])}</form>`);
+  openDlg(`<form data-form="diary" data-id="${id || ''}"><h2>${id ? '일기 고치기' : '일기 쓰기'}</h2><div class="two"><label class="f">날짜<input type="date" name="date" required value="${x.date}"></label>${whoField(x.kid)}</div><label class="f">내용<textarea name="body" maxlength="10000" placeholder="${Me.is(K()) ? '오늘 하루는 어땠나요?' : Couple.is(K()) ? '오늘 우리는 어땠나요?' : isPet(K()) ? `오늘 ${esc(K().name)}${josa(K().name) === '이' ? '은' : '는'} 어땠나요?` : K().born ? '오늘 아기는 어땠나요?' : '아기를 기다리는 오늘, 어떤 하루였나요?'}">${esc(x.body)}</textarea></label><label class="ck"><input type="checkbox" name="priv" ${x.priv ? 'checked' : ''}>나만 보기 (보기만 초대받은 가족에게 안 보여요)</label><label class="f">사진<input type="file" id="dfile" accept="image/*" multiple></label><div class="grid" id="dgrid">${draftGrid()}</div><p class="sub">넣은 사진은 사진첩에도 이 날짜로 저장돼요.</p>${acts(id && ['diary', id, '일기 지우기'])}</form>`);
 }
 function photoDlg(id) {
   const p = db.photos.find(x => x.id === id); if (!p) return;
-  openDlg(`<form data-form="photo" data-id="${id}"><h2>${p.type ? '동영상 정보' : '사진 정보'}</h2><label class="f">날짜<input type="date" name="date" required value="${p.date}"></label><label class="f">설명<textarea name="caption" class="cap1" maxlength="1000" placeholder="이 사진의 이야기를 적어 보세요">${esc(p.caption)}</textarea></label>${whoField(p.kid)}<p class="sub">${stageOf(p.date, kidOf(p.kid))}</p><div class="row"><button type="button" class="btn favb" data-act="fav" data-id="${id}" aria-pressed="${Boolean(p.fav)}">${icon('heart', p.fav ? 'fill' : '')}즐겨찾기</button><button type="button" class="btn" data-act="sharephoto" data-id="${id}">내보내기</button></div>${acts(['photo', id, p.type ? '동영상 지우기' : '사진 지우기'])}</form>`);
+  openDlg(`<form data-form="photo" data-id="${id}"><h2>${p.type ? '동영상 정보' : '사진 정보'}</h2><label class="f">날짜<input type="date" name="date" required value="${p.date}"></label><label class="f">설명<textarea name="caption" class="cap1" maxlength="1000" placeholder="이 사진의 이야기를 적어 보세요">${esc(p.caption)}</textarea></label>${whoField(p.kid)}<label class="ck"><input type="checkbox" name="priv" ${p.priv ? 'checked' : ''}>나만 보기 (보기만 초대받은 가족에게 안 보여요)</label><p class="sub">${stageOf(p.date, kidOf(p.kid))}</p><div class="row"><button type="button" class="btn favb" data-act="fav" data-id="${id}" aria-pressed="${Boolean(p.fav)}">${icon('heart', p.fav ? 'fill' : '')}즐겨찾기</button><button type="button" class="btn" data-act="sharephoto" data-id="${id}">내보내기</button></div>${acts(['photo', id, p.type ? '동영상 지우기' : '사진 지우기'])}</form>`);
 }
 function settingsDlg() {
   openDlg(`<form data-form="settings"><h2>설정</h2>
@@ -1121,9 +1121,9 @@ document.addEventListener('submit', async ev => {
   if (kind === 'event') ok = await save(d => { const e = d.events.find(x => x.id === id), n = { title: v.title.trim(), date: v.date, time: v.time, memo: v.memo, rem: new FormData(f).getAll('rem'), kid: v.kid != null ? v.kid : e ? e.kid : K().id }; if (e) Object.assign(e, n); else d.events.push(Object.assign({ id: uid() }, n)); });
   if (kind === 'diary') {
     if (!v.body.trim() && !draft.length) return toast('내용을 쓰거나 사진을 넣어 주세요');
-    ok = await save(d => { const e = d.diary.find(x => x.id === id), n = { date: v.date, body: v.body.trim(), photos: [...draft], kid: v.kid != null ? v.kid : e ? e.kid : K().id }; if (e) Object.assign(e, n); else d.diary.push(Object.assign({ id: uid() }, n)); d.photos.forEach(p => { if (draft.includes(p.id)) { p.date = v.date; if (v.kid != null) p.kid = v.kid; } }); });
+    ok = await save(d => { const e = d.diary.find(x => x.id === id), n = { date: v.date, body: v.body.trim(), priv: Boolean(v.priv), photos: [...draft], kid: v.kid != null ? v.kid : e ? e.kid : K().id }; if (e) Object.assign(e, n); else d.diary.push(Object.assign({ id: uid() }, n)); d.photos.forEach(p => { if (draft.includes(p.id)) { p.date = v.date; if (v.kid != null) p.kid = v.kid; if (v.priv) p.priv = true; } }); });
   }
-  if (kind === 'photo') ok = await save(d => Object.assign(d.photos.find(x => x.id === id), { date: v.date, caption: v.caption.trim() }, v.kid != null ? { kid: v.kid } : {}));
+  if (kind === 'photo') ok = await save(d => Object.assign(d.photos.find(x => x.id === id), { date: v.date, caption: v.caption.trim(), priv: Boolean(v.priv) }, v.kid != null ? { kid: v.kid } : {}));
   if (kind === 'due') {
     const bad = dateProblem(v.birth, false); if (bad) return toast(bad);
     ok = await save(d => Object.assign(d.kids.find(k => k.id === K().id), { birth: v.birth, time: v.time }));
