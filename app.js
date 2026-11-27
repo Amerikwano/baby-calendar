@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.25.2';
+const APP_VERSION = '0.25.3';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -458,7 +458,9 @@ function planDlgFor(n) {
 let shotMode = 'save';
 function shotOut(file, title) {
   const share = () => navigator.share({ files: [file], title }).catch(() => { });
-  if (shotMode === 'share' && navigator.canShare && navigator.canShare({ files: [file] })) return share();
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent), can = navigator.canShare && navigator.canShare({ files: [file] });
+  // 아이폰은 사진 저장도 공유 창으로(맨 위 '이미지 저장'을 누르면 된다)
+  if (can && (shotMode === 'share' || ios)) { if (ios && shotMode === 'save') toast("'이미지 저장'을 누르면 사진에 저장돼요"); return share(); }
   const u = URL.createObjectURL(file);
   if (shotMode === 'save' && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
     openDlg(`<form data-form="none"><h2>사진에 저장</h2><p class="sub">그림을 길게 누르고 <b>'사진 앱에 저장'</b>을 고르세요.</p><img src="${u}" alt="${esc(title)}" style="width:100%;border-radius:18px;-webkit-touch-callout:default;user-select:auto"></form>`, true); return;
