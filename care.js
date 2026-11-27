@@ -51,8 +51,7 @@ let careDays = 3; // 홈에 보여 줄 기록 날짜 수
 const nowText = () => today() + 'T' + new Date().toTimeString().slice(0, 5);
 const logsOf = k => db.logs.filter(l => l.kid === k.id);
 const face = (k, cls) => `<span class="av ${cls || ''}${k && !k.photo && k.kind ? ' pet' : ''}">${k && k.photo ? `<img ${pic(k.photo, 1)} alt="">` : Pet.isPet(k) ? icon('paw') : Couple.is(k) ? icon('heart') : Me.is(k) ? icon('user') : FACE}</span>`;
-// 수첩 더하기 단추: 아기와 반려동물
-const addBtns = () => `<div class="row"><button type="button" class="btn" data-act="addkid">${db.kids.some(k => !k.kind) ? '쌍둥이·형제' : '아기'}</button><button type="button" class="btn" data-act="addpet">${icon('paw', 's')}반려동물</button><button type="button" class="btn" data-act="addcouple">${icon('heart', 's')}연애</button><button type="button" class="btn" data-act="addme">${icon('user', 's')}개인</button></div>`;
+const addBtns = () => `<button type="button" class="btn" data-act="newcat">${icon('plus', 's')}새 수첩 만들기</button>`;
 // 2개월 15일 (D+76)
 function ageLine(k) {
   const t = today(), n = S.diffDays(t, k.birth);
@@ -164,7 +163,13 @@ function reportDlg(d) {
   openDlg(`<form data-form="none"><h2>${m}월 ${x}일 하루 요약</h2><div class="row between"><button type="button" class="btn" data-act="report" data-d="${S.addDays(day, -1)}">전날</button><span class="sub">${esc(k.name)} ${dayLabel(k, day)}</span><button type="button" class="btn" data-act="report" data-d="${S.addDays(day, 1)}" ${day >= today() ? 'disabled' : ''}>다음 날</button></div>
   ${r.total ? `<div class="rgrid">${k.born && !k.kind ? cell('bottle', '수유', r.feeds + '회', r.ml ? `젖병 ${r.ml}ml` : '') + cell('diaper', '기저귀', r.diaper + '회', r.diaper ? `소변 ${r.pee} 대변 ${r.poo}` : '') + cell('sleep', '수면', r.sleep ? Care.hm(r.sleep) : '-') + cell('food', '이유식', r.food + '회') + (r.temp ? cell('temp', '최고 체온', r.temp + '℃') : '') : typesFor(k).map(t => cell(t, Care.TYPES[t].name, logsOf(k).filter(l => l.date === day && l.type === t && l.done).length + '회')).join('')}</div>` : '<p class="empty">이날은 기록이 없어요.</p>'}</form>`);
 }
-const kidsDlg = () => openDlg(`<form data-form="none"><h2>수첩</h2><div class="list">${db.kids.map(k => `<div class="kidrow"><button type="button" data-act="pickkid" data-id="${k.id}" ${k.id === K().id ? 'aria-current="true"' : ''}>${face(k)}<span><b>${esc(k.name)}</b><em>${Me.is(k) ? '개인 수첩, ' : Couple.is(k) ? '연애, ' : Pet.isPet(k) ? Pet.KINDS[k.kind] + (k.sex ? ' ' + Pet.SEX[k.sex] : '') + ', ' : k.sex ? Family.SEX[k.sex] + ', ' : k.born ? '' : '성별 모름, '}${ageLine(k)}</em></span></button><button type="button" class="btn" data-act="kidedit" data-id="${k.id}">고치기</button></div>`).join('')}</div>${addBtns()}</form>`);
+// 수첩 목록: 종류별로 묶고, 아기와 반려동물은 그 종류 안에서 더할 수 있다. 새 종류는 오른쪽 위 +로 만든다.
+const KCAT = [['baby', '아기', 'baby', '쌍둥이·형제 더하기', 'addkid'], ['pet', '반려동물', 'paw', '반려동물 더하기', 'addpet'], ['couple', '연애', 'heart'], ['me', '개인', 'user']];
+const kcat = k => Pet.isPet(k) ? 'pet' : Couple.is(k) ? 'couple' : Me.is(k) ? 'me' : 'baby';
+const kidRow = k => `<div class="kidrow"><button type="button" data-act="pickkid" data-id="${k.id}" ${k.id === K().id ? 'aria-current="true"' : ''}>${face(k)}<span><b>${esc(k.name)}</b><em>${Me.is(k) ? '' : Couple.is(k) ? '' : Pet.isPet(k) ? Pet.KINDS[k.kind] + (k.sex ? ' ' + Pet.SEX[k.sex] : '') + ', ' : k.sex ? Family.SEX[k.sex] + ', ' : k.born ? '' : '성별 모름, '}${ageLine(k)}</em></span></button><button type="button" class="btn" data-act="kidedit" data-id="${k.id}">고치기</button></div>`;
+const kidsDlg = () => openDlg(`<form data-form="none"><div class="row between"><h2>수첩</h2><button type="button" class="sq" data-act="newcat" aria-label="새 수첩 만들기">${icon('plus')}</button></div>${KCAT.map(([c, n, , add, act]) => { const l = db.kids.filter(k => kcat(k) === c); return l.length ? `<h3 class="vcat">${n} 수첩</h3><div class="list">${l.map(kidRow).join('')}</div>${add ? `<button type="button" class="btn" data-act="${act}">${add}</button>` : ''}` : ''; }).join('')}</form>`);
+// 새 수첩 종류 고르기. 이미 있는 종류는 고를 수 없다.
+const newCatDlg = () => openDlg(`<form data-form="none"><h2>어떤 수첩을 만들까요?</h2><div class="picks">${KCAT.map(([c, n, ic]) => { const has = db.kids.some(k => kcat(k) === c); return `<button type="button" data-act="mkcat" data-c="${c}" ${has ? 'disabled' : ''}>${icon(ic, 'xl')}<b>${n} 수첩</b><span>${has ? '이미 있어요' : '새로 만들기'}</span></button>`; }).join('')}</div></form>`);
 
 /* ── 더보기 ── */
 function more() {

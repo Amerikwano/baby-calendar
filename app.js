@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.15.0';
+const APP_VERSION = '0.15.1';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -513,7 +513,7 @@ function kidDlg(id) {
 }
 function addKidDlg() {
   const last = db.kids[db.kids.length - 1], v = last.born ? {} : { birth: last.birth };
-  openDlg(`<form data-form="addkid"><h2>쌍둥이·형제 더하기</h2>${kidFields(0, v, true)}<p class="sub">쌍둥이면 날짜를 똑같이 두세요.</p>${acts()}</form>`);
+  openDlg(`<form data-form="addkid"><h2>${db.kids.some(k => !k.kind) ? "쌍둥이·형제 더하기" : "아기 수첩 만들기"}</h2>${kidFields(0, v, true)}<p class="sub">쌍둥이면 날짜를 똑같이 두세요.</p>${acts()}</form>`);
   startPreview(dlg.querySelector('form'));
 }
 function bornDlg() {
@@ -925,6 +925,8 @@ async function moreActs(act, b, id) {
   else if (act === 'addkid') addKidDlg();
   else if (act === 'addpet') addPetDlg();
   else if (act === 'addcouple') coupleDlg();
+  else if (act === 'newcat') newCatDlg();
+  else if (act === 'mkcat') ({ baby: addKidDlg, pet: addPetDlg, couple: () => coupleDlg(), me: () => meDlg() })[d.c]();
   else if (act === 'addme') meDlg();
   else if (act === 'vethosp') window.open('https://map.kakao.com/?q=' + encodeURIComponent('동물병원'), '_blank', 'noopener');
   else if (act === 'grow') { tab = 'grow'; render(); scrollTo(0, 0); }
@@ -1143,6 +1145,7 @@ document.addEventListener('submit', async ev => {
     const p = { kind: 'me', name: (v.name || '').trim() || '나', birth: v.birth, sex: v.sex, solo: v.solo === '1', born: true, time: '' };
     if (kind === 'me') ok = await save(d => Object.assign(d.kids.find(x => x.id === id), p));
     else {
+      if (kind === 'addme' && db.kids.some(Me.is)) return toast('개인 수첩은 하나만 만들 수 있어요.');
       const nid = kind === 'mestart' ? 'k1' : uid(), kid = Family.newKid(nid, Object.assign(p, { since: today() }));
       if (kind === 'mestart') { started = true; ok = await save(d => { d.kids = [kid]; d.cur = nid; }); if (!ok) { started = false; render(); return; } tab = 'home'; scrollTo(0, 0); await showSplash(`${kid.name} 수첩을 준비하고 있어요`); }
       else ok = await save(d => { d.kids.push(kid); d.cur = nid; });
@@ -1154,6 +1157,7 @@ document.addEventListener('submit', async ev => {
     const p = { kind: 'couple', name: (v.name || '').trim() || '우리 둘', birth: v.birth, born: true, sex: '', time: '' };
     if (kind === 'couple') ok = await save(d => Object.assign(d.kids.find(x => x.id === id), p));
     else {
+      if (kind === 'addcouple' && db.kids.some(Couple.is)) return toast('연애 수첩은 하나만 만들 수 있어요.');
       const nid = kind === 'couplestart' ? 'k1' : uid(), kid = Family.newKid(nid, Object.assign(p, { since: today() }));
       if (kind === 'couplestart') { started = true; ok = await save(d => { d.kids = [kid]; d.cur = nid; }); if (!ok) { started = false; render(); return; } tab = 'home'; scrollTo(0, 0); await showSplash(`${kid.name} 수첩을 준비하고 있어요`); }
       else ok = await save(d => { d.kids.push(kid); d.cur = nid; });
