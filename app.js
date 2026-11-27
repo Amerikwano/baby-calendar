@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.28.2';
+const APP_VERSION = '0.28.3';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -526,7 +526,7 @@ const NIGHTS = ['당일', '1박 2일', '2박 3일', '3박 4일', '4박 5일'];
 function rdcDlg(themed) {
   const v = Object.assign({ theme: themed ? 'food' : '' }, rdc && Boolean(rdc.theme) === Boolean(themed) ? rdc : null) || {};
   if (!v.date) Object.assign(v, { date: nextSat(), nights: 0, from: '11:00', to: '21:00', area: SIDO_XY[spotArea()] ? spotArea() : SIDO_XY[db.sido] ? db.sido : '서울특별시' });
-  openDlg(`<form data-form="rdc"><h2>${themed ? '테마 데이트 코스 짜기' : '랜덤 데이트 코스 짜기'}</h2><p class="sub">${themed ? '테마를 고르면 그에 맞는 활동과 명소로 코스를 짜요.' : '날짜와 시간대를 고르면 그 안에서 코스를 뽑아요.'} 비가 오면 실내 위주로 짜요.</p>${themed ? [['평소 데이트', false], ['특별한 날', true]].map(([h, day]) => `<div class="f"><span>${h}</span><div class="opts themes">${Object.entries(Couple.THEMES).filter(([, t]) => Boolean(t.day) === day).map(([k, t]) => `<label><input type="radio" name="theme" value="${k}" ${v.theme === k ? 'checked' : ''}><span>${t.name}</span></label>`).join('')}</div></div>`).join('') : ''}<div class="two"><label class="f">시작 날짜<input type="date" name="date" required min="${today()}" value="${v.date}"></label><label class="f">기간<select name="nights">${NIGHTS.map((t, i) => `<option value="${i}" ${Number(v.nights) === i ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div><div class="two"><label class="f">첫날 시작<select name="from">${hourOpts(8, 20, v.from)}</select></label><label class="f">마지막 날 끝<select name="to">${hourOpts(11, 23, v.to)}</select></label></div><label class="f">지역<select name="area">${Object.keys(SIDO_XY).map(x => `<option ${x === v.area ? 'selected' : ''}>${x}</option>`).join('')}</select></label><button class="btn main big">코스 뽑기</button><p class="sub">여러 날이면 가운데 날은 10시~21시로 짜고, 밤에는 숙소 체크인, 다음 날 아침엔 체크아웃을 넣어요. 날씨는 Open-Meteo에서 고른 지역의 대표 좌표로 알아와요(2주 안의 날짜만).</p></form>`);
+  openDlg(`<form data-form="rdc"><h2>${themed ? '테마 데이트 코스 짜기' : '랜덤 데이트 코스 짜기'}</h2><p class="sub">${themed ? '테마를 고르면 그에 맞는 활동과 명소로 코스를 짜요.' : '날짜와 시간대를 고르면 그 안에서 코스를 뽑아요.'} 비가 오면 실내 위주로 짜요.</p>${themed ? [['평소 데이트', false], ['특별한 날', true]].map(([h, day]) => `<div class="f"><span>${h}</span><div class="opts themes">${Object.entries(Couple.THEMES).filter(([, t]) => Boolean(t.day) === day).map(([k, t]) => `<label><input type="radio" name="theme" value="${k}" ${v.theme === k ? 'checked' : ''}><span>${t.name}</span></label>`).join('')}</div></div>`).join('') : ''}<div class="two"><label class="f">시작 날짜<input type="date" name="date" required min="${today()}" value="${v.date}"></label><label class="f">기간<select name="nights">${NIGHTS.map((t, i) => `<option value="${i}" ${Number(v.nights) === i ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div><div class="two"><label class="f">첫날 시작<select name="from">${hourOpts(8, 20, v.from)}</select></label><label class="f">마지막 날 끝<select name="to">${hourOpts(11, 23, v.to)}</select></label></div><label class="f">지역<select name="area"><option value="전국" ${v.any ? 'selected' : ''}>전국 (지역도 랜덤)</option>${Object.keys(SIDO_XY).map(x => `<option ${!v.any && x === v.area ? 'selected' : ''}>${x}</option>`).join('')}</select></label><button class="btn main big">코스 뽑기</button><p class="sub">여러 날이면 가운데 날은 10시~21시로 짜고, 밤에는 숙소 체크인, 다음 날 아침엔 체크아웃을 넣어요. 날씨는 Open-Meteo에서 고른 지역의 대표 좌표로 알아와요(2주 안의 날짜만).</p></form>`);
 }
 const WX = c => c == null ? '' : c === 0 ? '맑음' : c <= 3 ? '구름' : c <= 48 ? '안개' : c <= 67 ? '비' : c <= 77 ? '눈' : c <= 82 ? '소나기' : '뇌우';
 // 날마다 그 시간대의 날씨(한 번에 받아 날짜별로 나눈다)
@@ -544,7 +544,8 @@ async function rdcWeather() {
 }
 function rdcSetup(v) {
   const n = Number(v.nights) || 0;
-  rdc = { theme: v.theme || '', date: v.date, nights: n, from: v.from, to: v.to, area: v.area, days: Array.from({ length: n + 1 }, (_, i) => ({ date: S.addDays(v.date, i), from: i === 0 ? v.from : '10:00', to: i === n ? v.to : '22:00' })) };
+  const any = v.area === '전국', ks = Object.keys(SIDO_XY);
+  rdc = { any, theme: v.theme || '', date: v.date, nights: n, from: v.from, to: v.to, area: any ? ks[Math.floor(Math.random() * ks.length)] : v.area, days: Array.from({ length: n + 1 }, (_, i) => ({ date: S.addDays(v.date, i), from: i === 0 ? v.from : '10:00', to: i === n ? v.to : '22:00' })) };
   if (n && rdc.days[0].to <= rdc.days[0].from) rdc.days[0].to = '23:00';
 }
 function rdcRoll() {
@@ -562,7 +563,7 @@ function rdcRoll() {
 const md = dt => { const [, m, dd] = dt.split('-').map(Number); return `${m}월 ${dd}일 (${WD[dow(dt)]})`; };
 const rdcTitle = () => { const th = rdc.theme ? Couple.THEMES[rdc.theme].name + ' ' : ''; return rdc.days.length > 1 ? `${NIGHTS[rdc.nights]} ${th}데이트 코스` : `${md(rdc.date).replace(/ \(.\)$/, '')} ${th}데이트 코스`; };
 const wxText = d => d.w ? `${d.w.sky}, ${d.w.lo}~${d.w.hi}°, 비 올 확률 ${d.w.pr}%${d.w.rain ? ' · 실내 위주' : ''}` : '날씨 정보 없음(2주 안의 날짜만)';
-const rdcSub = () => `${rdc.area.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주')} · ${md(rdc.days[0].date)}${rdc.days.length > 1 ? ' ~ ' + md(rdc.days[rdc.days.length - 1].date) : ''}`;
+const rdcSub = () => `${rdc.any ? '전국에서 뽑은 지역: ' : ''}${rdc.area.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주')} · ${md(rdc.days[0].date)}${rdc.days.length > 1 ? ' ~ ' + md(rdc.days[rdc.days.length - 1].date) : ''}`;
 const dayHead = (d, i) => rdc.days.length > 1 ? `${i + 1}일차 · ${md(d.date)}` : md(d.date);
 const rdcText = () => `[우리 수첩] ${rdcTitle()}\n${rdcSub()}\n` + rdc.days.map((d, i) => `\n■ ${dayHead(d, i)}\n날씨: ${wxText(d)}${d.base ? `\n${d.base} 근처` : ''}\n${withPlaces(d.course, d.res).map(([a, b]) => `${a}  ${b}`).join('\n')}`).join('\n');
 function rdcShow() {
@@ -1207,7 +1208,7 @@ async function moreActs(act, b, id) {
   else if (act === 'plancopy') { const x = Couple.SPOTS.find(y => y.name === d.n); try { const p = Couple.plan(x); await navigator.clipboard.writeText(Couple.planText(x, planRes && planRes.base && dlg.open ? Object.assign({}, p, { steps: withPlaces(p.steps.map(st => [st[0], st[1], st[1].startsWith(x.name) ? x.name : '']), planRes) }) : p)); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
   else if (act === 'plancap') { shotMode = d.share ? 'share' : 'save'; planImage(d.n); }
   else if (act === 'rdc') rdcDlg(d.theme === '1' || (d.theme == null && rdc && rdc.theme && dlg.open));
-  else if (act === 'rdcroll') { rdcRoll(); rdcShow(); }
+  else if (act === 'rdcroll') { if (rdc.any) { const ks = Object.keys(SIDO_XY).filter(x => x !== rdc.area); rdc.area = ks[Math.floor(Math.random() * ks.length)]; b.disabled = true; b.textContent = '지역을 뽑는 중'; rdc.days.forEach(d => { d.w = null; }); await rdcWeather(); } rdcRoll(); rdcShow(); }
   else if (act === 'rdccopy') { try { await navigator.clipboard.writeText(rdcText()); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
   else if (act === 'rdccap') { shotMode = d.share ? 'share' : 'save'; courseShot({ title: rdcTitle(), sub: rdcSub(), days: rdc.days.map((d, i) => ({ head: `${rdc.days.length > 1 ? i + 1 + '일차 · ' : ''}${md(d.date)} · ${wxText(d)}${d.base ? ' · ' + d.base + ' 근처' : ''}`, steps: courseData(d.course, d.res, d.base).steps })), file: `${rdc.date}-데이트코스.png` }); }
   else if (act === 'rdcadd') { if (await save(x => rdc.days.forEach((d, i) => x.events.push({ id: uid(), title: (rdc.theme ? Couple.THEMES[rdc.theme].name + ' ' : '') + (rdc.days.length > 1 ? `데이트 ${i + 1}일차` : '데이트'), date: d.date, time: d.course[0] ? d.course[0][0] : d.from, memo: '', course: courseData(d.course, d.res, d.base), kid: K().id })))) { dlg.close(); toast('달력에 넣었어요'); } }
