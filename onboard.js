@@ -1,7 +1,7 @@
 /* 처음 켰을 때: 로그인 → 아이가 있는지·출산 예정인지 → 날짜 등록 → 홈 */
 'use strict';
 const ob = { step: '', born: false, rows: [0], photo: {} };
-const FACE = document.querySelector('#splashFace').innerHTML;
+const FACE = document.querySelector('#babyFace').innerHTML, APPFACE = document.querySelector('#splashFace').innerHTML; // 아기 얼굴(기본 프로필), 앱 아이콘
 const OB_T0 = Date.now();
 // 시작 화면은 잠깐 보여 준 뒤 사라진다. 너무 빨리 깜빡이지 않게 최소 시간을 둔다.
 function hideSplash(min) { const s = $('#splash'); setTimeout(() => { s.classList.add('off'); setTimeout(() => { s.hidden = true; }, 400); }, Math.max(0, (min == null ? 1300 : min) - (Date.now() - OB_T0))); }
@@ -15,7 +15,7 @@ async function showSplash(text, photoId) {
 function onboard() {
   if (!ob.step) ob.step = canLogin() && !account() ? 'login' : myNick() ? 'choose' : 'who';
   const back = to => `<button type="button" class="obback" data-act="obstep" data-s="${to}" aria-label="뒤로">${icon('left')}</button>`;
-  if (ob.step === 'login') return `<section class="ob">${inAppCard()}<div class="obmid"><div class="ring">${FACE}</div><h1>우리 수첩</h1><p>예방접종부터 오늘의 기록까지<br>아기와 반려동물의 하루를 한곳에 모아요</p></div><div class="socs">${socialBtns()}<button class="soc plain" data-act="obstep" data-s="${myNick() ? 'choose' : 'who'}">로그인 없이 시작하기</button></div><p class="sub mid">로그인하지 않아도 모든 기록을 쓸 수 있어요.<br><a href="privacy.html">개인정보 안내</a></p></section>`;
+  if (ob.step === 'login') return `<section class="ob">${inAppCard()}<div class="obmid"><div class="ring">${APPFACE}</div><h1>우리 수첩</h1><p>예방접종부터 오늘의 기록까지<br>아기와 반려동물의 하루를 한곳에 모아요</p></div><div class="socs">${socialBtns()}<button class="soc plain" data-act="obstep" data-s="${myNick() ? 'choose' : 'who'}">로그인 없이 시작하기</button></div><p class="sub mid">로그인하지 않아도 모든 기록을 쓸 수 있어요.<br><a href="privacy.html">개인정보 안내</a></p></section>`;
   if (ob.step === 'who') return `<form class="ob" data-form="who">${canLogin() && !account() ? back('login') : ''}<div class="obmid"><h1>가족 안에서 나는<br>누구인가요?</h1><p>가족과 수첩을 나눌 때 이 이름으로 보여요</p></div><div class="stack">${nickPick(myNick())}<button class="btn main big">다음</button></div></form>`;
   if (ob.step === 'choose') return `<section class="ob">${back('who')}${canLogin() && !account() ? '' : inAppCard()}<div class="obmid"><h1>어떤 수첩을<br>만들까요?</h1><p>고른 것에 맞춰 수첩을 준비할게요</p></div><div class="picks"><button data-act="obpick" data-b="1">${icon('baby', 'xl')}<b>아이가 있어요</b><span>생일 등록</span></button><button data-act="obpick" data-b="">${icon('belly', 'xl')}<b>출산 예정이에요</b><span>예정일 등록</span></button><button data-act="obpick" data-b="pet">${icon('paw', 'xl')}<b>반려동물이 있어요</b><span>강아지·고양이</span></button><button data-act="obpick" data-b="couple">${icon('heart', 'xl')}<b>연애 중이에요</b><span>기념일·데이트</span></button><button data-act="obpick" data-b="me">${icon('user', 'xl')}<b>개인 수첩</b><span>건강·재테크·여행</span></button></div><p class="sub mid">수첩은 나중에 더 만들고 위에서 바꿔 볼 수 있어요.</p></section>`;
   if (ob.step === 'me') return `<form class="ob" data-form="mestart">${back('choose')}<div><h1>나를 알려 주세요</h1><p>나이와 성별에 맞춰 챙길 것을 골라 드려요</p></div><div class="stack" style="gap:18px">${meFields({})}</div><button class="btn main big">시작하기</button></form>`;
