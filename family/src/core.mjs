@@ -97,7 +97,7 @@ export class HomeCore {
     return m ? Object.assign(m, { h }) : null;
   }
   // 카카오 이름과 사진은 함께 쓰는 가족에게만 보인다.
-  async members(full) { return [...(await this.s.list({ prefix: 'm:' })).values()].map(m => Object.assign({ id: m.id, nick: m.nick, role: m.role, cats: m.cats || null }, full && m.k ? { kname: m.kname || '', kimg: m.kimg || '', kp: m.kp } : {})); }
+  async members(full) { return [...(await this.s.list({ prefix: 'm:' })).values()].map(m => Object.assign({ id: m.id, nick: m.nick, role: m.role, cats: m.cats || null, nicks: m.nicks || null }, full && m.k ? { kname: m.kname || '', kimg: m.kimg || '', kp: m.kp } : {})); }
   async byWho(k) { for (const [key, m] of await this.s.list({ prefix: 'm:' })) if (m.k === k) return Object.assign(m, { h: key.slice(2) }); return null; }
   async addMember(role, nick, who) {
     const token = rand(32), id = rand(6), h = await sha(token);
@@ -125,7 +125,7 @@ export class HomeCore {
   }
   async peek(code) {
     const i = await this.peekInvite(code), meta = await this.meta(); if (!i || !meta) return [404, { error: 'invite' }];
-    const by = (await this.members()).find(m => m.id === i.by), name = i.cat ? nameFor(await this.data(), [i.cat]) : meta.name; return [200, { name, ...(i.cat ? { cat: i.cat } : {}), role: i.role, by: by ? by.nick : '', used: Boolean(i.used) }];
+    const byM = (await this.members()).find(m => m.id === i.by), by = byM && { nick: (i.cat && byM.nicks && byM.nicks[i.cat]) || byM.nick }, name = i.cat ? nameFor(await this.data(), [i.cat]) : meta.name; return [200, { name, ...(i.cat ? { cat: i.cat } : {}), role: i.role, by: by ? by.nick : '', used: Boolean(i.used) }];
   }
   // 아직 아무도 안 쓴 초대 (끝난 것은 지운다)
   async invites() {
@@ -195,7 +195,7 @@ export class HomeCore {
         const token = rand(32); await this.s.put('tk:' + await sha(token), x.mh);
         return [200, { stage: 'ok', token, id: m.id, role: m.role, nick: m.nick, name: meta.name, _link: link }];
       }
-      const m = await this.addMember(x.role, x.nick, Object.assign({ k: x.k, kname: x.kname, kimg: x.kimg, kp: x.kp }, cats ? { cats } : {}));
+      const m = await this.addMember(x.role, x.nick, Object.assign({ k: x.k, kname: x.kname, kimg: x.kimg, kp: x.kp }, cats ? { cats, nicks: { [x.cat]: x.nick } } : {}));
       x.mh = await sha(m.token); await this.s.put(k, x);
       return [200, { stage: 'ok', token: m.token, id: m.id, role: x.role, nick: x.nick, name: meta.name, _link: link }];
     }
@@ -241,14 +241,15 @@ export class HomeCore {
   async talk(me) {
     const notes = [...(await this.s.list({ prefix: 'note:' })).values()], likes = {};
     for (const k of (await this.s.list({ prefix: 'like:' })).keys()) { const [t, who] = k.slice(5).split('|'); (likes[t] = likes[t] || []).push(who); }
-    const nicks = Object.fromEntries((await this.members()).map(m => [m.id, m.nick]));
+    const ms = await this.members(), one = me && me.cats && me.cats.length === 1 ? me.cats[0] : null;
+    const nicks = Object.fromEntries(ms.map(m => [m.id, (one && m.nicks && m.nicks[one]) || m.nick])), nicksBy = Object.fromEntries(ms.filter(m => m.nicks).map(m => [m.id, m.nicks]));
     let ns = notes;
     if (me && me.cats) { // 볼 수 있는 수첩의 일기·사진에 달린 것만
       const d = scope(await this.data(), me.cats), ok = new Set((d.diary || []).map(x => 'd:' + x.id).concat((d.photos || []).concat(d.faces || []).map(x => 'p:' + x.id)));
       ns = notes.filter(n => ok.has(n.target)); Object.keys(likes).forEach(t => { if (!ok.has(t)) delete likes[t]; });
     }
     // 함께 쓰는 가족에게는 승인을 기다리는 사람도 알려 준다(휴대폰 알림용)
-    return [200, Object.assign({ notes: ns.sort((a, b) => a.at - b.at), likes, nicks }, me && EDIT.includes(me.role) ? { pending: (await this.pendings()).map(p => ({ rid: p.rid, nick: p.nick, kname: p.kname, role: p.role })) } : {})];
+    return [200, Object.assign({ notes: ns.sort((a, b) => a.at - b.at), likes, nicks, nicksBy }, me && EDIT.includes(me.role) ? { pending: (await this.pendings()).map(p => ({ rid: p.rid, nick: p.nick, kname: p.kname, role: p.role })) } : {})];
   }
   async like(me, b) {
     if (!b || !targetOk(b.target)) return [400, { error: 'target' }];
@@ -283,7 +284,9 @@ export class HomeCore {
   async rename(me, b) {
     if (!b || !nickOk(b.nick)) return [400, { error: 'nick' }];
     if (me.role === 'viewer' && parentNick(b.nick)) return [400, { error: 'parent' }];
-    const m = await this.s.get('m:' + me.h); m.nick = b.nick.trim(); await this.s.put('m:' + me.h, m); return [200, { nick: m.nick }];
+    const m = await this.s.get('m:' + me.h);
+    if (b.cat && CATS.includes(b.cat) && b.cat !== 'baby') m.nicks = Object.assign({}, m.nicks, { [b.cat]: b.nick.trim() }); else m.nick = b.nick.trim(); // 수첩 종류마다 별명
+    await this.s.put('m:' + me.h, m); return [200, { nick: b.nick.trim() }];
   }
   async leave(me) { if (me.role === 'owner') return [400, { error: 'owner' }]; await this.dropMember(me.h); return [200, Object.assign({ ok: true }, me.k ? { _unlink: { k: me.k } } : {})]; }
   // 처음 만든 사람이 가족의 역할(함께 쓰기·보기만)을 바꾼다.

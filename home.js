@@ -67,7 +67,8 @@ async function famPushReg() {
   localStorage.setItem('baby-push-reg', JSON.stringify({ e, homes: [...done].filter(id => homes.some(h => h.id === id)) }));
 }
 // 내 별명(엄마, 아빠, 이모 …). 댓글과 가족 목록에 보인다.
-const myNick = () => (jget('baby-me') || {}).nick || '';
+// 별명은 수첩 종류마다 따로(아기 수첩은 기본 별명)
+const myNick = c => { const m = jget('baby-me') || {}; return c && c !== 'baby' ? (m.nicks || {})[c] || '' : m.nick || ''; };
 // 내 수첩이 가족 수첩이면 { id, token, role, mid, name }
 let bound = jget('baby-home');
 // 열람 초대를 받은 집들 [{ id, token, mid, nick, name, kid }]
@@ -233,7 +234,7 @@ async function famCreate() {
 }
 async function inviteDlg(role) {
   if (Me.is(K())) return toast('개인 수첩은 초대할 수 없어요.');
-  if (!myNick()) return nickDlg(() => inviteDlg(role));
+  if (!myNick(catOf(K()))) return nickDlg(() => inviteDlg(role), catOf(K()));
   const edit = role === 'editor';
   const c = catOf(K());
   openDlg(`<form data-form="none"><h2>${edit ? '함께 쓰기 초대' : '보기만 초대'}</h2><p class="notice"><b>${esc(K().name)}의 ${CAT[c]} 수첩에 초대해요</b><br><span class="sub">초대받은 사람은 ${CAT[c]} 수첩만 볼 수 있어요. 다른 수첩에 초대하려면 위에서 그 수첩으로 바꾼 뒤 초대하세요.</span></p><p class="sub">${edit ? '초대받은 사람은 이 수첩을 같이 보고 고칠 수 있어요. 아빠·엄마처럼 함께 기록할 사람에게 보내세요.' : '초대받은 사람은 일기와 앨범만 보고 좋아요와 댓글을 달 수 있어요. 할머니·이모처럼 아기 소식을 나눌 사람에게 보내세요.'}</p><p class="sub">초대 링크는 한 사람만, 3일 안에 쓸 수 있어요. 받은 사람이 카카오로 로그인하면, 내가 그 사람의 카카오 이름과 사진을 보고 승인해야 들어와요. 여러 명을 부르려면 한 사람씩 따로 보내 주세요. 사진은 줄여서 가족 수첩 서버에 올라가요.</p><button type="button" class="soc kakao" data-act="sendinvite" data-role="${role}">${KAKAO_MARK}카카오톡으로 초대 보내기</button><button type="button" class="btn" data-act="sendinvite" data-role="${role}" data-other="1">다른 앱으로 보내기</button></form>`);
@@ -245,7 +246,7 @@ async function sendInvite(role, other) {
     if (famLeft()) await famUpload((n, all) => busy('사진을 가족 수첩에 올리는 중', `${n}/${all}`, n, all), true);
     busy('초대 링크를 만드는 중'); const c = catOf(K()), r = await famCall(h, 'invite', { body: { role, cat: c } });
     const url = `${Share.APP}?join=${h.id}.${r.code}`, kid = K(), name = kid.name + '네';
-    const who = c === 'baby' ? myNick() : kid.name, ga = who + josa(who), title = role === 'editor' ? `${name} 수첩에 함께 기록해요` : `${name}에 놀러 오세요`, desc = role === 'editor' ? `${ga} ${CAT[c]} 수첩을 같이 쓰자고 초대했어요` : `${ga} ${CAT[c]} 수첩의 일기와 사진을 보여 드리고 싶대요`;
+    const who = myNick(c) || kid.name, ga = who + josa(who), title = role === 'editor' ? `${name} 수첩에 함께 기록해요` : `${name}에 놀러 오세요`, desc = role === 'editor' ? `${ga} ${CAT[c]} 수첩을 같이 쓰자고 초대했어요` : `${ga} ${CAT[c]} 수첩의 일기와 사진을 보여 드리고 싶대요`;
     busyOff(); famUpload();
     if (!other && !noKakaoLink()) { try { await loadKakao(); const link = { mobileWebUrl: url, webUrl: url }; Kakao.Share.sendDefault({ objectType: 'feed', content: { title, description: desc, imageUrl: Share.APP + 'icon-512.png?v=3', imageWidth: 512, imageHeight: 512, link }, buttons: [{ title: role === 'editor' ? '함께 쓰기' : '놀러 가기', link }] }); return; } catch { toast('카카오톡을 열지 못했어요. 다른 앱으로 보내기를 눌러 주세요.'); return; } }
     if (navigator.share) return navigator.share({ title, text: desc, url }).catch(() => { });
@@ -259,11 +260,12 @@ function nickPick(cur, ph, P) {
 }
 const readNick = f => ((f.querySelector('[name=nickx]').value || '').trim() || (f.querySelector('[name=nick]:checked') || {}).value || '').slice(0, 12);
 let nickThen = null;
-function nickDlg(then) { nickThen = then || null; openDlg(`<form data-form="nick"><h2>내 별명</h2><p class="sub">가족에게 댓글과 함께 보이는 이름이에요.</p>${nickPick(myNick())}<button class="btn main">저장</button></form>`); }
+function nickDlg(then, cat) { nickThen = then || null; const c = cat || (started ? catOf(K()) : 'baby'); openDlg(`<form data-form="nick" data-cat="${c}"><h2>${c === 'baby' ? '내 별명' : CAT[c] + ' 수첩에서 내 별명'}</h2><p class="sub">${c === 'baby' ? '가족에게' : '이 수첩을 함께 보는 사람에게'} 댓글과 함께 보이는 이름이에요.</p>${c === 'couple' ? nickPick(myNick(c), '예: 자기, 곰돌이', []) : nickPick(myNick(c))}<button class="btn main">저장</button></form>`); }
 async function saveNick(f) {
   const n = readNick(f); if (!n) return toast('별명을 골라 주세요');
-  jput('baby-me', { nick: n }); dlg.close();
-  if (bound) await famCall(bound, 'me', { body: { nick: n } }).catch(() => { });
+  const c = f.dataset.cat || 'baby', me = jget('baby-me') || {};
+  jput('baby-me', c === 'baby' ? Object.assign(me, { nick: n }) : Object.assign(me, { nicks: Object.assign({}, me.nicks, { [c]: n }) })); dlg.close();
+  if (bound) await famCall(bound, 'me', { body: c === 'baby' ? { nick: n } : { nick: n, cat: c } }).catch(() => { });
   // 놀러 가는 집의 별명(할머니, 이모 …)은 그 집에서 정한 대로 둔다.
   toast('별명을 저장했어요'); render(); const t = nickThen; nickThen = null; if (t) t();
 }
@@ -287,14 +289,14 @@ async function joinCheck() {
   jput('baby-join', null);
   if (!j) { if (waits.length && !started && !visits.length) { join = Object.assign({}, waits[0], { wait: waits[0].ticket }); waitPoll(); return true; } return false; }
   const w = waits.find(x => x.home === j.home); if (w) { join = Object.assign({}, w, { wait: w.ticket }); waitPoll(); return true; }
-  try { const r = await famCall({ id: j.home }, 'peek?c=' + j.code); join = Object.assign(j, { role: r.role, name: r.name, by: r.by, cat: r.cat || 'baby' }); }
+  try { const r = await famCall({ id: j.home }, 'peek?c=' + j.code); join = Object.assign(j, { role: r.role, name: r.name, by: r.by && r.by.nick !== undefined ? r.by.nick : r.by, cat: r.cat || 'baby' }); }
   catch (e) { toast(e.message); return false; }
   return true;
 }
 // 초대받은 사람: 1) 카카오로 로그인 2) 별명 3) 승인 기다리기
 const joinFace = c => c === 'couple' ? icon('heart') : c === 'pet' ? icon('paw') : FACE;
 function joinView() {
-  const edit = join.role === 'editor', a = Social.account(), tok = myTok(), c = join.cat || 'baby', FACE = joinFace(c), by = c === 'baby' ? join.by : String(join.name || '').replace(/네$/, '');
+  const edit = join.role === 'editor', a = Social.account(), tok = myTok(), c = join.cat || 'baby', FACE = joinFace(c), by = join.by || (c === 'baby' ? '' : String(join.name || '').replace(/네$/, ''));
   if (join.wait) return `<section class="ob join"><div class="obmid"><div class="ring">${FACE}</div><h1>승인을 기다리고 있어요</h1><p>${by ? esc(by) + '에게' : '초대한 분에게'} <b>${esc(join.name)}</b>에 들어가도 되는지 물어봤어요.<br>카카오 이름과 사진을 확인하고 승인하면 바로 열려요.</p><p class="sub">이 화면을 닫아도 돼요. 앱을 다시 열면 이어서 확인해요.</p></div><div class="stack"><button type="button" class="soc kakao" data-act="waitkakao">${KAKAO_MARK}${by ? esc(by) + '에게' : '초대한 분께'} 카톡으로 알리기</button><button type="button" class="soc kakao" style="background:var(--ink);color:#fff" data-act="waitnow">지금 확인하기</button><button type="button" class="soc plain" data-act="joinno">다음에 확인할게요</button></div></section>`;
   const appTip = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(navigator.standalone === true) ? `<div class="notice apptip"><b>홈 화면에 우리 수첩 앱이 있나요?</b><p class="sub">앱에서 보려면 링크를 복사하고, 앱의 더보기 → <b>초대 링크로 들어가기</b>에 붙여 넣어요. 여기서 들어가도 앱에서 같은 카카오로 로그인하면 보여요.</p><button type="button" class="btn" data-act="copyjoin">초대 링크 복사</button></div>` : '';
   if (!tok) return `<section class="ob join"><div class="obmid"><div class="ring">${FACE}</div><h1>${esc(join.name)}${edit ? ' 수첩에<br>함께 기록해요' : '에<br>놀러 오세요'}</h1><p>${by ? esc(by) + '가 ' : ''}초대했어요.<br>초대받은 사람이 맞는지 확인하려고 카카오로 로그인해요.</p><p class="sub">${by ? esc(by) + '가' : '초대한 분이'} 내 카카오 이름과 사진을 보고 승인하면 들어가요. 카카오 이름과 사진은 이 가족 수첩에서 함께 쓰는 가족에게만 보여요.</p></div><div class="stack"><button type="button" class="soc kakao" data-act="joinlogin" data-p="kakao">${KAKAO_MARK}카카오로 로그인하고 들어가기</button>${AUTH.naver ? `<button type="button" class="soc naver" data-act="joinlogin" data-p="naver">${NAVER_MARK}네이버로 로그인하고 들어가기</button>` : ''}<button type="button" class="soc plain" data-act="joinno">다음에 할게요</button>${appTip}</div></section>`;
@@ -309,7 +311,7 @@ async function doJoin(f) {
   try {
     const r = await famCall({ id: join.home }, 'join', { body: { c: join.code, nick, tok } });
     if (r.status === 202) { // 승인을 기다린다
-      const w = { home: join.home, ticket: r.ticket, role: r.role, nick, name: r.name, by: join.by, at: Date.now() };
+      const w = { home: join.home, ticket: r.ticket, role: r.role, nick, name: r.name, by: join.by, cat: join.cat, at: Date.now() };
       waits = waits.filter(x => x.home !== w.home).concat([w]); jput('baby-waits', waits);
       join = Object.assign({}, w, { wait: w.ticket }); busyOff(); render(); scrollTo(0, 0); waitPoll(); return;
     }
@@ -326,7 +328,7 @@ async function famEnter(h, nick) {
   waits = waits.filter(x => x.home !== h.id); jput('baby-waits', waits);
   if (h.role !== 'viewer') {
     if (bound && bound.id === h.id) { join = null; render(); return; }
-    if (!myNick()) jput('baby-me', { nick });
+    if (join && join.cat && join.cat !== 'baby') { const me = jget('baby-me') || {}; if (!(me.nicks || {})[join.cat]) jput('baby-me', Object.assign(me, { nicks: Object.assign({}, me.nicks, { [join.cat]: nick }) })); } else if (!myNick()) jput('baby-me', Object.assign(jget('baby-me') || {}, { nick }));
     busy('수첩을 불러오는 중');
     try {
       const s = await famCall(h, 'state');
@@ -461,7 +463,7 @@ function notesDlg(t, keep) {
   const when = at => new Date(at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   const can = n => n.who === h.mid || h.role === 'owner';
   // 댓글에는 쓴 사람 아이디가 있고, 이름은 이 집 가족 명단의 지금 별명으로 보여 준다(빠진 사람은 마지막 별명)
-  const nm = n => (h.talk && h.talk.nicks && h.talk.nicks[n.who]) || n.nick || '?';
+  const cc = h === vis ? vis.cat : catOf(K()), nm = n => (h.talk && h.talk.nicksBy && h.talk.nicksBy[n.who] && h.talk.nicksBy[n.who][cc]) || (h.talk && h.talk.nicks && h.talk.nicks[n.who]) || n.nick || '?';
   const one = (n, reply) => `<div class="note${reply ? ' re' : ''}"><span class="nick">${esc(nm(n).slice(0, 1))}</span><div><b>${esc(nm(n))}</b> <span class="sub">${when(n.at)}</span><p>${esc(n.text)}</p><div class="row">${reply ? '' : `<button type="button" class="lnk" data-act="reply" data-id="${n.id}" data-nick="${esc(nm(n))}">답글</button>`}${can(n) ? `<button type="button" class="lnk" data-act="unnote" data-id="${n.id}">지우기</button>` : ''}</div></div></div>`;
   const th = Fam.thread(h.talk ? h.talk.notes : [], t);
   openDlg(`<form data-form="note" data-t="${t}"><h2>댓글</h2><div class="notes">${th.length ? th.map(x => one(x.n) + x.replies.map(r => one(r, true)).join('')).join('') : '<p class="empty">첫 댓글을 남겨 보세요.</p>'}</div>${replyTo ? `<div class="row between replying"><span class="sub">${esc(replyTo.nick)}에게 답글</span><button type="button" class="lnk" data-act="replyno">취소</button></div>` : ''}<div class="row" style="flex-wrap:nowrap"><input name="text" maxlength="500" placeholder="${esc((h === vis ? vis.nick : myNick()) || '나')}(으)로 댓글 달기" autocomplete="off" value="${esc(was)}"><button class="btn main">올리기</button></div></form>`);
