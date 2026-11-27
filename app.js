@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.18.2';
+const APP_VERSION = '0.18.3';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -109,13 +109,18 @@ function pickFiles(o, done) {
 }
 const isPet = k => Pet.isPet(k);
 const items = (k = K()) => (isPet(k) ? Pet.build(k.kind, k.birth, k.records, { since: k.since, today: today() }) : Couple.is(k) ? Couple.build(k.birth, k.records, { since: k.since }) : Me.is(k) ? Me.build(k.birth, k.sex, k.records, { today: today() }) : S.build(k.birth, k.options, k.records)).map(i => Object.assign(i, { kid: k.id }));
-const famItems = () => db.kids.flatMap(k => items(k)).sort((a, b) => a.start < b.start ? -1 : a.start > b.start ? 1 : 0);
+// 달력은 지금 보는 수첩과 같은 종류만(아기끼리, 반려동물끼리)
+const sameCat = x => { const k = x.kid && db.kids.find(y => y.id === x.kid); return x.kid ? Boolean(k) && kcat(k) === kcat(K()) : true; };
+const schedName = () => ({ baby: '접종·검진', pet: '접종·건강', couple: '기념일', me: '건강검진' })[kcat(K())];
+const famItems = () => db.kids.filter(k => kcat(k) === kcat(K())).flatMap(k => items(k)).sort((a, b) => a.start < b.start ? -1 : a.start > b.start ? 1 : 0);
 const tag = id => many() ? `<span class="chip">${id ? esc(kidOf(id).name) : '모두'}</span>` : '';
 
 /* ── 날짜 표현 ── */
 function stageOf(d, k = K()) {
   const n = S.diffDays(k.birth, d);
   if (!k.born) return n < 0 ? `예정일 D-${-n}` : n === 0 ? '예정일' : `예정일 +${n}일`;
+  if (Couple.is(k)) return n < 0 ? '' : `만난 지 ${n + 1}일째`;
+  if (Me.is(k)) return '';
   return n < 0 ? `태어나기 ${-n}일 전` : `태어난 지 ${n + 1}일째`;
 }
 function ageText(t) {
@@ -249,8 +254,8 @@ function hero() {
 /* ── 달력 ── */
 // 그날의 일정 [접종·검진, 내 일정]과 완료 개수
 function dayList(d, all) {
-  const its = all.filter(i => (i.done || i.appt || i.start) === d), evs = db.events.filter(e => e.date === d).sort((a, b) => (a.time || '') < (b.time || '') ? -1 : 1);
-  return { its, evs, total: its.length + evs.length, done: its.filter(i => i.done).length + evs.filter(e => e.done).length, diary: db.diary.filter(x => x.date === d) };
+  const its = all.filter(i => (i.done || i.appt || i.start) === d), evs = db.events.filter(e => e.date === d && sameCat(e)).sort((a, b) => (a.time || '') < (b.time || '') ? -1 : 1);
+  return { its, evs, total: its.length + evs.length, done: its.filter(i => i.done).length + evs.filter(e => e.done).length, diary: db.diary.filter(x => x.date === d && sameCat(x)) };
 }
 function calendar() {
   const [y, m] = month.split('-').map(Number), first = month + '-01', n = new Date(Date.UTC(y, m, 0)).getUTCDate(), all = famItems(), t = today();
@@ -270,7 +275,7 @@ function calendar() {
     <form class="addrow" data-form="quick"><input name="title" maxlength="80" autocomplete="off" aria-label="일정 제목" placeholder="${sm}월 ${sd}일 일정 추가하기"><button class="btn main">추가</button></form>
     <div class="row"><button class="btn" data-act="event">시간·메모와 함께 추가</button><button class="btn" data-act="write">일기 쓰기</button></div>
     ${s.diary.length ? `<div class="list">${s.diary.map(x => `<button class="item t-diary" data-act="write" data-id="${x.id}"><span class="dot"></span><span><b>${esc(x.body.slice(0, 40) || '사진 일기')}</b><span class="when">${stageOf(x.date, kidOf(x.kid))}</span></span><span class="chip">${many() ? esc(who(x.kid)) : '일기'}</span></button>`).join('')}</div>` : ''}</section>
-    <details><summary>전체 접종·검진 ${all.length}개 보기</summary><div class="list">${all.map(itemRow).join('')}</div></details>`;
+    <details><summary>전체 ${schedName()} ${all.length}개 보기</summary><div class="list">${all.map(itemRow).join('')}</div></details>`;
 }
 
 /* ── 기록 ── */
