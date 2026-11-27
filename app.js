@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.23.0';
+const APP_VERSION = '0.24.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -141,7 +141,7 @@ const chipOf = it => {
   return `<span class="chip">${S.diffDays(today(), it.start)}일 뒤</span>`;
 };
 const itemRow = it => `<button class="item t-${it.type}" data-act="item" data-id="${it.id}" data-kid="${it.kid}"><span class="dot"></span><span><b>${tab === 'cal' && many() ? esc(kidOf(it.kid).name) + ', ' : ''}${esc(it.title)}</b><span class="when">${it.done ? kd(it.done) + ' 완료' : it.start === it.end ? kd(it.start) : `${kd(it.start)} ~ ${kd(it.end)}`}</span></span>${chipOf(it)}</button>`;
-const evRow = e => `<button class="item t-mine" data-act="event" data-id="${e.id}"><span class="dot"></span><span><b>${esc(e.title)}</b><span class="when">${kd(e.date)}${e.time ? ' ' + esc(e.time) : ''}</span></span>${many() ? tag(e.kid) : '<span class="chip">내 일정</span>'}</button>`;
+const evRow = e => `<button class="item t-mine" data-act="${e.course ? 'courseview' : 'event'}" data-id="${e.id}"><span class="dot"></span><span><b>${esc(e.title)}</b><span class="when">${kd(e.date)}${e.time ? ' ' + esc(e.time) : ''}</span></span>${many() ? tag(e.kid) : '<span class="chip">내 일정</span>'}</button>`;
 
 /* ── 아이 등록 칸 ── */
 // 아이 한 명을 적는 칸. 첫 화면과 아이 추가 창에서 같이 쓴다.
@@ -269,7 +269,7 @@ function calendar() {
   const s = dayList(sel, all), [, sm, sd] = sel.split('-').map(Number), who = id => many() ? (id ? kidOf(id).name : '모두') : '';
   const row = (on, check, open, title, sub, chip, del) => `<div class="${on ? 'on' : ''}"><button class="ckb" ${check}><i>${on ? '✓' : ''}</i></button><button class="tx" ${open}><b>${title}</b>${sub ? `<span class="sub">${sub}</span>` : ''}</button><span class="chip">${chip}</span>${del}</div>`;
   const list = s.its.map(i => { const at = `data-act="item" data-id="${i.id}" data-kid="${i.kid}"`; return row(i.done, at + ` aria-label="${esc(i.title)} 받은 날 적기"`, at, esc(i.title), [who(i.kid), i.done ? '완료' : i.appt ? '예약' : i.start === i.end ? '' : `${kd(i.end)}까지`].filter(Boolean).map(esc).join(', '), TYPE[i.type], '<span></span>'); }).join('')
-    + s.evs.map(e => row(e.done, `data-act="evdone" data-id="${e.id}" aria-label="${esc(e.title)} 완료 표시" aria-pressed="${Boolean(e.done)}"`, `data-act="event" data-id="${e.id}"`, esc(e.title), [who(e.kid), e.time].filter(Boolean).map(esc).join(', '), '내 일정', `<button class="del" data-act="evdel" data-id="${e.id}" aria-label="${esc(e.title)} 지우기">×</button>`)).join('');
+    + s.evs.map(e => row(e.done, `data-act="evdone" data-id="${e.id}" aria-label="${esc(e.title)} 완료 표시" aria-pressed="${Boolean(e.done)}"`, `data-act="${e.course ? 'courseview' : 'event'}" data-id="${e.id}"`, esc(e.title), [who(e.kid), e.time].filter(Boolean).map(esc).join(', '), '내 일정', `<button class="del" data-act="evdel" data-id="${e.id}" aria-label="${esc(e.title)} 지우기">×</button>`)).join('');
   return `<section class="stack" style="gap:12px"><div class="calhead"><button data-act="mon" data-n="-1" aria-label="이전 달">‹</button><h2>${y}년 ${m}월</h2><button data-act="mon" data-n="1" aria-label="다음 달">›</button></div>
     <div class="cal">${cells}</div><p class="sub">칸의 숫자는 그날 완료한 개수 / 전체 개수예요. 초록색 칸은 모두 마친 날, 분홍 점은 일기를 쓴 날이에요.</p></section>
     <section class="stack"><h2>${sm}월 ${sd}일${sel === t ? ' (오늘)' : sel > t ? ' (예정)' : ''}${s.total ? ` · ${s.done}/${s.total} 완료` : ''}</h2>
@@ -398,11 +398,25 @@ async function fillCourse(box, base, steps, after) {
   } catch { if (box.isConnected) box.querySelector('.plnote').textContent = '지금은 가게 추천과 지도를 불러올 수 없어요.'; }
 }
 const withPlaces = (steps, res) => steps.map((s, i) => { const p = res && res.out[i] && res.out[i].p; return [s[0], s[1] + (p && !s[2] ? ` - ${p.place_name}` : '')]; });
+// ── 고른 코스를 달력 일정에 담아 두고(가게 위치까지), 달력·홈에서 코스와 경로를 다시 본다
+const slimP = p => p ? { place_name: p.place_name, x: p.x, y: p.y, place_url: p.place_url, category_name: (p.category_name || '').split(' > ').pop(), distance: p.distance } : null;
+const courseData = (steps, res, base) => ({ base: base || '', steps: steps.map((st, i) => [st[0], st[1], st[2] || '', slimP(res && res.out[i] && res.out[i].p)]) });
+const cvText = e => `[우리 수첩] ${e.title}\n${kd(e.date)}${e.course.base ? ' · ' + e.course.base + ' 근처' : ''}\n\n${e.course.steps.map(([a, b, n, p]) => `${a}  ${b}${p && !n ? ' - ' + p.place_name : ''}`).join('\n')}`;
+function courseView(id) {
+  const e = db.events.find(x => x.id === id); if (!e || !e.course) return eventDlg(id); const c = e.course;
+  openDlg(`<form data-form="none"><div class="row between"><h2>${esc(e.title)}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="cvcap" data-id="${id}" aria-label="이미지로 저장">${icon('capture')}</button><button type="button" class="sq" data-act="cvcopy" data-id="${id}" aria-label="글로 복사">${icon('copy')}</button></span></div><p class="sub">${kd(e.date)}${c.base ? ' · ' + esc(c.base) + ' 근처' : ''}</p><ol class="plan">${c.steps.map(([a, b, n, p]) => `<li><b>${a}</b><span>${n ? `<button type="button" class="linkb" data-act="plan" data-n="${esc(n)}">${esc(b)}</button>` : esc(b)}${p && !n ? placeLine(p) : ''}</span></li>`).join('')}</ol><div class="route" hidden></div><div class="row"><button type="button" class="btn" data-act="event" data-id="${id}">일정 고치기</button></div></form>`);
+  if (c.steps.some(st => st[3])) kmap().then(() => drawRoute(dlg.querySelector('.route'), { out: c.steps.map(st => ({ p: st[3] })) })).catch(() => { });
+}
+// 홈: 오늘 코스가 있으면 위에 보여 준다
+const todayCourses = k => db.events.filter(e => e.course && e.date === today() && (!e.kid || e.kid === k.id));
+const courseCard = k => todayCourses(k).map(e => `<button class="strip" data-act="courseview" data-id="${e.id}">${icon('heart')}<span><b>오늘의 ${esc(e.title)}</b><em>${esc(e.course.steps.slice(0, 3).map(st => st[3] && !st[2] ? st[3].place_name : st[1]).join(' → '))}${e.course.steps.length > 3 ? ' …' : ''}</em></span>${icon('right', 's')}</button>`).join('');
+// 명소 코스를 날짜를 골라 일정으로
+function planPickDlg(n) { openDlg(`<form data-form="planpick" data-n="${esc(n)}"><h2>${esc(n)} 데이트 날짜</h2><label class="f">날짜<input type="date" name="date" required min="${today()}" value="${nextSat()}"></label><p class="sub">달력에 넣으면 그날 달력과 홈에서 코스와 경로를 볼 수 있어요.</p>${acts()}</form>`); }
 // 명소 데이트 코스 창
 let planRes = null;
 function planDlgFor(n) {
   const x = Couple.SPOTS.find(y => y.name === n); if (!x) return; const p = Couple.plan(x), g = x.sido === '해외';
-  openDlg(`<form data-form="none"><div class="row between"><h2>${esc(p.title)}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="plancap" data-n="${esc(n)}" aria-label="이미지로 저장">${icon('capture')}</button><button type="button" class="sq" data-act="plancopy" data-n="${esc(n)}" aria-label="글로 복사">${icon('copy')}</button></span></div>${spotImg(n)}<p class="sub">${esc(x.desc)}</p><ol class="plan">${p.steps.map(([a, b]) => `<li><b>${a}</b><span>${esc(b)}</span></li>`).join('')}</ol>${g ? '' : '<div class="route" hidden></div><p class="sub plnote">근처 가게를 찾는 중이에요</p>'}<p class="notice">${esc(p.tip)}</p><div class="row">${g ? `<a class="btn" data-act="ext" href="${gmapUrl(x.c + ' ' + n)}" target="_blank" rel="noopener noreferrer">구글 지도</a>` : `<button type="button" class="btn" data-act="nmap" data-q="${esc(n)}">네이버 지도</button>`}</div><h3 style="margin-top:6px">근처에서 같이 가기 좋은 곳</h3><div class="nearby">${[['meal', '맛집', g ? 'restaurants' : '맛집'], ['cafe', '카페', g ? 'cafe' : '카페'], ['craft', '공방', g ? 'workshop' : '공방'], ['bar', '술집', g ? 'bar' : '분위기 좋은 술집'], ['photo', '사진 명소', g ? 'photo spot' : '사진 명소']].map(([k, t, w]) => g ? `<a class="btn" data-act="ext" href="${gmapUrl(w + ' near ' + n)}" target="_blank" rel="noopener noreferrer">${t}</a>` : `<button type="button" class="btn" data-act="nmap" data-q="${esc(n + ' ' + w)}">${t}</button>`).join('')}</div><p class="sub">누르면 지도에서 이 명소 근처의 맛집·카페·공방을 찾아 보여 줘요.</p><p class="sub">장소 성격에 맞춰 만든 추천 코스예요. 운영 시간은 가기 전에 확인하세요.</p></form>`);
+  openDlg(`<form data-form="none"><div class="row between"><h2>${esc(p.title)}</h2><span class="row" style="gap:6px;flex-wrap:nowrap"><button type="button" class="sq" data-act="plancap" data-n="${esc(n)}" aria-label="이미지로 저장">${icon('capture')}</button><button type="button" class="sq" data-act="plancopy" data-n="${esc(n)}" aria-label="글로 복사">${icon('copy')}</button></span></div>${spotImg(n)}<p class="sub">${esc(x.desc)}</p><ol class="plan">${p.steps.map(([a, b]) => `<li><b>${a}</b><span>${esc(b)}</span></li>`).join('')}</ol>${g ? '' : '<div class="route" hidden></div><p class="sub plnote">근처 가게를 찾는 중이에요</p>'}<p class="notice">${esc(p.tip)}</p><button type="button" class="btn main" data-act="planpick" data-n="${esc(n)}">이 코스로 데이트 정하기</button><div class="row">${g ? `<a class="btn" data-act="ext" href="${gmapUrl(x.c + ' ' + n)}" target="_blank" rel="noopener noreferrer">구글 지도</a>` : `<button type="button" class="btn" data-act="nmap" data-q="${esc(n)}">네이버 지도</button>`}</div><h3 style="margin-top:6px">근처에서 같이 가기 좋은 곳</h3><div class="nearby">${[['meal', '맛집', g ? 'restaurants' : '맛집'], ['cafe', '카페', g ? 'cafe' : '카페'], ['craft', '공방', g ? 'workshop' : '공방'], ['bar', '술집', g ? 'bar' : '분위기 좋은 술집'], ['photo', '사진 명소', g ? 'photo spot' : '사진 명소']].map(([k, t, w]) => g ? `<a class="btn" data-act="ext" href="${gmapUrl(w + ' near ' + n)}" target="_blank" rel="noopener noreferrer">${t}</a>` : `<button type="button" class="btn" data-act="nmap" data-q="${esc(n + ' ' + w)}">${t}</button>`).join('')}</div><p class="sub">누르면 지도에서 이 명소 근처의 맛집·카페·공방을 찾아 보여 줘요.</p><p class="sub">장소 성격에 맞춰 만든 추천 코스예요. 운영 시간은 가기 전에 확인하세요.</p></form>`);
   if (!g) fillCourse(dlg.querySelector('form'), n, p.steps.map(st => [st[0], st[1], st[1].startsWith(n) ? n : '']), res => { planRes = res; });
 }
 // 코스를 그림으로 만들어 저장·공유한다(사진은 위키미디어에서 받아 그린다)
@@ -1100,13 +1114,17 @@ async function moreActs(act, b, id) {
   else if (act === 'newcat') newCatDlg();
   else if (act === 'nmap') openNmap(d.q);
   else if (act === 'plan') { planRes = null; planDlgFor(d.n); }
+  else if (act === 'planpick') { const keep = planRes; planPickDlg(d.n); planRes = keep; }
+  else if (act === 'courseview') courseView(id);
+  else if (act === 'cvcopy') { const e = db.events.find(x => x.id === id); try { await navigator.clipboard.writeText(cvText(e)); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
+  else if (act === 'cvcap') { const e = db.events.find(x => x.id === id); courseImage({ title: e.title, sub: kd(e.date) + (e.course.base ? ' · ' + e.course.base + ' 근처' : ''), steps: e.course.steps.map(([a, b, n, p]) => [a, b + (p && !n ? ' - ' + p.place_name : '')]), tip: '우리 수첩 데이트 코스', img: Couple.IMG[e.course.base], file: `${e.date}-데이트코스.png` }); }
   else if (act === 'plancopy') { const x = Couple.SPOTS.find(y => y.name === d.n); try { const p = Couple.plan(x); await navigator.clipboard.writeText(Couple.planText(x, planRes && planRes.base && dlg.open ? Object.assign({}, p, { steps: withPlaces(p.steps.map(st => [st[0], st[1], st[1].startsWith(x.name) ? x.name : '']), planRes) }) : p)); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
   else if (act === 'plancap') planImage(d.n);
   else if (act === 'rdc') rdcDlg();
   else if (act === 'rdcroll') { rdcRoll(); rdcShow(); }
   else if (act === 'rdccopy') { try { await navigator.clipboard.writeText(rdcText()); toast('코스를 복사했어요'); } catch { toast('복사하지 못했어요'); } }
   else if (act === 'rdccap') courseImage({ title: rdcTitle(), sub: rdcSub(), steps: rdc.days.flatMap((d, i) => (rdc.days.length > 1 ? [[`${i + 1}일차`, md(d.date)]] : []).concat(withPlaces(d.course, d.res))), tip: rdc.days.map((d, i) => (rdc.days.length > 1 ? `${i + 1}일차 ` : '') + '날씨: ' + wxText(d)).join(' / '), file: `${rdc.date}-데이트코스.png` });
-  else if (act === 'rdcadd') { if (await save(x => rdc.days.forEach((d, i) => x.events.push({ id: uid(), title: rdc.days.length > 1 ? `데이트 ${i + 1}일차` : '데이트', date: d.date, time: d.course[0] ? d.course[0][0] : d.from, memo: `${d.base ? d.base + ' 근처\n' : ''}${withPlaces(d.course, d.res).map(([a, b]) => `${a}  ${b}`).join('\n')}`, kid: K().id })))) { dlg.close(); toast('달력에 넣었어요'); } }
+  else if (act === 'rdcadd') { if (await save(x => rdc.days.forEach((d, i) => x.events.push({ id: uid(), title: rdc.days.length > 1 ? `데이트 ${i + 1}일차` : '데이트', date: d.date, time: d.course[0] ? d.course[0][0] : d.from, memo: '', course: courseData(d.course, d.res, d.base), kid: K().id })))) { dlg.close(); toast('달력에 넣었어요'); } }
   else if (act === 'grapeok') openDlg(`<form data-form="grape"><h2>정말 성공하셨나요?</h2><p><b>${esc(missionNow(K()))}</b></p><p class="sub">네를 누르면 포도 한 알을 채워요.</p><div class="row"><button class="btn main" value="ok">네</button><button type="button" class="btn" data-act="close">아니요</button></div></form>`);
   else if (act === 'grapenext') await save(x => { const k = x.kids.find(y => y.id === K().id); k.grape = Object.assign(grapeOf(k), { mi: grapeOf(k).mi + 1 }); });
   else if (act === 'grapeown') openDlg(`<form data-form="grapeown"><h2>미션 직접 쓰기</h2><label class="f">미션<input name="m" required maxlength="40" autocomplete="off" placeholder="예: 둘만의 암호 만들기"></label><p class="sub">쓴 미션은 이 수첩을 함께 쓰는 사람만 볼 수 있어요.</p>${acts()}</form>`);
@@ -1373,6 +1391,11 @@ document.addEventListener('submit', async ev => {
     ok = await save(x => { const k = x.kids.find(y => y.id === K().id), g = grapeOf(k); g.custom = [m].concat(g.custom || []).slice(0, 30); g.mi = 0; k.grape = g; });
   }
   if (kind === 'rdc') { const ok2 = f.querySelector('.btn.main'); if (!Number(v.nights) && v.to <= v.from) return toast('끝 시간이 시작보다 늦어야 해요'); ok2.disabled = true; ok2.textContent = '날씨를 보고 있어요'; rdcSetup(v); await rdcWeather(); rdcRoll(); rdcShow(); return; }
+  if (kind === 'planpick') {
+    const n = f.dataset.n, x = Couple.SPOTS.find(y => y.name === n), p = Couple.plan(x), steps = p.steps.map(st => [st[0], st[1], st[1].startsWith(n) ? n : '']);
+    if (await save(dd => dd.events.push({ id: uid(), title: `${n} 데이트`, date: v.date, time: steps[0][0], memo: '', course: courseData(steps, planRes, n), kid: K().id }))) { dlg.close(); toast('달력에 넣었어요. 그날 달력과 홈에서 코스를 볼 수 있어요'); render(); }
+    return;
+  }
   if (kind === 'none') return;
   if (kind === 'quick') { if (!v.title.trim()) return toast('일정을 적어 주세요'); if (await save(d => d.events.push({ id: uid(), title: v.title.trim(), date: sel, time: '', memo: '', kid: '' }))) toast(push.state === 'ask' && PUSH_URL ? '추가했어요. 종 모양에서 알림을 켜면 휴대폰으로 알려드려요.' : '일정을 추가했어요'); return; }
   if (kind === 'crop') { const ok = f.querySelector('[value=ok]'); ok.disabled = true; await saveFace(v.date); ok.disabled = false; return; }
