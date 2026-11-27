@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.28.3';
+const APP_VERSION = '0.28.4';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -336,6 +336,8 @@ function petMoney() {
 
 // 연애: 팁과 이번 계절 데이트 코스, 지역별 데이트 명소와 행사
 // 네이버 지도 앱으로 열고, 앱이 없으면 네이버 지도 웹으로
+// 시·도 짧은 이름(충청북도 → 충북)
+const sidoShort = x => ({ 충청북도: '충북', 충청남도: '충남', 경상북도: '경북', 경상남도: '경남', 경기도: '경기', 강원특별자치도: '강원', 전북특별자치도: '전북', 제주특별자치도: '제주', 전남광주통합특별시: '전남·광주', 세종특별자치시: '세종' })[x] || String(x).replace(/(특별|광역)?시$/, '');
 const nmapBtn = q => `<button type="button" class="pin" data-act="nmap" data-q="${esc(q)}" aria-label="${esc(q)} 네이버 지도에서 보기">${PIN}</button>`;
 // 지도 단추가 오른쪽에 붙는 카드(병원 목록과 같은 모양)
 // 해외는 구글 지도(앱이 있으면 앱으로 열린다)
@@ -563,7 +565,7 @@ function rdcRoll() {
 const md = dt => { const [, m, dd] = dt.split('-').map(Number); return `${m}월 ${dd}일 (${WD[dow(dt)]})`; };
 const rdcTitle = () => { const th = rdc.theme ? Couple.THEMES[rdc.theme].name + ' ' : ''; return rdc.days.length > 1 ? `${NIGHTS[rdc.nights]} ${th}데이트 코스` : `${md(rdc.date).replace(/ \(.\)$/, '')} ${th}데이트 코스`; };
 const wxText = d => d.w ? `${d.w.sky}, ${d.w.lo}~${d.w.hi}°, 비 올 확률 ${d.w.pr}%${d.w.rain ? ' · 실내 위주' : ''}` : '날씨 정보 없음(2주 안의 날짜만)';
-const rdcSub = () => `${rdc.any ? '전국에서 뽑은 지역: ' : ''}${rdc.area.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주')} · ${md(rdc.days[0].date)}${rdc.days.length > 1 ? ' ~ ' + md(rdc.days[rdc.days.length - 1].date) : ''}`;
+const rdcSub = () => `${rdc.any ? '전국에서 뽑은 지역: ' : ''}${sidoShort(rdc.area)} · ${md(rdc.days[0].date)}${rdc.days.length > 1 ? ' ~ ' + md(rdc.days[rdc.days.length - 1].date) : ''}`;
 const dayHead = (d, i) => rdc.days.length > 1 ? `${i + 1}일차 · ${md(d.date)}` : md(d.date);
 const rdcText = () => `[우리 수첩] ${rdcTitle()}\n${rdcSub()}\n` + rdc.days.map((d, i) => `\n■ ${dayHead(d, i)}\n날씨: ${wxText(d)}${d.base ? `\n${d.base} 근처` : ''}\n${withPlaces(d.course, d.res).map(([a, b]) => `${a}  ${b}`).join('\n')}`).join('\n');
 function rdcShow() {
@@ -579,7 +581,7 @@ function coupleTips() {
 // 데이트 명소: 지역(전국·시도·해외)과 검색으로 고른다. 고른 지역은 이 기기에만 둔다.
 let spotQ = '';
 const spotArea = () => { const a = localStorage.getItem('baby-spot-area'); return a == null ? db.sido || '' : a; };
-const spotCard = x => `<div data-act="plan" data-n="${esc(x.name)}" class="tapcard">` + pinCard(x.c || x.sido.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주'), x.name, x.desc, x.c ? x.c + ' ' + x.name : x.name, x.sido === '해외') + '</div>';
+const spotCard = x => `<div data-act="plan" data-n="${esc(x.name)}" class="tapcard">` + pinCard(x.c || sidoShort(x.sido), x.name, x.desc, x.c ? x.c + ' ' + x.name : x.name, x.sido === '해외') + '</div>';
 function spotList() {
   const a = spotArea(), q = spotQ.trim().toLowerCase();
   const l = Couple.SPOTS.filter(x => q ? (x.name + x.desc + x.sido + (x.c || '')).toLowerCase().includes(q) : !a || x.sido === a);
@@ -592,10 +594,10 @@ const evtArea = () => { const a = localStorage.getItem('baby-evt-area'); return 
 document.addEventListener('change', e => { if (e.target.id === 'evtarea') { localStorage.setItem('baby-evt-area', e.target.value); render(); } });
 function coupleEvents() {
   const sido = evtArea(), abroad = sido === '해외', now = Number(today().slice(5, 7)), q = abroad ? '해외 축제' : (sido || '전국') + ' 축제';
-  const card = x => { const g = x.sido === '해외', soon = x.months.includes(now) ? '<span class="chip hot">이번 달</span>' : ''; return `<article class="paper"><div class="hosp" style="border:0;padding:0"><span><span class="row" style="gap:6px"><span class="chip">${esc(x.c || x.sido.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주'))}</span><span class="chip">보통 ${x.months.join('·')}월</span>${soon}</span><b style="margin-top:8px;font-size:17px">${esc(x.name)}</b><span class="sub">${esc(x.desc)}</span><span style="display:block;margin-top:6px">${src(Couple.searchUrl(x.name + ' ' + today().slice(0, 4)), '올해 일정 찾아보기')}</span></span>${x.at ? (g ? gmapBtn(x.at) : nmapBtn(x.at)) : ''}</div></article>`; };
+  const card = x => { const g = x.sido === '해외', soon = x.months.includes(now) ? '<span class="chip hot">이번 달</span>' : ''; return `<article class="paper"><div class="hosp" style="border:0;padding:0"><span><span class="row" style="gap:6px"><span class="chip">${esc(x.c || sidoShort(x.sido))}</span><span class="chip">보통 ${x.months.join('·')}월</span>${soon}</span><b style="margin-top:8px;font-size:17px">${esc(x.name)}</b><span class="sub">${esc(x.desc)}</span><span style="display:block;margin-top:6px">${src(Couple.searchUrl(x.name + ' ' + today().slice(0, 4)), '올해 일정 찾아보기')}</span></span>${x.at ? (g ? gmapBtn(x.at) : nmapBtn(x.at)) : ''}</div></article>`; };
   const list = Couple.festsFor(sido, now);
   return tipSeg() + `<section class="stack"><div class="row between"><h2>축제</h2><select id="evtarea" class="areasel" aria-label="지역"><option value="">전국</option>${SIDO.map(x => `<option ${x === sido ? 'selected' : ''}>${x}</option>`).join('')}<option value="해외" ${abroad ? 'selected' : ''}>해외</option></select></div>${list.map(card).join('') || '<p class="sub">이 지역은 아직 정리한 축제가 없어요. 아래에서 찾아보세요.</p>'}</section>
-    <section class="stack"><h2>공연장</h2>${Couple.hallsFor(sido).map(x => { const g = x.sido === '해외'; return `<article class="paper"><div class="hosp" style="border:0;padding:0"><span><span class="chip">${esc(x.c || x.sido.replace(/(특별자치|광역|특별)?(시|도)$/, '').replace('전남광주통합', '전남·광주'))}</span><b style="margin-top:8px;font-size:17px">${esc(x.name)}</b><span class="sub">${esc(x.desc)}</span><span style="display:block;margin-top:6px">${src(Couple.searchUrl(x.name + ' 공연 일정'), '지금 하는 공연 보기')}</span></span>${g ? gmapBtn(x.name) : nmapBtn(x.name)}</div></article>`; }).join('') || '<p class="sub">이 지역은 아직 정리한 공연장이 없어요.</p>'}</section>
+    <section class="stack"><h2>공연장</h2>${Couple.hallsFor(sido).map(x => { const g = x.sido === '해외'; return `<article class="paper"><div class="hosp" style="border:0;padding:0"><span><span class="chip">${esc(x.c || sidoShort(x.sido))}</span><b style="margin-top:8px;font-size:17px">${esc(x.name)}</b><span class="sub">${esc(x.desc)}</span><span style="display:block;margin-top:6px">${src(Couple.searchUrl(x.name + ' 공연 일정'), '지금 하는 공연 보기')}</span></span>${g ? gmapBtn(x.name) : nmapBtn(x.name)}</div></article>`; }).join('') || '<p class="sub">이 지역은 아직 정리한 공연장이 없어요.</p>'}</section>
     <section class="stack"><h2>더 찾아보기</h2>${plainCard('행사', `${sido && !abroad ? esc(sido) + ' ' : abroad ? '해외 ' : ''}이번 달 축제와 행사`, '지역 축제, 공연, 빛축제 일정을 찾아봐요.', src(Couple.searchUrl(q), '일정 찾아보기'))}${plainCard('공연', `${sido && !abroad ? esc(sido) + ' ' : abroad ? '해외 ' : ''}이번 주 공연`, '뮤지컬, 연극, 콘서트, 클래식 일정을 찾아봐요.', src(Couple.searchUrl((sido && !abroad ? sido + ' ' : abroad ? '해외 ' : '') + '공연 일정'), '공연 찾아보기'))}${abroad ? '' : plainCard('행사', '이번 주말 전시·팝업', '데이트하기 좋은 전시와 팝업 스토어를 찾아봐요.', src(Couple.searchUrl((sido ? sido + ' ' : '') + '이번 주말 전시 팝업'), '찾아보기'))}</section><p class="sub">축제는 보통 열리는 달이에요. 해마다 날짜가 바뀌니 가기 전에 올해 일정을 확인하세요.</p>`;
 }
 function coupleMoney() {
