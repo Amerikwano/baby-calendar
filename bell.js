@@ -1,7 +1,7 @@
 /* 알림 화면과 휴대폰 알림 켜기 */
 const PUSH_URL = 'https://baby-notebook-push.baby-calendar.workers.dev'; // 비어 있으면 휴대폰 알림 단추가 나오지 않는다
 let bellSeen = new Set(); try { bellSeen = new Set(JSON.parse(localStorage.getItem('baby-seen') || '[]')); } catch { }
-const noticeList = () => Notice.build(db, S, today());
+const noticeList = () => Notice.build(ONLY ? Notice.only(db) : db, S, today());
 const bellNow = () => Notice.active(noticeList(), nowText());
 const bellNew = () => bellNow().some(n => !bellSeen.has(n.id));
 const push = { state: 'off', sub: null, key: '', last: '' };
@@ -22,6 +22,7 @@ async function pushSync(force) {
 }
 let pushTimer; const pushLater = () => { clearTimeout(pushTimer); pushTimer = setTimeout(() => pushSync().catch(() => { }), 1500); };
 async function pushInit() {
+  if (local) Local.setKV('only', ONLY || '').catch(() => { }); // 서비스 워커도 육아 전용인지 알게
   if (!pushCan()) { push.state = iosWeb() ? 'home' : 'none'; return; }
   const reg = await navigator.serviceWorker.ready; push.sub = await reg.pushManager.getSubscription();
   let off = false; try { off = localStorage.getItem('baby-push') === 'off'; } catch { }

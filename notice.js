@@ -69,6 +69,8 @@
   const LOG = { diaper: '기저귀', bottle: '젖병수유', breast: '모유수유', sleep: '수면', food: '이유식', hospital: '병원', bath: '목욕', play: '놀이', med: '약', temp: '체온', kick: '태동', meal: '밥', walk: '산책', potty: '배변', groom: '미용·손질', dateout: '데이트', gift: '선물', trip: '여행', workout: '운동', spend: '지출', weight: '체중', memo: '메모' };
   const logName = t => LOG[t] || '기록';
   const title = n => n.ref.type === 'log' ? n.title.replace('LOG', `${logName(n.ref.log)} 시간이에요`) : n.title;
-  const out = { REM, build, active, wakes, message, logName, title, at };
+  // 육아 전용 앱: 아기 수첩(kind 없음)과 그 일정·기록만 남긴다. 수첩을 정하지 않은 일정도 남긴다.
+  const only = db => { const ids = new Set(db.kids.filter(k => !k.kind).map(k => k.id)), mine = x => !x.kid || ids.has(x.kid); return Object.assign({}, db, { kids: db.kids.filter(k => ids.has(k.id)), events: (db.events || []).filter(mine), logs: (db.logs || []).filter(mine) }); };
+  const out = { REM, build, only, active, wakes, message, logName, title, at };
   if (typeof module !== 'undefined' && module.exports) module.exports = out; else root.Notice = out;
 })(this);

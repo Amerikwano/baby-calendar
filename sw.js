@@ -1,5 +1,5 @@
 // 수정할 때 CACHE와 index.html의 APP_VERSION을 함께 올린다.
-const CACHE = 'baby-notebook-v0.38.1';
+const CACHE = 'baby-notebook-v0.38.2';
 const FILES = ['./', 'index.html', 'schedule.js', 'pet.js', 'couple.js', 'me.js', 'base-benefits.js', 'base-tips.js', 'local.js', 'regions.js', 'family.js', 'hospitals.js', 'drive.js', 'login.js', 'share.js', 'icons.js', 'care.js', 'album.js', 'notice.js', 'bell.js', 'swipe.js', 'media.js', 'viewer.js', 'sync.js', 'home.js', 'onboard.js', 'app.js', 'app.css', 'manifest.webmanifest', 'manifest-baby.webmanifest', 'icon-baby-192.png', 'apple-touch-icon-baby.png', 'icon-192.png', 'apple-touch-icon.png'];
 importScripts('schedule.js', 'pet.js', 'couple.js', 'me.js', 'family.js', 'local.js', 'notice.js');
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
@@ -42,7 +42,7 @@ async function notify() {
     if (test && Date.now() - test < 120000) { await Local.setKV('test', 0); m = { ids: [], title: '알림이 잘 와요', body: '앞으로 이렇게 알려드릴게요' }; }
     else {
       const now = localNow(), st = await Local.api('/api/state'); shown = (await Local.getKV('shown')) || [];
-      if (st.data) m = Notice.message(Notice.build(Family.migrate(st.data), Schedule, now.slice(0, 10)), now, shown, Notice.logName);
+      if (st.data) { const d0 = Family.migrate(st.data), d1 = (await Local.getKV('only')) ? Notice.only(d0) : d0; m = Notice.message(Notice.build(d1, Schedule, now.slice(0, 10)), now, shown, Notice.logName); }
       if (m) await Local.setKV('shown', shown.concat(m.ids).slice(-400));
     }
   } catch { }
