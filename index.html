@@ -8,6 +8,7 @@
 <link rel="icon" href="icon-192.png?v=3">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=3">
 <meta name="apple-mobile-web-app-title" content="우리 수첩">
+<script>/* 육아 전용 앱: ?only=baby 로 열면 아기 수첩만 보인다 */window.ONLY=/[?&]only=baby/.test(location.search)||sessionStorage.getItem('baby-only')?'baby':'';if(ONLY){sessionStorage.setItem('baby-only','1');document.querySelector('link[rel=manifest]').href='manifest-baby.webmanifest';document.title='우리 아기 수첩';document.querySelector('meta[name=apple-mobile-web-app-title]').content='우리 아기 수첩';}</script>
 <meta name="theme-color" content="#faf5ee">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="https://cdn.jsdelivr.net/npm/@kfonts/nanum-square-round@0.2.0/NanumSquareRoundR.woff2">
 <style>

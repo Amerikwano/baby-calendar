@@ -1,5 +1,5 @@
 'use strict';
-const APP_VERSION = '0.37.7';
+const APP_VERSION = '0.38.0';
 const S = Schedule, $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
@@ -12,7 +12,7 @@ const TYPE = { vaccine: '예방접종', check: '건강검진', oral: '구강검�
 const SIDO = Regions.SIDO.map(s => s.name);
 
 const fresh = () => ({ v: 1, kids: [Family.newKid('k1', { birth: today(), options: Object.assign({}, S.DEFAULT_OPTIONS) })], cur: 'k1', sido: '', sigungu: '', leads: [7, 1], hour: 9, events: [], diary: [], photos: [], faces: [], logs: [], exports: 0 });
-const K = () => db.kids.find(k => k.id === db.cur) || db.kids[0];
+const K = () => { const l = ONLY && db.kids.some(k => !k.kind) ? db.kids.filter(k => !k.kind) : db.kids; return l.find(k => k.id === db.cur) || l[0]; };
 const kidOf = id => db.kids.find(k => k.id === id) || K();
 // many: 지금 보는 수첩과 같은 종류가 둘 이상(쌍둥이, 여러 마리). manyAll: 수첩이 둘 이상(빼기, 고르기)
 const catKids = () => db.kids.filter(k => kcat(k) === kcat(K()));
